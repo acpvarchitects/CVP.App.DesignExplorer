@@ -35,7 +35,7 @@
     <meta name="description" content="">
     <meta name="author" content="">
 
-    <title>Design Explorer 2</title>
+    <title>ACPV Design Explorer</title>
 
     <link rel="shortcut icon" href="favicon.ico">
     <link rel="icon" type="image/png" href="favicon.png">
@@ -168,7 +168,7 @@
         
         // no img link
         if(file === 0 || file === undefined){
-            return "http://mingbopeng.github.io/DesignExplorer/img/thorntontomasetti.jpg";
+            return "http://citterio-viel.github.io/CVP.App.DesignExplorer/img/antonio-citterio-patricia-viel.png";
         }
  
 
@@ -276,7 +276,7 @@
                 </button>
 
                 <div class="navbar-header" title="Design Explorer">
-                    <a href="http://tt-acm.github.io/DesignExplorer/"> <img style="max-width:350px; padding-top: 10px;" src="./img/DesignExplorerLogo3.png"></a>
+                    <a href="https://citterio-viel.github.io/CVP.App.DesignExplorer/"> <img style="max-width:350px;  padding-top: 23px;" src="./img/antonio-citterio-patricia-viel.png"></a>
                 </div>
             </div>
 
@@ -285,8 +285,17 @@
                 <ul class="nav navbar-nav">
                     <li>
                         <!--button to load csv uncommented-->
-                        <p class="navbar-text">
+                        <!-- <p class="navbar-text">
                             <button id="showLoadData" class="file-upload" style="border-radius: 20px;">Get Data</button>
+                        </p> -->
+                        
+                        <br>
+                        
+                        <p class="text-center">
+                            <input type="text" id="folderLink" class="btn btn-default btn-sm toggled" name="imgfolder" placeholder="GoogleDrive, OneDrive, or server link"
+                            />
+                            <input type="text" id="folderLinkID" class="btn btn-default btn-hd" name="imgfolder" placeholder="FolderID" />
+                            <button id="loadData" onclick="MP_getGoogleIDandLoad()" class="file-upload" style="border-radius:0 20px 20px 0;">Load Data</button>
                         </p>
                     </li>
                 </ul>
@@ -475,19 +484,22 @@
 
                 </div>
             </div>
+            
             <!-- /#Welcome content -->
-            <div class="row-fluid col-lg-12 row-centered vertical-center fullscreen popupWindow" id="welcome">
-                <div class="col-sm-12 col-centered" id="welcomeContainer">
+
+            <div class="j" id="welcome">
+                
+                <!-- pop up -->
+                <!-- <div class="col-sm-12 col-centered" id="welcomeContainer">
                     <button class="btn btn-default btn-sm pull-right popupWindowClose">
                         <span class="glyphicon glyphicon-remove"></span>
                     </button>
                     <br>
-                    <h1 class="text-center" style="margin-top: 1em;"> Welcome to Design Explorer!</h1>
+                    <h1 class="text-center" style="margin-top: 1em;"> Welcome to Design Explorer test!</h1>
                     <h4 class="text-center">
                         Design Explorer is an open source tool for exploring multi-dimensional parametric studies!
                     </h4>
                     <br>
-
                     <h5 class="text-center">Try one of following sample design sets or load your own data.<a href="http://www.mpendesign.com/category/tutorial/" target="_blank"> (Tutorial)</a></h5> 
                     <h5 class="text-center"></h5>
                     <div class="row">
@@ -518,7 +530,7 @@
                             <a href="http://www.mpendesign.com" target="_blank">Mingbo Peng</a>
                         </h5>
                     </div>
-                </div>
+                </div> -->
 
                 <!--load data div-->
                 <div class="col-sm-12 col-centered" id="loadDataContainer" style=" display:none;width: 700px;height: 500px">
