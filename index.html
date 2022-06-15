@@ -231,7 +231,7 @@
         }
 
         //valid online folder available
-        var studyLongUrl = document.location.origin +"/.App.DesignExplorer/?ID="+ studyCaseLink;
+        var studyLongUrl = document.location.origin +"/CVP.App.DesignExplorer/?ID="+ studyCaseLink;
         d3.select("#welcome").style("display","none");
         
         
@@ -241,11 +241,11 @@
 
             if(UrlId.length ==6){ // google url id
                 
-                studyEncodedUrl = document.location.origin +"/.App.DesignExplorer/?ID="+_folderInfo.DE_PW;
+                studyEncodedUrl = document.location.origin +"/CVP.App.DesignExplorer/?ID="+_folderInfo.DE_PW;
                 d3.select("#showShortUrl").html("https://goo.gl/"+ _folderInfo.DE_PW);
 
             }else if(UrlId.startsWith("BL_")){
-                studyEncodedUrl = document.location.origin +"/.App.DesignExplorer/?ID="+_folderInfo.DE_PW;
+                studyEncodedUrl = document.location.origin +"/CVP.App.DesignExplorer/?ID="+_folderInfo.DE_PW;
                 d3.select("#showShortUrl").html("https://bit.ly/"+ _folderInfo.DE_PW.replace("BL_",""));
             }else{
                 studyEncodedUrl = studyLongUrl;
