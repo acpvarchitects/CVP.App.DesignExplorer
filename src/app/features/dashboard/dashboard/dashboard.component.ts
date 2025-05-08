@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { DataService } from '../../../core/services/data.service';
 import { VisualizationService, VisualizationConfig } from '../../../core/services/visualization.service';
 import { ParallelCoordinatesComponent } from '../components/parallel-coordinates/parallel-coordinates.component';
@@ -38,7 +39,8 @@ export class DashboardComponent implements OnInit {
 
   constructor(
     private dataService: DataService,
-    private visualizationService: VisualizationService
+    private visualizationService: VisualizationService,
+    private http: HttpClient
   ) {}
 
   ngOnInit(): void {
@@ -105,16 +107,25 @@ export class DashboardComponent implements OnInit {
   }
   
   private tryRelativePath(): void {
-    const relativePath = 'src/assets/data/default_onload.csv';
-    console.log('Dashboard - Trying relative path:', relativePath);
-    
-    this.dataService.loadCsvData(relativePath).subscribe({
+    this.http.get('./assets/data/test.json').subscribe({
       next: (data) => {
-        console.log('Dashboard - Successfully loaded data from relative path:', data.length, 'records');
-        this.isLoading = false;
+        console.log('Dashboard - Successfully loaded test file:', data);
+        
+        const relativePath = 'assets/data/default_onload.csv';
+        console.log('Dashboard - Trying relative path:', relativePath);
+        
+        this.dataService.loadCsvData(relativePath).subscribe({
+          next: (csvData) => {
+            console.log('Dashboard - Successfully loaded data from relative path:', csvData.length, 'records');
+            this.isLoading = false;
+          },
+          error: (csvErr) => {
+            console.error('Dashboard - Error loading from relative path:', csvErr);
+          }
+        });
       },
-      error: (err) => {
-        console.error('Dashboard - Error loading from relative path:', err);
+      error: (testErr) => {
+        console.error('Dashboard - Error loading test file:', testErr);
       }
     });
   }
