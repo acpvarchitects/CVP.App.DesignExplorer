@@ -4,6 +4,8 @@ import * as d3 from 'd3';
 import { Subscription } from 'rxjs';
 import { DataService, DataItem } from '../../../../core/services/data.service';
 import { VisualizationService } from '../../../../core/services/visualization.service';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 
 interface AxisFilter {
   dimension: string;
@@ -15,7 +17,11 @@ interface AxisFilter {
   selector: 'app-parallel-coordinates',
   templateUrl: './parallel-coordinates.component.html',
   styleUrl: './parallel-coordinates.component.scss',
-  imports: [CommonModule],
+  imports: [
+    CommonModule,
+    MatButtonModule,
+    MatIconModule
+  ],
   standalone: true
 })
 export class ParallelCoordinatesComponent implements OnInit, OnDestroy {

@@ -1,22 +1,23 @@
 <div class="scatter-chart-container">
-  <div class="controls mb-2">
-    <div class="row">
-      <div class="col-md-6">
-        <label for="x-axis">X Axis:</label>
-        <select id="x-axis" class="form-control form-control-sm" (change)="setXAxis($event)">
-          <option *ngFor="let param of availableParams" [value]="param" [selected]="param === xAxisParam">
+  <div class="controls">
+    <div class="axis-selectors">
+      <mat-form-field appearance="outline" class="axis-selector">
+        <mat-label>X Axis</mat-label>
+        <mat-select [value]="xAxisParam" (selectionChange)="setXAxis($event)">
+          <mat-option *ngFor="let param of availableParams" [value]="param">
             {{ getDisplayName(param) }}
-          </option>
-        </select>
-      </div>
-      <div class="col-md-6">
-        <label for="y-axis">Y Axis:</label>
-        <select id="y-axis" class="form-control form-control-sm" (change)="setYAxis($event)">
-          <option *ngFor="let param of availableParams" [value]="param" [selected]="param === yAxisParam">
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+      
+      <mat-form-field appearance="outline" class="axis-selector">
+        <mat-label>Y Axis</mat-label>
+        <mat-select [value]="yAxisParam" (selectionChange)="setYAxis($event)">
+          <mat-option *ngFor="let param of availableParams" [value]="param">
             {{ getDisplayName(param) }}
-          </option>
-        </select>
-      </div>
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
     </div>
   </div>
   

@@ -1,10 +1,13 @@
 import { Component, ElementRef, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import * as d3 from 'd3';
 import { Subscription } from 'rxjs';
 import { DataService, DataItem } from '../../../../core/services/data.service';
 import { VisualizationService } from '../../../../core/services/visualization.service';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+import { MatOptionModule } from '@angular/material/core';
 
 @Component({
   selector: 'app-scatter-chart',
@@ -12,7 +15,11 @@ import { VisualizationService } from '../../../../core/services/visualization.se
   styleUrl: './scatter-chart.component.scss',
   imports: [
     CommonModule,
-    FormsModule
+    FormsModule,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatOptionModule
   ],
   standalone: true
 })
@@ -114,16 +121,14 @@ export class ScatterChartComponent implements OnInit, OnDestroy {
     this.visualizationService.setScatterAxes(this.xAxisParam, this.yAxisParam);
   }
   
-  setXAxis(event: Event): void {
-    const target = event.target as HTMLSelectElement;
-    this.xAxisParam = target.value;
+  setXAxis(event: any): void {
+    this.xAxisParam = event.value;
     this.visualizationService.setScatterAxes(this.xAxisParam, this.yAxisParam);
     this.initChart();
   }
   
-  setYAxis(event: Event): void {
-    const target = event.target as HTMLSelectElement;
-    this.yAxisParam = target.value;
+  setYAxis(event: any): void {
+    this.yAxisParam = event.value;
     this.visualizationService.setScatterAxes(this.xAxisParam, this.yAxisParam);
     this.initChart();
   }
