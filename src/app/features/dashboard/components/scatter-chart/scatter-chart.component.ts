@@ -1,4 +1,6 @@
 import { Component, ElementRef, OnInit, OnDestroy, ViewChild } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import * as d3 from 'd3';
 import { Subscription } from 'rxjs';
 import { DataService, DataItem } from '../../../../core/services/data.service';
@@ -7,7 +9,12 @@ import { VisualizationService } from '../../../../core/services/visualization.se
 @Component({
   selector: 'app-scatter-chart',
   templateUrl: './scatter-chart.component.html',
-  styleUrl: './scatter-chart.component.scss'
+  styleUrl: './scatter-chart.component.scss',
+  imports: [
+    CommonModule,
+    FormsModule
+  ],
+  standalone: true
 })
 export class ScatterChartComponent implements OnInit, OnDestroy {
   @ViewChild('chart', { static: true }) private chartContainer!: ElementRef;
@@ -107,14 +114,16 @@ export class ScatterChartComponent implements OnInit, OnDestroy {
     this.visualizationService.setScatterAxes(this.xAxisParam, this.yAxisParam);
   }
   
-  setXAxis(param: string): void {
-    this.xAxisParam = param;
+  setXAxis(event: Event): void {
+    const target = event.target as HTMLSelectElement;
+    this.xAxisParam = target.value;
     this.visualizationService.setScatterAxes(this.xAxisParam, this.yAxisParam);
     this.initChart();
   }
   
-  setYAxis(param: string): void {
-    this.yAxisParam = param;
+  setYAxis(event: Event): void {
+    const target = event.target as HTMLSelectElement;
+    this.yAxisParam = target.value;
     this.visualizationService.setScatterAxes(this.xAxisParam, this.yAxisParam);
     this.initChart();
   }
@@ -201,7 +210,7 @@ export class ScatterChartComponent implements OnInit, OnDestroy {
     return 0;
   }
   
-  private getDisplayName(dimension: string): string {
+  getDisplayName(dimension: string): string {
     if (dimension.toUpperCase().startsWith('IN:')) {
       return dimension.substring(3).trim();
     } else if (dimension.toUpperCase().startsWith('OUT:')) {

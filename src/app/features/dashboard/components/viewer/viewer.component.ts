@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { DataService, DataItem } from '../../../../core/services/data.service';
 import { VisualizationService } from '../../../../core/services/visualization.service';
@@ -6,7 +7,11 @@ import { VisualizationService } from '../../../../core/services/visualization.se
 @Component({
   selector: 'app-viewer',
   templateUrl: './viewer.component.html',
-  styleUrl: './viewer.component.scss'
+  styleUrl: './viewer.component.scss',
+  imports: [
+    CommonModule
+  ],
+  standalone: true
 })
 export class ViewerComponent implements OnInit, OnDestroy {
   selectedItem: DataItem | null = null;
