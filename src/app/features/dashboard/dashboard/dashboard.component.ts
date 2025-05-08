@@ -69,13 +69,52 @@ export class DashboardComponent implements OnInit {
 
   private loadDefaultData(): void {
     this.isLoading = true;
-    this.dataService.loadCsvData('assets/data/default_onload.csv').subscribe({
-      next: () => {
+    
+    const dataPath = './assets/data/default_onload.csv';
+    console.log('Dashboard - Loading default data from:', dataPath);
+    
+    this.dataService.loadCsvData(dataPath).subscribe({
+      next: (data) => {
+        console.log('Dashboard - Successfully loaded data:', data.length, 'records');
         this.isLoading = false;
       },
       error: (error) => {
-        console.error('Error loading default data:', error);
+        console.error('Dashboard - Error loading default data:', error);
         this.isLoading = false;
+        
+        this.tryAlternativePath();
+      }
+    });
+  }
+  
+  private tryAlternativePath(): void {
+    const altPath = '/assets/data/default_onload.csv';
+    console.log('Dashboard - Trying alternative path:', altPath);
+    
+    this.dataService.loadCsvData(altPath).subscribe({
+      next: (data) => {
+        console.log('Dashboard - Successfully loaded data from alternative path:', data.length, 'records');
+        this.isLoading = false;
+      },
+      error: (err) => {
+        console.error('Dashboard - Error loading from alternative path:', err);
+        
+        this.tryRelativePath();
+      }
+    });
+  }
+  
+  private tryRelativePath(): void {
+    const relativePath = 'src/assets/data/default_onload.csv';
+    console.log('Dashboard - Trying relative path:', relativePath);
+    
+    this.dataService.loadCsvData(relativePath).subscribe({
+      next: (data) => {
+        console.log('Dashboard - Successfully loaded data from relative path:', data.length, 'records');
+        this.isLoading = false;
+      },
+      error: (err) => {
+        console.error('Dashboard - Error loading from relative path:', err);
       }
     });
   }

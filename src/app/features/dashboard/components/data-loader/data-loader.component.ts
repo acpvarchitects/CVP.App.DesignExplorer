@@ -109,14 +109,36 @@ export class DataLoaderComponent {
     this.loading = true;
     this.error = '';
     
-    this.dataService.loadCsvData('assets/data/default_onload.csv').subscribe({
-      next: () => {
+    const dataPath = './assets/data/default_onload.csv';
+    console.log('Loading default data from:', dataPath);
+    
+    this.dataService.loadCsvData(dataPath).subscribe({
+      next: (data) => {
+        console.log('Successfully loaded data:', data.length, 'records');
         this.loading = false;
       },
       error: (err) => {
         console.error('Error loading default data:', err);
         this.error = 'Failed to load default data. Please try again.';
         this.loading = false;
+        
+        this.tryAlternativePath();
+      }
+    });
+  }
+  
+  private tryAlternativePath(): void {
+    const altPath = '/assets/data/default_onload.csv';
+    console.log('Trying alternative path:', altPath);
+    
+    this.dataService.loadCsvData(altPath).subscribe({
+      next: (data) => {
+        console.log('Successfully loaded data from alternative path:', data.length, 'records');
+        this.loading = false;
+        this.error = '';
+      },
+      error: (err) => {
+        console.error('Error loading from alternative path:', err);
       }
     });
   }
