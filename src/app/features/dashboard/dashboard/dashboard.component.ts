@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { DataService } from '../../../core/services/data.service';
@@ -12,6 +12,15 @@ import { DataLoaderComponent } from '../components/data-loader/data-loader.compo
 import { HeaderComponent } from '../../../core/components/header/header.component';
 import { SidebarComponent } from '../../../core/components/sidebar/sidebar.component';
 import { DataSettingsComponent } from '../components/data-settings/data-settings.component';
+
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatCardModule } from '@angular/material/card';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSidenav } from '@angular/material/sidenav';
 
 @Component({
   selector: 'app-dashboard',
@@ -27,11 +36,20 @@ import { DataSettingsComponent } from '../components/data-settings/data-settings
     DataLoaderComponent,
     HeaderComponent,
     SidebarComponent,
-    DataSettingsComponent
+    DataSettingsComponent,
+    MatSidenavModule,
+    MatToolbarModule,
+    MatButtonModule,
+    MatIconModule,
+    MatCardModule,
+    MatButtonToggleModule,
+    MatProgressSpinnerModule
   ],
   standalone: true
 })
 export class DashboardComponent implements OnInit {
+  @ViewChild('sidenav') sidenav!: MatSidenav;
+  
   showSidebar = true;
   isLoading = false;
   hasData = false;
