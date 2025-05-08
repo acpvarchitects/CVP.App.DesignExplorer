@@ -109,7 +109,7 @@ export class DataLoaderComponent {
     this.loading = true;
     this.error = '';
     
-    this.dataService.loadCsvData('assets/data/default_data.csv').subscribe({
+    this.dataService.loadCsvData('assets/data/default_onload.csv').subscribe({
       next: () => {
         this.loading = false;
       },

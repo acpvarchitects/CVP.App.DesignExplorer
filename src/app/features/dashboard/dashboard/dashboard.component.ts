@@ -69,7 +69,7 @@ export class DashboardComponent implements OnInit {
 
   private loadDefaultData(): void {
     this.isLoading = true;
-    this.dataService.loadCsvData('assets/data/default_data.csv').subscribe({
+    this.dataService.loadCsvData('assets/data/default_onload.csv').subscribe({
       next: () => {
         this.isLoading = false;
       },
