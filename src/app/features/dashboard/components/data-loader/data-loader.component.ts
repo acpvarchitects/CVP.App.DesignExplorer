@@ -139,6 +139,33 @@ export class DataLoaderComponent {
       },
       error: (err) => {
         console.error('Error loading from alternative path:', err);
+        
+        this.tryRelativePath();
+      }
+    });
+  }
+  
+  private tryRelativePath(): void {
+    this.http.get('./assets/data/test.json').subscribe({
+      next: (data) => {
+        console.log('Successfully loaded test file:', data);
+        
+        const relativePath = 'assets/data/default_onload.csv';
+        console.log('Trying relative path:', relativePath);
+        
+        this.dataService.loadCsvData(relativePath).subscribe({
+          next: (csvData) => {
+            console.log('Successfully loaded data from relative path:', csvData.length, 'records');
+            this.loading = false;
+            this.error = '';
+          },
+          error: (csvErr) => {
+            console.error('Error loading from relative path:', csvErr);
+          }
+        });
+      },
+      error: (testErr) => {
+        console.error('Error loading test file:', testErr);
       }
     });
   }
