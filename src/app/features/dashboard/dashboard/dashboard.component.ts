@@ -8,6 +8,9 @@ import { ThumbnailsGridComponent } from '../components/thumbnails-grid/thumbnail
 import { ViewerComponent } from '../components/viewer/viewer.component';
 import { SlidersComponent } from '../components/sliders/sliders.component';
 import { DataLoaderComponent } from '../components/data-loader/data-loader.component';
+import { HeaderComponent } from '../../../core/components/header/header.component';
+import { SidebarComponent } from '../../../core/components/sidebar/sidebar.component';
+import { DataSettingsComponent } from '../components/data-settings/data-settings.component';
 
 @Component({
   selector: 'app-dashboard',
@@ -20,7 +23,10 @@ import { DataLoaderComponent } from '../components/data-loader/data-loader.compo
     ThumbnailsGridComponent,
     ViewerComponent,
     SlidersComponent,
-    DataLoaderComponent
+    DataLoaderComponent,
+    HeaderComponent,
+    SidebarComponent,
+    DataSettingsComponent
   ],
   standalone: true
 })

@@ -1,4 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { DataService, DataItem } from '../../../../core/services/data.service';
 import { VisualizationService } from '../../../../core/services/visualization.service';
@@ -16,7 +18,12 @@ interface SliderInfo {
 @Component({
   selector: 'app-sliders',
   templateUrl: './sliders.component.html',
-  styleUrl: './sliders.component.scss'
+  styleUrl: './sliders.component.scss',
+  imports: [
+    CommonModule,
+    FormsModule
+  ],
+  standalone: true
 })
 export class SlidersComponent implements OnInit, OnDestroy {
   sliders: SliderInfo[] = [];
