@@ -1,41 +1,38 @@
 <div class="sliders-container">
-  <div class="sliders-header">
-    <h5>Parameter Filters</h5>
-    <button class="btn btn-sm btn-outline-secondary" (click)="resetFilters()">
-      Reset Filters
-    </button>
-  </div>
-  
-  <div class="no-data" *ngIf="sliders.length === 0">
-    <p>No parameters available. Please load data first.</p>
-  </div>
-  
-  <div class="sliders-content" *ngIf="sliders.length > 0">
-    <div class="slider-group" *ngFor="let slider of sliders">
-      <div class="slider-header">
-        <span class="slider-name" [class.input-param]="slider.isInput" [class.output-param]="!slider.isInput">
-          {{ slider.displayName }}
-        </span>
-        <span class="slider-range">
-          {{ slider.currentValue[0] | number:'1.2-2' }} - {{ slider.currentValue[1] | number:'1.2-2' }}
-        </span>
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Parameter Filters</mat-card-title>
+      <div class="header-actions">
+        <button mat-stroked-button color="primary" (click)="resetFilters()">
+          <mat-icon>refresh</mat-icon> Reset Filters
+        </button>
+      </div>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <div class="no-data" *ngIf="sliders.length === 0">
+        <p>No parameters available. Please load data first.</p>
       </div>
       
-      <div class="slider-control">
-        <input type="range" class="custom-range" 
-               [min]="slider.min" 
-               [max]="slider.max" 
-               [step]="slider.step"
-               [(ngModel)]="slider.currentValue[0]"
-               (change)="onSliderChange(slider)">
-        
-        <input type="range" class="custom-range" 
-               [min]="slider.min" 
-               [max]="slider.max" 
-               [step]="slider.step"
-               [(ngModel)]="slider.currentValue[1]"
-               (change)="onSliderChange(slider)">
+      <div class="sliders-content" *ngIf="sliders.length > 0">
+        <div class="slider-group" *ngFor="let slider of sliders">
+          <div class="slider-header">
+            <span class="slider-name" [class.input-param]="slider.isInput" [class.output-param]="!slider.isInput">
+              {{ slider.displayName }}
+            </span>
+            <span class="slider-range">
+              {{ slider.currentValue[0] | number:'1.2-2' }} - {{ slider.currentValue[1] | number:'1.2-2' }}
+            </span>
+          </div>
+          
+          <div class="slider-control">
+            <mat-slider [min]="slider.min" [max]="slider.max" [step]="slider.step" [discrete]="true">
+              <input matSliderStartThumb [(ngModel)]="slider.currentValue[0]" (valueChange)="onSliderChange(slider)">
+              <input matSliderEndThumb [(ngModel)]="slider.currentValue[1]" (valueChange)="onSliderChange(slider)">
+            </mat-slider>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
+    </mat-card-content>
+  </mat-card>
 </div>

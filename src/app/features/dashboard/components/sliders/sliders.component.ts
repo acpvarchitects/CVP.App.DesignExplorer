@@ -4,6 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { DataService, DataItem } from '../../../../core/services/data.service';
 import { VisualizationService } from '../../../../core/services/visualization.service';
+import { MatCardModule } from '@angular/material/card';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSliderModule } from '@angular/material/slider';
 
 interface SliderInfo {
   name: string;
@@ -21,7 +25,11 @@ interface SliderInfo {
   styleUrl: './sliders.component.scss',
   imports: [
     CommonModule,
-    FormsModule
+    FormsModule,
+    MatCardModule,
+    MatButtonModule,
+    MatIconModule,
+    MatSliderModule
   ],
   standalone: true
 })

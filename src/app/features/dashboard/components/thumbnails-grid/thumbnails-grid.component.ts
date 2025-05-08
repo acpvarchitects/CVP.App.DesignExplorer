@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { DataService, DataItem } from '../../../../core/services/data.service';
 import { VisualizationService } from '../../../../core/services/visualization.service';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatCardModule } from '@angular/material/card';
 
 interface Thumbnail {
   item: DataItem;
@@ -15,7 +17,9 @@ interface Thumbnail {
   templateUrl: './thumbnails-grid.component.html',
   styleUrl: './thumbnails-grid.component.scss',
   imports: [
-    CommonModule
+    CommonModule,
+    MatCheckboxModule,
+    MatCardModule
   ],
   standalone: true
 })

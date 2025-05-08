@@ -1,30 +1,29 @@
 .thumbnails-container {
   width: 100%;
-  margin-bottom: 20px;
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
+  margin-bottom: 16px;
   background-color: #fff;
-  padding: 15px;
+  padding: 16px;
+  border-radius: 4px;
+}
+
+.controls {
+  margin-bottom: 16px;
 }
 
 .thumbnails-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 16px;
   justify-content: flex-start;
 }
 
 .thumbnail-item {
-  margin-bottom: 20px;
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
-  overflow: hidden;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
   
   &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   }
 }
 
@@ -37,21 +36,36 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    border-radius: 4px;
   }
 }
 
 .thumbnail-title {
-  padding: 10px;
-  font-size: 12px;
-  background-color: #f8f9fa;
-  border-top: 1px solid #dee2e6;
+  padding: 8px 0;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.87);
+  font-family: Roboto, "Helvetica Neue", sans-serif;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .no-data {
-  padding: 20px;
   text-align: center;
-  color: #6c757d;
+  color: rgba(0, 0, 0, 0.6);
+  
+  mat-card {
+    padding: 16px;
+  }
+}
+
+:host ::ng-deep {
+  .mat-mdc-card {
+    padding: 0;
+  }
+  
+  .mat-mdc-card-content {
+    padding: 16px;
+    margin: 0;
+  }
 }
