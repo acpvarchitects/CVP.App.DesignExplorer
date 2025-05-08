@@ -37,6 +37,7 @@ export class ThumbnailsGridComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.subscriptions.push(
       this.dataService.filteredData$.subscribe(data => {
+        console.log('ThumbnailsGrid: Received filtered data update with', data.length, 'items');
         this.updateThumbnails(data);
       })
     );

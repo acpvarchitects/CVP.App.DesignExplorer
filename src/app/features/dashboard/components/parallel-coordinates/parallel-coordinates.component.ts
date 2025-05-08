@@ -164,32 +164,38 @@ export class ParallelCoordinatesComponent implements OnInit, OnDestroy {
         .attr('text-anchor', 'middle')
         .text(this.getDisplayName(dimension));
       
-      const brush = d3.brushY()
-        .extent([[x - 10, this.margin.top], [x + 10, this.height - this.margin.bottom]])
-        .on('end', (event) => {
-          if (!event.selection) {
-            const filterIndex = this.axisFilters.findIndex(f => f.dimension === dimension);
-            if (filterIndex >= 0) {
-              this.axisFilters[filterIndex].active = false;
-              this.applyFilters();
-            }
-            return;
-          }
-          
-          const range = event.selection.map((d: number) => this.scales[dimension].invert(d)) as [number, number];
-          range.sort((a, b) => a - b);
-          
+      const brushY = d3.brushY()
+        .extent([[x - 10, this.margin.top], [x + 10, this.height - this.margin.bottom]]);
+      
+      brushY.on('end', (event: any) => {
+        console.log('Brush event triggered for dimension:', dimension);
+        
+        if (!event.selection) {
+          console.log('Brush selection cleared for dimension:', dimension);
           const filterIndex = this.axisFilters.findIndex(f => f.dimension === dimension);
           if (filterIndex >= 0) {
-            this.axisFilters[filterIndex].range = range;
-            this.axisFilters[filterIndex].active = true;
+            this.axisFilters[filterIndex].active = false;
             this.applyFilters();
           }
-        });
+          return;
+        }
+        
+        const range = event.selection.map((d: number) => this.scales[dimension].invert(d)) as [number, number];
+        range.sort((a, b) => a - b);
+        
+        console.log('Brush selection range for dimension:', dimension, range);
+        
+        const filterIndex = this.axisFilters.findIndex(f => f.dimension === dimension);
+        if (filterIndex >= 0) {
+          this.axisFilters[filterIndex].range = range;
+          this.axisFilters[filterIndex].active = true;
+          this.applyFilters();
+        }
+      });
       
-      axisGroup.append('g')
+      const brushGroup = axisGroup.append('g')
         .attr('class', 'brush')
-        .call(brush);
+        .call(brushY);
       
       return { dimension, x, scale: this.scales[dimension] };
     });
@@ -277,7 +283,12 @@ export class ParallelCoordinatesComponent implements OnInit, OnDestroy {
     
     this.drawLines(axes);
     
-    this.dataService.filterData(item => this.filteredData.includes(item));
+    this.dataService.filterData(item => {
+      return this.filteredData.includes(item);
+    });
+    
+    console.log('Applied filters:', activeFilters.length, 'active filters');
+    console.log('Filtered data:', this.filteredData.length, 'of', this.data.length, 'items');
   }
   
   private getCleanValue(item: DataItem, key: string): number {
