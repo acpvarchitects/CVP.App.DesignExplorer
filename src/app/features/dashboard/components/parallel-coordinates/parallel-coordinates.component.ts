@@ -5,6 +5,12 @@ import { Subscription } from 'rxjs';
 import { DataService, DataItem } from '../../../../core/services/data.service';
 import { VisualizationService } from '../../../../core/services/visualization.service';
 
+interface AxisFilter {
+  dimension: string;
+  range: [number, number];
+  active: boolean;
+}
+
 @Component({
   selector: 'app-parallel-coordinates',
   templateUrl: './parallel-coordinates.component.html',
@@ -16,13 +22,16 @@ export class ParallelCoordinatesComponent implements OnInit, OnDestroy {
   @ViewChild('chart', { static: true }) private chartContainer!: ElementRef;
   
   private data: DataItem[] = [];
+  private filteredData: DataItem[] = [];
   private dimensions: string[] = [];
   private svg: any;
   private parCoords: any;
   private width = 0;
   private height = 0;
-  private margin = { top: 30, right: 10, bottom: 10, left: 10 };
+  private margin = { top: 30, right: 10, bottom: 30, left: 10 };
   private subscriptions: Subscription[] = [];
+  private scales: any = {};
+  private axisFilters: AxisFilter[] = [];
   
   constructor(
     private dataService: DataService,
@@ -33,6 +42,7 @@ export class ParallelCoordinatesComponent implements OnInit, OnDestroy {
     this.subscriptions.push(
       this.dataService.filteredData$.subscribe(data => {
         this.data = data;
+        this.filteredData = data;
         if (data.length > 0) {
           this.updateDimensions();
           this.initChart();
@@ -57,7 +67,7 @@ export class ParallelCoordinatesComponent implements OnInit, OnDestroy {
     
     this.subscriptions.push(
       this.dataService.selectedData$.subscribe(selectedData => {
-        if (this.parCoords && selectedData.length > 0) {
+        if (this.svg && selectedData.length > 0) {
           this.highlightLines(selectedData);
         }
       })
@@ -89,6 +99,16 @@ export class ParallelCoordinatesComponent implements OnInit, OnDestroy {
     
     this.dimensions = [...inputParams, ...outputParams];
     
+    this.axisFilters = this.dimensions.map(dimension => {
+      const values = this.data.map(d => this.getCleanValue(d, dimension));
+      const extent = d3.extent(values) as [number, number];
+      return {
+        dimension,
+        range: extent,
+        active: false
+      };
+    });
+    
     this.visualizationService.setParallelCoordinatesDimensions(this.dimensions);
   }
   
@@ -110,13 +130,13 @@ export class ParallelCoordinatesComponent implements OnInit, OnDestroy {
       .attr('width', this.width)
       .attr('height', this.height);
     
-    const scales: any = {};
+    this.scales = {};
     
     this.dimensions.forEach(dimension => {
       const values = this.data.map(d => this.getCleanValue(d, dimension));
       const extent = d3.extent(values);
       
-      scales[dimension] = d3.scaleLinear()
+      this.scales[dimension] = d3.scaleLinear()
         .domain(extent as [number, number])
         .range([this.height - this.margin.bottom, this.margin.top]);
     });
@@ -124,10 +144,11 @@ export class ParallelCoordinatesComponent implements OnInit, OnDestroy {
     const axes = this.dimensions.map((dimension, i) => {
       const x = this.margin.left + i * ((this.width - this.margin.left - this.margin.right) / (this.dimensions.length - 1));
       
-      const axis = d3.axisLeft(scales[dimension])
+      const axis = d3.axisLeft(this.scales[dimension])
         .ticks(5);
       
-      this.svg.append('g')
+      const axisGroup = this.svg.append('g')
+        .attr('class', 'axis')
         .attr('transform', `translate(${x}, 0)`)
         .call(axis);
       
@@ -137,15 +158,48 @@ export class ParallelCoordinatesComponent implements OnInit, OnDestroy {
         .attr('text-anchor', 'middle')
         .text(this.getDisplayName(dimension));
       
-      return { dimension, x, scale: scales[dimension] };
+      const brush = d3.brushY()
+        .extent([[x - 10, this.margin.top], [x + 10, this.height - this.margin.bottom]])
+        .on('end', (event) => {
+          if (!event.selection) {
+            const filterIndex = this.axisFilters.findIndex(f => f.dimension === dimension);
+            if (filterIndex >= 0) {
+              this.axisFilters[filterIndex].active = false;
+              this.applyFilters();
+            }
+            return;
+          }
+          
+          const range = event.selection.map((d: number) => this.scales[dimension].invert(d)) as [number, number];
+          range.sort((a, b) => a - b);
+          
+          const filterIndex = this.axisFilters.findIndex(f => f.dimension === dimension);
+          if (filterIndex >= 0) {
+            this.axisFilters[filterIndex].range = range;
+            this.axisFilters[filterIndex].active = true;
+            this.applyFilters();
+          }
+        });
+      
+      axisGroup.append('g')
+        .attr('class', 'brush')
+        .call(brush);
+      
+      return { dimension, x, scale: this.scales[dimension] };
     });
+    
+    this.drawLines(axes);
+  }
+  
+  private drawLines(axes: any[]): void {
+    this.svg.selectAll('.line').remove();
     
     const line = d3.line()
       .defined((d: any) => !isNaN(d.y))
       .x((d: any) => d.x)
       .y((d: any) => d.y);
     
-    this.data.forEach(d => {
+    this.filteredData.forEach(d => {
       const points = axes.map(axis => {
         const value = this.getCleanValue(d, axis.dimension);
         return {
@@ -167,6 +221,30 @@ export class ParallelCoordinatesComponent implements OnInit, OnDestroy {
         .on('mouseout', this.handleLineMouseOut.bind(this))
         .on('click', () => this.handleLineClick(d));
     });
+  }
+  
+  private applyFilters(): void {
+    const activeFilters = this.axisFilters.filter(f => f.active);
+    
+    if (activeFilters.length === 0) {
+      this.filteredData = this.data;
+    } else {
+      this.filteredData = this.data.filter(item => {
+        return activeFilters.every(filter => {
+          const value = this.getCleanValue(item, filter.dimension);
+          return value >= filter.range[0] && value <= filter.range[1];
+        });
+      });
+    }
+    
+    const axes = this.dimensions.map((dimension, i) => {
+      const x = this.margin.left + i * ((this.width - this.margin.left - this.margin.right) / (this.dimensions.length - 1));
+      return { dimension, x, scale: this.scales[dimension] };
+    });
+    
+    this.drawLines(axes);
+    
+    this.dataService.filterData(item => this.filteredData.includes(item));
   }
   
   private getCleanValue(item: DataItem, key: string): number {
@@ -237,5 +315,17 @@ export class ParallelCoordinatesComponent implements OnInit, OnDestroy {
         .attr('stroke', '#ff7f0e')
         .attr('stroke-width', 2.5);
     });
+  }
+  
+  resetFilters(): void {
+    this.axisFilters.forEach(filter => {
+      filter.active = false;
+    });
+    
+    this.svg.selectAll('.brush').each((d: any, i: number, nodes: any[]) => {
+      d3.select(nodes[i]).call(d3.brush().clear);
+    });
+    
+    this.applyFilters();
   }
 }

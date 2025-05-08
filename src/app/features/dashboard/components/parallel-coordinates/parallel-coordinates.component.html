@@ -1,3 +1,9 @@
 <div class="parallel-coordinates-container">
+  <div class="controls mb-2">
+    <button class="btn btn-sm btn-outline-secondary" (click)="resetFilters()">
+      <i class="fa fa-undo mr-1"></i> Reset Filters
+    </button>
+    <small class="text-muted ml-2">Drag directly on axes to filter data</small>
+  </div>
   <div #chart class="chart-container"></div>
 </div>
