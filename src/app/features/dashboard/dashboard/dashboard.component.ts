@@ -2,11 +2,27 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DataService } from '../../../core/services/data.service';
 import { VisualizationService, VisualizationConfig } from '../../../core/services/visualization.service';
+import { ParallelCoordinatesComponent } from '../components/parallel-coordinates/parallel-coordinates.component';
+import { ScatterChartComponent } from '../components/scatter-chart/scatter-chart.component';
+import { ThumbnailsGridComponent } from '../components/thumbnails-grid/thumbnails-grid.component';
+import { ViewerComponent } from '../components/viewer/viewer.component';
+import { SlidersComponent } from '../components/sliders/sliders.component';
+import { DataLoaderComponent } from '../components/data-loader/data-loader.component';
 
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
-  styleUrl: './dashboard.component.scss'
+  styleUrl: './dashboard.component.scss',
+  imports: [
+    CommonModule,
+    ParallelCoordinatesComponent,
+    ScatterChartComponent,
+    ThumbnailsGridComponent,
+    ViewerComponent,
+    SlidersComponent,
+    DataLoaderComponent
+  ],
+  standalone: true
 })
 export class DashboardComponent implements OnInit {
   showSidebar = true;
