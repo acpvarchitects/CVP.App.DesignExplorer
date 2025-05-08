@@ -109,20 +109,43 @@ export class DataLoaderComponent {
     this.loading = true;
     this.error = '';
     
-    const dataPath = './assets/data/default_onload.csv';
-    console.log('Loading default data from:', dataPath);
+    const sampleData = `in:Depth [ft],in:Height [ft],in:Orientation,in:WWR [%],in:SHD,out:Cooling[kWh],out:Heating[kWh],out:Lighting[kWh],out:EffDepth[m],out:DA [%],out:UDI [%],out:CDA [%],out:SDA [Area%],img,threeD
+10,3,0,0.4,0,1775.336166,4019.071531,694.957328,4.75,40,46.111111,54.444444,50,assets/images/placeholder.png,
+10,3.6,0,0.4,0,1913.459768,4279.592955,627.582736,5.25,43.888889,51.111111,57.222222,55,assets/images/placeholder.png,
+10,4.2,0,0.4,0,2044.072567,4561.665896,452.009184,5.75,46.666667,56.666667,61.111111,58.89,assets/images/placeholder.png,
+6,3,0,0.4,0,1220.922529,2548.142723,67.991593,5.75,72.222222,60.185185,100,100,assets/images/placeholder.png,
+6,3.6,0,0.4,0,1380.964697,2719.688415,50.255212,5.75,80.555556,57.407407,100,100,assets/images/placeholder.png,`;
     
-    this.dataService.loadCsvData(dataPath).subscribe({
+    console.log('Loading sample data');
+    
+    this.dataService.loadCsvFromText(sampleData).subscribe({
       next: (data) => {
-        console.log('Successfully loaded data:', data.length, 'records');
+        console.log('Successfully loaded sample data:', data.length, 'records');
         this.loading = false;
       },
       error: (err) => {
-        console.error('Error loading default data:', err);
-        this.error = 'Failed to load default data. Please try again.';
+        console.error('Error loading sample data:', err);
+        this.error = 'Failed to load sample data. Please try again.';
         this.loading = false;
         
-        this.tryAlternativePath();
+        this.tryLoadFromFile();
+      }
+    });
+  }
+  
+  private tryLoadFromFile(): void {
+    const dataPath = './assets/data/default_onload.csv';
+    console.log('Trying to load from file:', dataPath);
+    
+    this.dataService.loadCsvData(dataPath).subscribe({
+      next: (data) => {
+        console.log('Successfully loaded data from file:', data.length, 'records');
+        this.loading = false;
+        this.error = '';
+      },
+      error: (err) => {
+        console.error('Error loading from file:', err);
+        this.error = 'Failed to load data from file. Please try uploading a CSV file manually.';
       }
     });
   }

@@ -50,30 +50,55 @@
         
         <ng-container *ngIf="hasData; else noData">
           <!-- Visualization components -->
-          <div class="row" *ngIf="layoutConfig?.activeView === 'all' || layoutConfig?.activeView === 'parallel'">
+          <div class="row mb-4" *ngIf="layoutConfig?.activeView === 'all' || layoutConfig?.activeView === 'parallel'">
             <div class="col-lg-12">
-              <app-parallel-coordinates></app-parallel-coordinates>
+              <div class="card">
+                <div class="card-header">Parallel Coordinates</div>
+                <div class="card-body">
+                  <app-parallel-coordinates></app-parallel-coordinates>
+                </div>
+              </div>
             </div>
           </div>
           
-          <div class="row" *ngIf="layoutConfig?.activeView === 'all' || layoutConfig?.activeView === 'scatter'">
+          <div class="row mb-4" *ngIf="layoutConfig?.activeView === 'all' || layoutConfig?.activeView === 'scatter'">
             <div class="col-lg-4">
-              <app-scatter-chart></app-scatter-chart>
+              <div class="card">
+                <div class="card-header">Scatter Chart</div>
+                <div class="card-body">
+                  <app-scatter-chart></app-scatter-chart>
+                </div>
+              </div>
             </div>
             <div class="col-lg-8" *ngIf="layoutConfig?.activeView === 'all'">
-              <app-viewer></app-viewer>
+              <div class="card">
+                <div class="card-header">Viewer</div>
+                <div class="card-body">
+                  <app-viewer></app-viewer>
+                </div>
+              </div>
             </div>
           </div>
           
-          <div class="row" *ngIf="layoutConfig?.activeView === 'viewer'">
+          <div class="row mb-4" *ngIf="layoutConfig?.activeView === 'viewer'">
             <div class="col-lg-12">
-              <app-viewer></app-viewer>
+              <div class="card">
+                <div class="card-header">Viewer</div>
+                <div class="card-body">
+                  <app-viewer></app-viewer>
+                </div>
+              </div>
             </div>
           </div>
           
-          <div class="row" *ngIf="layoutConfig?.activeView === 'all' || layoutConfig?.activeView === 'thumbnails'">
+          <div class="row mb-4" *ngIf="layoutConfig?.activeView === 'all' || layoutConfig?.activeView === 'thumbnails'">
             <div class="col-lg-12">
-              <app-thumbnails-grid></app-thumbnails-grid>
+              <div class="card">
+                <div class="card-header">Thumbnails</div>
+                <div class="card-body">
+                  <app-thumbnails-grid></app-thumbnails-grid>
+                </div>
+              </div>
             </div>
           </div>
         </ng-container>
