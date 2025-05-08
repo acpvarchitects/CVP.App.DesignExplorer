@@ -8,13 +8,11 @@ import { SettingsService } from './services/settings.service';
 import { VisualizationService } from './services/visualization.service';
 
 @NgModule({
-  declarations: [
-    HeaderComponent,
-    SidebarComponent
-  ],
   imports: [
     CommonModule,
-    HttpClientModule
+    HttpClientModule,
+    HeaderComponent,
+    SidebarComponent
   ],
   exports: [
     HeaderComponent,

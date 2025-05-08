@@ -15,7 +15,11 @@ import { DataSettingsComponent } from './components/data-settings/data-settings.
 import { DataLoaderComponent } from './components/data-loader/data-loader.component';
 
 @NgModule({
-  declarations: [
+  imports: [
+    CommonModule,
+    SharedModule,
+    CoreModule,
+    DashboardRoutingModule,
     DashboardComponent,
     ParallelCoordinatesComponent,
     ScatterChartComponent,
@@ -24,12 +28,6 @@ import { DataLoaderComponent } from './components/data-loader/data-loader.compon
     SlidersComponent,
     DataSettingsComponent,
     DataLoaderComponent
-  ],
-  imports: [
-    CommonModule,
-    SharedModule,
-    CoreModule,
-    DashboardRoutingModule
   ],
   exports: [
     DashboardComponent
