@@ -1,4 +1,5 @@
 import { Component, ElementRef, OnInit, OnDestroy, ViewChild } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import * as d3 from 'd3';
 import { Subscription } from 'rxjs';
 import { DataService, DataItem } from '../../../../core/services/data.service';
@@ -7,7 +8,9 @@ import { VisualizationService } from '../../../../core/services/visualization.se
 @Component({
   selector: 'app-parallel-coordinates',
   templateUrl: './parallel-coordinates.component.html',
-  styleUrl: './parallel-coordinates.component.scss'
+  styleUrl: './parallel-coordinates.component.scss',
+  imports: [CommonModule],
+  standalone: true
 })
 export class ParallelCoordinatesComponent implements OnInit, OnDestroy {
   @ViewChild('chart', { static: true }) private chartContainer!: ElementRef;
