@@ -1,0 +1,56 @@
+<div class="data-loader-container">
+  <div class="card">
+    <div class="card-header">
+      <h5>Load Data</h5>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-danger" *ngIf="error">
+        {{ error }}
+      </div>
+      
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group">
+            <label for="folderLink">Google Drive Folder Link</label>
+            <div class="input-group">
+              <input type="text" class="form-control" id="folderLink" [(ngModel)]="folderLink" placeholder="Enter Google Drive folder link">
+              <div class="input-group-append">
+                <button class="btn btn-primary" type="button" (click)="loadFromGoogleDrive()" [disabled]="loading">
+                  <span *ngIf="loading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  Load
+                </button>
+              </div>
+            </div>
+            <small class="form-text text-muted">Enter a Google Drive folder link containing CSV data</small>
+          </div>
+        </div>
+        
+        <div class="col-md-6">
+          <div class="form-group">
+            <label for="csvFile">CSV File</label>
+            <div class="custom-file">
+              <input type="file" class="custom-file-input" id="csvFile" accept=".csv" (change)="onFileSelected($event)">
+              <label class="custom-file-label" for="csvFile">{{ csvFile?.name || 'Choose file' }}</label>
+            </div>
+            <div class="mt-2">
+              <button class="btn btn-primary" type="button" (click)="loadFromFile()" [disabled]="!csvFile || loading">
+                <span *ngIf="loading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Load File
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="row mt-4">
+        <div class="col-12 text-center">
+          <p>Or load sample data</p>
+          <button class="btn btn-outline-secondary" type="button" (click)="loadDefaultData()" [disabled]="loading">
+            <span *ngIf="loading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            Load Default Data
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

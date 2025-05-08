@@ -1,0 +1,27 @@
+<div class="thumbnails-container">
+  <div class="controls mb-2">
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" id="showLabels" [checked]="showLabels" (change)="showLabels = !showLabels">
+      <label class="form-check-label" for="showLabels">
+        Show Labels
+      </label>
+    </div>
+  </div>
+  
+  <div class="thumbnails-grid" *ngIf="thumbnails.length > 0">
+    <div class="thumbnail-item" *ngFor="let thumbnail of thumbnails" 
+         [style.width]="getColumnWidth()" 
+         (click)="selectThumbnail(thumbnail.item)">
+      <div class="thumbnail-image">
+        <img [src]="thumbnail.imageUrl" alt="Design Thumbnail" onerror="this.src='assets/images/placeholder.png'">
+      </div>
+      <div class="thumbnail-title" *ngIf="showLabels">
+        {{ thumbnail.title }}
+      </div>
+    </div>
+  </div>
+  
+  <div class="no-data" *ngIf="thumbnails.length === 0">
+    <p>No designs to display. Please adjust your filters.</p>
+  </div>
+</div>

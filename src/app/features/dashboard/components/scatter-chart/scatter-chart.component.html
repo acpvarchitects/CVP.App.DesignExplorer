@@ -1,0 +1,24 @@
+<div class="scatter-chart-container">
+  <div class="controls mb-2">
+    <div class="row">
+      <div class="col-md-6">
+        <label for="x-axis">X Axis:</label>
+        <select id="x-axis" class="form-control form-control-sm" (change)="setXAxis($event.target.value)">
+          <option *ngFor="let param of availableParams" [value]="param" [selected]="param === xAxisParam">
+            {{ getDisplayName(param) }}
+          </option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label for="y-axis">Y Axis:</label>
+        <select id="y-axis" class="form-control form-control-sm" (change)="setYAxis($event.target.value)">
+          <option *ngFor="let param of availableParams" [value]="param" [selected]="param === yAxisParam">
+            {{ getDisplayName(param) }}
+          </option>
+        </select>
+      </div>
+    </div>
+  </div>
+  
+  <div #chart class="chart-container"></div>
+</div>

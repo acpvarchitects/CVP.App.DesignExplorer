@@ -1,0 +1,98 @@
+<div class="container-fluid dashboard-container" [class.fullscreen]="layoutConfig?.fullScreen">
+  <app-header></app-header>
+  
+  <div class="wrapper" [class.toggled]="!showSidebar">
+    <!-- Sidebar -->
+    <div class="sidebar-wrapper" *ngIf="showSidebar">
+      <app-sidebar></app-sidebar>
+      <app-sliders *ngIf="hasData"></app-sliders>
+      <app-data-settings *ngIf="hasData"></app-data-settings>
+    </div>
+    
+    <!-- Page Content -->
+    <div class="page-content-wrapper">
+      <div class="container-fluid">
+        <div class="row mb-3">
+          <div class="col-lg-12">
+            <div class="btn-toolbar">
+              <div class="btn-group mr-2">
+                <button class="btn btn-outline-secondary btn-sm" (click)="toggleSidebar()">
+                  <i class="fa" [ngClass]="{'fa-chevron-left': showSidebar, 'fa-chevron-right': !showSidebar}"></i>
+                </button>
+              </div>
+              
+              <div class="btn-group mr-2">
+                <button class="btn btn-outline-secondary btn-sm" (click)="setActiveView('all')" [class.active]="layoutConfig?.activeView === 'all'">
+                  All
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" (click)="setActiveView('parallel')" [class.active]="layoutConfig?.activeView === 'parallel'">
+                  Parallel
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" (click)="setActiveView('scatter')" [class.active]="layoutConfig?.activeView === 'scatter'">
+                  Scatter
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" (click)="setActiveView('thumbnails')" [class.active]="layoutConfig?.activeView === 'thumbnails'">
+                  Thumbnails
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" (click)="setActiveView('viewer')" [class.active]="layoutConfig?.activeView === 'viewer'">
+                  Viewer
+                </button>
+              </div>
+              
+              <div class="btn-group">
+                <button class="btn btn-outline-secondary btn-sm" (click)="toggleFullScreen()">
+                  <i class="fa" [ngClass]="{'fa-expand': !layoutConfig?.fullScreen, 'fa-compress': layoutConfig?.fullScreen}"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <ng-container *ngIf="hasData; else noData">
+          <!-- Visualization components -->
+          <div class="row" *ngIf="layoutConfig?.activeView === 'all' || layoutConfig?.activeView === 'parallel'">
+            <div class="col-lg-12">
+              <app-parallel-coordinates></app-parallel-coordinates>
+            </div>
+          </div>
+          
+          <div class="row" *ngIf="layoutConfig?.activeView === 'all' || layoutConfig?.activeView === 'scatter'">
+            <div class="col-lg-4">
+              <app-scatter-chart></app-scatter-chart>
+            </div>
+            <div class="col-lg-8" *ngIf="layoutConfig?.activeView === 'all'">
+              <app-viewer></app-viewer>
+            </div>
+          </div>
+          
+          <div class="row" *ngIf="layoutConfig?.activeView === 'viewer'">
+            <div class="col-lg-12">
+              <app-viewer></app-viewer>
+            </div>
+          </div>
+          
+          <div class="row" *ngIf="layoutConfig?.activeView === 'all' || layoutConfig?.activeView === 'thumbnails'">
+            <div class="col-lg-12">
+              <app-thumbnails-grid></app-thumbnails-grid>
+            </div>
+          </div>
+        </ng-container>
+        
+        <ng-template #noData>
+          <div class="row">
+            <div class="col-lg-12">
+              <app-data-loader></app-data-loader>
+            </div>
+          </div>
+        </ng-template>
+        
+        <!-- Loading overlay -->
+        <div class="loading-overlay" *ngIf="isLoading">
+          <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

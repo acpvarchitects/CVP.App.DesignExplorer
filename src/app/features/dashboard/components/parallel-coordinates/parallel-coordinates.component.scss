@@ -1,0 +1,33 @@
+.parallel-coordinates-container {
+  width: 100%;
+  height: 500px;
+  margin-bottom: 20px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background-color: #fff;
+  padding: 10px;
+}
+
+.chart-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+:host ::ng-deep {
+  .line {
+    transition: opacity 0.2s, stroke 0.2s, stroke-width 0.2s;
+  }
+  
+  text {
+    font-size: 12px;
+    fill: #333;
+  }
+  
+  .axis path,
+  .axis line {
+    fill: none;
+    stroke: #ddd;
+    shape-rendering: crispEdges;
+  }
+}

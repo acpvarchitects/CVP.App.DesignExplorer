@@ -1,0 +1,43 @@
+<div class="viewer-container" *ngIf="selectedItem">
+  <div class="viewer-header">
+    <div class="btn-group" role="group">
+      <button type="button" class="btn btn-sm" [class.btn-primary]="viewMode === '2D'" [class.btn-outline-primary]="viewMode !== '2D'" [disabled]="!hasImage" (click)="setViewMode('2D')">
+        2D View
+      </button>
+      <button type="button" class="btn btn-sm" [class.btn-primary]="viewMode === '3D'" [class.btn-outline-primary]="viewMode !== '3D'" [disabled]="!hasModel" (click)="setViewMode('3D')">
+        3D View
+      </button>
+    </div>
+  </div>
+  
+  <div class="viewer-content">
+    <!-- 2D Image Viewer -->
+    <div class="image-viewer" *ngIf="viewMode === '2D' && hasImage">
+      <img [src]="imageUrl" alt="Design Image" class="design-image">
+    </div>
+    
+    <!-- 3D Model Viewer -->
+    <div class="model-viewer" *ngIf="viewMode === '3D' && hasModel">
+      <div class="model-placeholder">
+        <p>3D Model Viewer</p>
+        <p class="model-url">{{ modelUrl }}</p>
+      </div>
+    </div>
+    
+    <!-- No Content Message -->
+    <div class="no-content" *ngIf="(viewMode === '2D' && !hasImage) || (viewMode === '3D' && !hasModel)">
+      <p>No {{ viewMode }} content available for this design.</p>
+    </div>
+  </div>
+  
+  <div class="viewer-details">
+    <h5>Design Details</h5>
+    <ul class="details-list">
+      <li *ngFor="let detail of getItemDetails()">{{ detail }}</li>
+    </ul>
+  </div>
+</div>
+
+<div class="no-selection" *ngIf="!selectedItem">
+  <p>Select a design to view details.</p>
+</div>
