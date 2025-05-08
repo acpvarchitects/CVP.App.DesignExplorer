@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { DataService, DataItem } from '../../../../core/services/data.service';
 import { VisualizationService } from '../../../../core/services/visualization.service';
@@ -12,7 +13,11 @@ interface Thumbnail {
 @Component({
   selector: 'app-thumbnails-grid',
   templateUrl: './thumbnails-grid.component.html',
-  styleUrl: './thumbnails-grid.component.scss'
+  styleUrl: './thumbnails-grid.component.scss',
+  imports: [
+    CommonModule
+  ],
+  standalone: true
 })
 export class ThumbnailsGridComponent implements OnInit, OnDestroy {
   thumbnails: Thumbnail[] = [];
