@@ -140,4 +140,9 @@ export class DataService {
     
     return [Math.min(...values), Math.max(...values)];
   }
+  
+  setParameters(inputParams: string[], outputParams: string[]): void {
+    this.inputParamsSubject.next(inputParams);
+    this.outputParamsSubject.next(outputParams);
+  }
 }

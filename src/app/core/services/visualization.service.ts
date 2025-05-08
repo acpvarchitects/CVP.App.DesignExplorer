@@ -152,6 +152,10 @@ export class VisualizationService {
     this.updateLayoutConfig({ activeView: view });
   }
 
+  setThumbnailSettings(columns: number, showLabels: boolean): void {
+    this.updateThumbnailsConfig({ columns, showLabels });
+  }
+
   resetConfig(): void {
     this.configSubject.next(this.defaultConfig);
   }
