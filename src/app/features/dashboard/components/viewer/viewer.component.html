@@ -1,43 +1,59 @@
 <div class="viewer-container" *ngIf="selectedItem">
-  <div class="viewer-header">
-    <div class="btn-group" role="group">
-      <button type="button" class="btn btn-sm" [class.btn-primary]="viewMode === '2D'" [class.btn-outline-primary]="viewMode !== '2D'" [disabled]="!hasImage" (click)="setViewMode('2D')">
-        2D View
-      </button>
-      <button type="button" class="btn btn-sm" [class.btn-primary]="viewMode === '3D'" [class.btn-outline-primary]="viewMode !== '3D'" [disabled]="!hasModel" (click)="setViewMode('3D')">
-        3D View
-      </button>
-    </div>
-  </div>
-  
-  <div class="viewer-content">
-    <!-- 2D Image Viewer -->
-    <div class="image-viewer" *ngIf="viewMode === '2D' && hasImage">
-      <img [src]="imageUrl" alt="Design Image" class="design-image">
-    </div>
-    
-    <!-- 3D Model Viewer -->
-    <div class="model-viewer" *ngIf="viewMode === '3D' && hasModel">
-      <div class="model-placeholder">
-        <p>3D Model Viewer</p>
-        <p class="model-url">{{ modelUrl }}</p>
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Design Viewer</mat-card-title>
+      <div class="view-toggle">
+        <mat-button-toggle-group [value]="viewMode">
+          <mat-button-toggle value="2D" [disabled]="!hasImage" (click)="setViewMode('2D')">
+            <mat-icon>image</mat-icon> 2D View
+          </mat-button-toggle>
+          <mat-button-toggle value="3D" [disabled]="!hasModel" (click)="setViewMode('3D')">
+            <mat-icon>view_in_ar</mat-icon> 3D View
+          </mat-button-toggle>
+        </mat-button-toggle-group>
       </div>
-    </div>
+    </mat-card-header>
     
-    <!-- No Content Message -->
-    <div class="no-content" *ngIf="(viewMode === '2D' && !hasImage) || (viewMode === '3D' && !hasModel)">
-      <p>No {{ viewMode }} content available for this design.</p>
-    </div>
-  </div>
-  
-  <div class="viewer-details">
-    <h5>Design Details</h5>
-    <ul class="details-list">
-      <li *ngFor="let detail of getItemDetails()">{{ detail }}</li>
-    </ul>
-  </div>
+    <mat-card-content>
+      <div class="viewer-content">
+        <!-- 2D Image Viewer -->
+        <div class="image-viewer" *ngIf="viewMode === '2D' && hasImage">
+          <img [src]="imageUrl" alt="Design Image" class="design-image">
+        </div>
+        
+        <!-- 3D Model Viewer -->
+        <div class="model-viewer" *ngIf="viewMode === '3D' && hasModel">
+          <div class="model-placeholder">
+            <mat-icon class="model-icon">view_in_ar</mat-icon>
+            <p>3D Model Viewer</p>
+            <p class="model-url">{{ modelUrl }}</p>
+          </div>
+        </div>
+        
+        <!-- No Content Message -->
+        <div class="no-content" *ngIf="(viewMode === '2D' && !hasImage) || (viewMode === '3D' && !hasModel)">
+          <mat-icon>error_outline</mat-icon>
+          <p>No {{ viewMode }} content available for this design.</p>
+        </div>
+      </div>
+      
+      <mat-divider class="divider"></mat-divider>
+      
+      <div class="viewer-details">
+        <h3 class="details-title">Design Details</h3>
+        <mat-list>
+          <mat-list-item *ngFor="let detail of getItemDetails()">{{ detail }}</mat-list-item>
+        </mat-list>
+      </div>
+    </mat-card-content>
+  </mat-card>
 </div>
 
 <div class="no-selection" *ngIf="!selectedItem">
-  <p>Select a design to view details.</p>
+  <mat-card>
+    <mat-card-content class="empty-state">
+      <mat-icon class="empty-icon">touch_app</mat-icon>
+      <p>Select a design to view details.</p>
+    </mat-card-content>
+  </mat-card>
 </div>

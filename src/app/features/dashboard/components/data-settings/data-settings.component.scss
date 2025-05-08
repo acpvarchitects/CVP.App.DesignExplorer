@@ -1,0 +1,84 @@
+.data-settings-container {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.settings-section {
+  margin-bottom: 24px;
+}
+
+.section-title {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.87);
+}
+
+.parameter-lists {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 768px) {
+  .parameter-lists {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.parameter-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.group-title {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.divider {
+  margin: 24px 0;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.setting-field {
+  width: 100%;
+  max-width: 300px;
+}
+
+.actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+:host ::ng-deep {
+  .mat-mdc-card {
+    margin-bottom: 0;
+  }
+  
+  .mat-mdc-card-header {
+    padding: 16px 16px 0 16px;
+  }
+  
+  .mat-mdc-card-content {
+    padding: 16px;
+  }
+  
+  .mat-mdc-list-option {
+    height: auto;
+    font-size: 14px;
+  }
+  
+  .mat-mdc-selection-list {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+}

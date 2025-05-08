@@ -1,1 +1,63 @@
-<p>data-settings works!</p>
+<div class="data-settings-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Data Settings</mat-card-title>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <div class="settings-section">
+        <h3 class="section-title">Parameters</h3>
+        
+        <div class="parameter-lists">
+          <div class="parameter-group">
+            <h4 class="group-title">Input Parameters</h4>
+            <mat-selection-list #inputList [formControl]="inputParamsControl">
+              <mat-list-option *ngFor="let param of availableParams" [value]="param" [selected]="isInputParam(param)">
+                {{ getDisplayName(param) }}
+              </mat-list-option>
+            </mat-selection-list>
+          </div>
+          
+          <div class="parameter-group">
+            <h4 class="group-title">Output Parameters</h4>
+            <mat-selection-list #outputList [formControl]="outputParamsControl">
+              <mat-list-option *ngFor="let param of availableParams" [value]="param" [selected]="isOutputParam(param)">
+                {{ getDisplayName(param) }}
+              </mat-list-option>
+            </mat-selection-list>
+          </div>
+        </div>
+      </div>
+      
+      <mat-divider class="divider"></mat-divider>
+      
+      <div class="settings-section">
+        <h3 class="section-title">Visualization Settings</h3>
+        
+        <div class="settings-form">
+          <mat-form-field appearance="outline" class="setting-field">
+            <mat-label>Thumbnail Columns</mat-label>
+            <mat-select [(value)]="thumbnailColumns" (selectionChange)="updateSettings()">
+              <mat-option *ngFor="let num of [2, 3, 4, 5, 6]" [value]="num">
+                {{ num }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+          
+          <mat-slide-toggle [(ngModel)]="showLabels" (change)="updateSettings()">
+            Show Thumbnail Labels
+          </mat-slide-toggle>
+        </div>
+      </div>
+      
+      <div class="actions">
+        <button mat-raised-button color="primary" (click)="applySettings()">
+          Apply Settings
+        </button>
+        <button mat-stroked-button (click)="resetSettings()">
+          Reset to Default
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

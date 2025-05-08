@@ -3,13 +3,23 @@ import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { DataService, DataItem } from '../../../../core/services/data.service';
 import { VisualizationService } from '../../../../core/services/visualization.service';
+import { MatCardModule } from '@angular/material/card';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatIconModule } from '@angular/material/icon';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatListModule } from '@angular/material/list';
 
 @Component({
   selector: 'app-viewer',
   templateUrl: './viewer.component.html',
   styleUrl: './viewer.component.scss',
   imports: [
-    CommonModule
+    CommonModule,
+    MatCardModule,
+    MatButtonToggleModule,
+    MatIconModule,
+    MatDividerModule,
+    MatListModule
   ],
   standalone: true
 })
