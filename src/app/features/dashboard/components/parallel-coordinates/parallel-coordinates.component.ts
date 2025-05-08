@@ -205,6 +205,33 @@ export class ParallelCoordinatesComponent implements OnInit, OnDestroy {
       .x((d: any) => d.x)
       .y((d: any) => d.y);
     
+    if (this.filteredData.length < this.data.length) {
+      const nonFilteredData = this.data.filter(item => !this.filteredData.includes(item));
+      
+      nonFilteredData.forEach(d => {
+        const points = axes.map(axis => {
+          const value = this.getCleanValue(d, axis.dimension);
+          return {
+            x: axis.x,
+            y: axis.scale(value)
+          };
+        });
+        
+        this.svg.append('path')
+          .datum(points)
+          .attr('class', 'line non-filtered')
+          .attr('d', line)
+          .attr('fill', 'none')
+          .attr('stroke', '#cccccc')
+          .attr('stroke-width', 1)
+          .attr('opacity', 0.2)
+          .attr('data-id', this.getItemId(d))
+          .on('mouseover', () => this.handleLineHover(d))
+          .on('mouseout', this.handleLineMouseOut.bind(this))
+          .on('click', () => this.handleLineClick(d));
+      });
+    }
+    
     this.filteredData.forEach(d => {
       const points = axes.map(axis => {
         const value = this.getCleanValue(d, axis.dimension);
@@ -216,12 +243,12 @@ export class ParallelCoordinatesComponent implements OnInit, OnDestroy {
       
       this.svg.append('path')
         .datum(points)
-        .attr('class', 'line')
+        .attr('class', 'line filtered')
         .attr('d', line)
         .attr('fill', 'none')
-        .attr('stroke', '#69b3a2')
+        .attr('stroke', '#3f51b5') // Material primary color
         .attr('stroke-width', 1.5)
-        .attr('opacity', 0.5)
+        .attr('opacity', 0.7)
         .attr('data-id', this.getItemId(d))
         .on('mouseover', () => this.handleLineHover(d))
         .on('mouseout', this.handleLineMouseOut.bind(this))
@@ -293,10 +320,16 @@ export class ParallelCoordinatesComponent implements OnInit, OnDestroy {
     this.dataService.selectedData$.subscribe(selectedData => {
       if (selectedData.length === 0) {
         d3.select(this.chartContainer.nativeElement)
-          .selectAll('.line')
-          .attr('opacity', 0.5)
-          .attr('stroke', '#69b3a2')
+          .selectAll('.line.filtered')
+          .attr('opacity', 0.7)
+          .attr('stroke', '#3f51b5')
           .attr('stroke-width', 1.5);
+          
+        d3.select(this.chartContainer.nativeElement)
+          .selectAll('.line.non-filtered')
+          .attr('opacity', 0.2)
+          .attr('stroke', '#cccccc')
+          .attr('stroke-width', 1);
       } else {
         this.highlightLines(selectedData);
       }
@@ -309,10 +342,16 @@ export class ParallelCoordinatesComponent implements OnInit, OnDestroy {
   
   private highlightLines(selectedItems: DataItem[]): void {
     d3.select(this.chartContainer.nativeElement)
-      .selectAll('.line')
-      .attr('opacity', 0.1)
-      .attr('stroke', '#69b3a2')
+      .selectAll('.line.filtered')
+      .attr('opacity', 0.3)
+      .attr('stroke', '#3f51b5')
       .attr('stroke-width', 1.5);
+      
+    d3.select(this.chartContainer.nativeElement)
+      .selectAll('.line.non-filtered')
+      .attr('opacity', 0.1)
+      .attr('stroke', '#cccccc')
+      .attr('stroke-width', 1);
     
     selectedItems.forEach(item => {
       d3.select(this.chartContainer.nativeElement)

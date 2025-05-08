@@ -4,7 +4,6 @@
   <mat-sidenav-container class="sidenav-container">
     <mat-sidenav #sidenav [opened]="showSidebar" [mode]="'side'" class="sidenav">
       <app-sidebar></app-sidebar>
-      <app-sliders *ngIf="hasData"></app-sliders>
       <app-data-settings *ngIf="hasData"></app-data-settings>
     </mat-sidenav>
     
