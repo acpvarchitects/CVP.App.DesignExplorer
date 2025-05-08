@@ -1,8 +1,6 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
-import { HeaderComponent } from './components/header/header.component';
-import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { DataService } from './services/data.service';
 import { SettingsService } from './services/settings.service';
 import { VisualizationService } from './services/visualization.service';
@@ -10,13 +8,11 @@ import { VisualizationService } from './services/visualization.service';
 @NgModule({
   imports: [
     CommonModule,
-    HttpClientModule,
-    HeaderComponent,
-    SidebarComponent
+    HttpClientModule
   ],
   exports: [
-    HeaderComponent,
-    SidebarComponent
+    CommonModule,
+    HttpClientModule
   ],
   providers: [
     DataService,
