@@ -118,6 +118,31 @@ function getUrlVars(rawUrl) {
 
 var Gkey = "AIzaSyCSrF08UMawxKIb0m4JsA1mYE5NMmP36bY";
 var BitlyKey = "52e99e2d788d32ae8ea99007d96917ac4ba50a5a";
+// Parametri standard per Drive v3 (Shared Drives + campi utili)
+var DRIVE_COMMON_PARAMS = [
+    "supportsAllDrives=true",
+    "includeItemsFromAllDrives=true",
+    "fields=files(id,name,mimeType,webViewLink,webContentLink,thumbnailLink,shortcutDetails),nextPageToken",
+    "pageSize=1000",
+].join("&");
+
+function buildDriveListUrl(folderId) {
+    // q deve essere URL-encoded
+    var q = encodeURIComponent("'" + folderId + "' in parents");
+    return (
+        "https://www.googleapis.com/drive/v3/files?q=" +
+        q +
+        "&" +
+        DRIVE_COMMON_PARAMS +
+        "&key=" +
+        Gkey
+    );
+}
+
+// Guard di sicurezza per risposte Drive
+function isValidDriveListResponse(data) {
+    return data && Array.isArray(data.files);
+}
 
 function prepareGFolder(folderLink) {
     googleReturnObj = {
@@ -148,37 +173,73 @@ function prepareGFolder(folderLink) {
             //this is google returned obj
             data.files.forEach(function (item) {
                 var GLink = "";
-                //googleReturnObj[item.name]=item.id
 
-                if (item.mimeType === "text/csv") {
+                // Risolvi scorciatoie (base): se è shortcut, usa l'id del target quando disponibile
+                var id = item.id;
+                if (
+                    item.mimeType === "application/vnd.google-apps.shortcut" &&
+                    item.shortcutDetails &&
+                    item.shortcutDetails.targetId
+                ) {
+                    id = item.shortcutDetails.targetId;
+                }
+
+                // CSV reali
+                if (
+                    item.mimeType === "text/csv" ||
+                    (item.name && item.name.toLowerCase().endsWith(".csv"))
+                ) {
                     GLink =
                         "https://www.googleapis.com/drive/v3/files/" +
-                        item.id +
+                        id +
                         "?alt=media&key=" +
                         Gkey;
-                    //this item is a data csv file
                     csvFiles[item.name] = GLink;
-                } else if (item.mimeType.startsWith("image")) {
+                    return;
+                }
+
+                // Google Sheet -> esporta come CSV
+                if (
+                    item.mimeType === "application/vnd.google-apps.spreadsheet"
+                ) {
+                    // NB: esporta il primo foglio; se ti serve un foglio specifico, servono param add.
+                    GLink =
+                        "https://www.googleapis.com/drive/v3/files/" +
+                        id +
+                        "/export?mimeType=text/csv&key=" +
+                        Gkey;
+                    // Aggiungo .csv per coerenza con la ricerca del file data.csv
+                    csvFiles[(item.name || "sheet_" + id) + ".csv"] = GLink;
+                    return;
+                }
+
+                // Immagini
+                if (item.mimeType && item.mimeType.startsWith("image")) {
                     GLink =
                         "https://drive.google.com/thumbnail?id=" +
-                        item.id +
+                        id +
                         "&sz=w1000";
-                    //this item is a image file
                     imgFiles[item.name] = GLink;
-                } else if (item.mimeType === "application/json") {
+                    return;
+                }
+
+                // JSON “file” veri
+                if (
+                    item.mimeType === "application/json" ||
+                    (item.name && item.name.toLowerCase().endsWith(".json"))
+                ) {
                     GLink =
                         "https://www.googleapis.com/drive/v3/files/" +
-                        item.id +
+                        id +
                         "?alt=media&key=" +
                         Gkey;
 
-                    if (item.name.startsWith("setting")) {
-                        //this item is a Design Explore's setting file
+                    if (item.name && item.name.startsWith("setting")) {
                         settingFiles[item.name] = GLink;
                     } else {
-                        //this item is a json model
                         jsonFiles[item.name] = GLink;
                     }
+                    return;
                 }
             });
         } else if (folder.type === "OneDrive") {
@@ -241,16 +302,29 @@ function prepareGFolder(folderLink) {
             //this is the last page, so return googleReturnObj directly
 
             var csvFile = _googleReturnObj.csvFiles["data.csv"];
+            if (csvFile === undefined) {
+                // fallback: prova a cercare un file che contenga data.csv in modo case-insensitive
+                var keys = Object.keys(_googleReturnObj.csvFiles || {});
+                var alt = keys.find((k) => k.toLowerCase() === "data.csv");
+                if (alt) csvFile = _googleReturnObj.csvFiles[alt];
+            }
 
             if (csvFile === undefined) {
                 alert(
-                    "Could not find the data.csv file in this folder, please double check!"
+                    "Non trovo il file data.csv nella cartella. Controlla nome/visibilità.\n(Se usi Google Sheet, ora l’export CSV è supportato.)"
                 );
             } else {
                 readyToLoad(csvFile);
             }
         }
     });
+    if (!isValidDriveListResponse(data)) {
+        console.error("Drive API: risposta inattesa", data);
+        alert(
+            "Non riesco a leggere la cartella Drive.\nControlla che il link sia pubblico e che sia una CARTELLA.\n(Se è una Shared Drive, ora è supportata.)"
+        );
+        return;
+    }
 }
 
 function MP_getGoogleIDandLoad(dataMethod) {
@@ -307,12 +381,7 @@ function checkInputLink(link, callback) {
 
     if (link.includes("google.com")) {
         var GFolderID = getGFolderID(link);
-        //folderLinkObj.DE_PW = "DE_G";
-        folderLinkObj.url =
-            "https://www.googleapis.com/drive/v3/files?q=%27" +
-            GFolderID +
-            "%27+in+parents&key=" +
-            Gkey;
+        folderLinkObj.url = buildDriveListUrl(GFolderID);
         folderLinkObj.type = "GoogleDrive";
     } else if (link.includes("1drv.ms")) {
         //"https://1drv.ms/f/s!Avr4WH-N5Us-hNEf3V-AWTUuvsVZBQ";
