@@ -124,7 +124,8 @@ function getUrlVars(rawUrl) {
    Config & Globals
    =========================== */
 
-var Gkey = "AIzaSyCSrF08UMawxKIb0m4JsA1mYE5NMmP36bY";
+var Gkey =
+    "657923880311-6k06i9vqt6c0nl0k9dsvlqu08qdodlit.apps.googleusercontent.com";
 var BitlyKey = "52e99e2d788d32ae8ea99007d96917ac4ba50a5a";
 
 // global collector used across paginated calls
