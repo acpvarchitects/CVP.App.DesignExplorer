@@ -645,3 +645,71 @@ function decodeUrlID(rawUrl, callback) {
         // no ID: niente
     }
 }
+
+/* ========= AUTO-BOOT via ?PROJECT o URL cartella ========= */
+(function () {
+    // 1) Se c'è ?PROJECT=<codice>, carica /data/<codice>/data.csv
+    var project = (function () {
+        var v = (function (rawUrl) {
+            var out = {};
+            rawUrl.replace(/[?&]+([^=&]+)=([^&]*)/gi, function (_m, k, val) {
+                out[k] = val;
+            });
+            return out;
+        })(window.location.href)["PROJECT"];
+        return v ? decodeURIComponent(v) : undefined;
+    })();
+
+    if (project) {
+        // Evita che il demo di default sovrascriva: parti SUBITO
+        var folder = (function buildProjectFolderUrl(projectCode) {
+            // base della app, es: https://acpvarchitects.github.io/CVP.App.DesignExplorer/
+            var p = window.location.pathname;
+            if (!/\/$/.test(p)) p = p.replace(/\/[^\/]*$/, "/");
+            var appBase = window.location.origin + p;
+            return (
+                appBase.replace(/\/+$/, "") +
+                "/data/" +
+                encodeURIComponent(project) +
+                "/"
+            );
+        })(project);
+
+        // Reset UI e carica
+        try {
+            unloadPageContent();
+        } catch (e) {}
+        (function loadFromUrlImmediate(url) {
+            // replica del ramo userServerLink
+            var base = url;
+            if (base.slice(-1) !== "/") base += "/";
+            // espone base per le immagini locali
+            try {
+                DE_ASSET_BASE = base;
+            } catch (e) {
+                window.DE_ASSET_BASE = base;
+            }
+            // carica data.csv con cache-busting leggero
+            try {
+                readyToLoad(base + "data.csv?v=" + Date.now());
+            } catch (e) {
+                console.error(e);
+            }
+        })(folder);
+
+        return; // STOP: non proseguire oltre, così non parte il demo
+    }
+
+    // 2) Se non c'è PROJECT, aspetta l'onload e usa il flusso standard (URL/GFOLDER/ID o input)
+    window.addEventListener(
+        "load",
+        function () {
+            try {
+                MP_getGoogleIDandLoad("URL");
+            } catch (e) {
+                console.error(e);
+            }
+        },
+        { once: true }
+    );
+})();
