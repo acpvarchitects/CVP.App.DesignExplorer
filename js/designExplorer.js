@@ -1,72 +1,63 @@
 /* ===========================
-   designExplorer.js (full)
+   designExplorer.js (full, folders under /data + ?PROJECT=)
    =========================== */
 
+/* ========= Base page helpers ========= */
+
 function unloadPageContent() {
-    /*
-     // This function removes current contents from the page
-     // Only base HTML objects will remain in the page afterwards
-     // Use this in case you want to load new data to the page
-    */
     overwriteInitialGlobalValues();
 
-    d3.select("div.legend").selectAll("*").remove(); // remove legend
+    d3.select("div.legend").selectAll("*").remove();
 
-    d3.select("#inputSliders").selectAll("*").remove(); //remove sliders
-    d3.select("#inputSliders").append("form").attr("class", "sliders"); // append a form
+    d3.select("#inputSliders").selectAll("*").remove();
+    d3.select("#inputSliders").append("form").attr("class", "sliders");
 
-    d3.select("div#graph").selectAll("*").remove(); //remove left side parallel coord graph
-    d3.select("div#radarChart").selectAll("*").remove(); //remove right side graph
+    d3.select("div#graph").selectAll("*").remove();
+    d3.select("div#radarChart").selectAll("*").remove();
 
     d3.select("div#thumbnails-btm_container")
         .select("div#sorting")
         .selectAll("*")
-        .remove(); // remove sorting drop-down
+        .remove();
     d3.select("div#thumbnails-btm_container").select("div#sorting").text("");
     d3.select("div#thumbnails-btm_container")
         .select("div#thumbnails-btm")
         .selectAll("*")
-        .remove(); // remove thumbnail images
+        .remove();
 
     d3.select("div#thumbnails-side_container")
         .select("div#sorting")
         .selectAll("*")
-        .remove(); // remove thumbnail images
+        .remove();
     d3.select("div#thumbnails-side_container").select("div#sorting").text("");
     d3.select("div#thumbnails-side_container")
         .select("div#thumbnails-side")
         .selectAll("*")
-        .remove(); // remove thumbnail images
+        .remove();
 
-    d3.select("div#zoomed").selectAll("*").remove(); //remove zoomed image if any
-    d3.select("div#viewer3d").selectAll("*").remove(); //remove any object inside 3D viewer
+    d3.select("div#zoomed").selectAll("*").remove();
+    d3.select("div#viewer3d").selectAll("*").remove();
 }
 
 function calWidthAndHeight() {
     (windowWidth = window.innerWidth),
         (windowHeight = window.innerHeight),
-        (cleanHeight = windowHeight - 115), // 2
+        (cleanHeight = windowHeight - 115),
         (cleanWidth = windowWidth - 100),
-        (graphHeight = cleanHeight / 3 - 24), //remove 22+2 top tool button
-        (zoomedHeight = (cleanHeight * 2) / 3); //remove 22+2 top tool button
+        (graphHeight = cleanHeight / 3 - 24),
+        (zoomedHeight = (cleanHeight * 2) / 3);
 }
 
 function overwriteInitialGlobalValues() {
-    /*
-     // This function initiates all the global values for the page
-     // I'm not sure if this is the best practice in javascript (probably it's not)
-     // Let me (github.com/mostaphaRoudsari) know if you know a better solution
-    */
-
-    originalData = ""; //csv as it is imported
-    cleanedData = []; //all the columns to be used for parallel coordinates
-    (numericalData = []), (inputData = []); // columns with input values - to be used for sliders
-    outputData = []; // columns with output values - to be used for radar graph
-    slidersInfo = []; // {name:'inputName', tickValues : [sorted set of values]},
-    currentSliderValues = {}; // collector for values
+    originalData = "";
+    cleanedData = [];
+    (numericalData = []), (inputData = []);
+    outputData = [];
+    slidersInfo = [];
+    currentSliderValues = {};
     allDataCollector = {};
-    slidersMapping = {}; // I collect the data for all the input sliders here so I can use it to remap the sliders later
-    ids = []; // Here I collect all data based on a unique ID from inputs
+    slidersMapping = {};
+    ids = [];
     cleanedKeys4pc = {};
     googleFolderLink = "";
 
@@ -75,33 +66,23 @@ function overwriteInitialGlobalValues() {
     imageLinkKeys = [];
 
     _userSetting = {
-        studyInfo: {
-            name: "",
-            date: "",
-        },
+        studyInfo: { name: "", date: "" },
         dimScales: {},
         dimTicks: {},
         dimMark: {},
     };
 
     rcheight = height = d3.select("#graph").style("height").replace("px", "");
-
     selectedDataFormatted = [];
+    firstRating = true;
 
-    firstRating = true; // variable for star rating
-
-    //set up heights of divs ro default
     calWidthAndHeight();
 
     pcHeight = d3.select("#graph").style("height").replace("px", "");
-    // hide zoomed area
     d3.selectAll(".zoomed").style("height", "0px");
-    // show btm thumbnail
     d3.select("#thumbnails-btm_container").style("height", zoomedHeight + "px");
 
-    // re-set the viewer to 2D
     currentView = "2D";
-    // set view toggle to 2D
     d3.select("input#toggleView").property("checked", "true");
 
     initit3DViewer = true;
@@ -109,25 +90,39 @@ function overwriteInitialGlobalValues() {
     d3.select("#viewer3d").classed("hidden", true);
 }
 
+/* ========= URL helpers ========= */
+
 function getUrlVars(rawUrl) {
     var vars = {};
-    var parts = rawUrl.replace(
-        /[?&]+([^=&]+)=([^&]*)/gi,
-        function (m, key, value) {
-            vars[key] = value;
-        }
-    );
+    rawUrl.replace(/[?&]+([^=&]+)=([^&]*)/gi, function (_m, key, value) {
+        vars[key] = value;
+    });
     return vars;
 }
+function getQueryParam(name) {
+    var v = getUrlVars(window.location.href)[name];
+    return v ? decodeURIComponent(v) : undefined;
+}
+function encodeUrl(url) {
+    return btoa(url);
+}
+function decodeUrl(encodedString) {
+    var url = "";
+    try {
+        url = atob(encodedString);
+    } catch (err) {
+        console.log(err.message + " But fixed:>");
+        url = atob(encodedString.replace("_", "/").replace("-", "+") + "=");
+    }
+    return url;
+}
 
-/* ===========================
-   Config & Globals
-   =========================== */
+/* ========= Config & globals ========= */
 
-var Gkey = "AIzaSyBxp5CCE4SBT333HcFD8-0LnbdA9EDzIE8";
-var BitlyKey = "52e99e2d788d32ae8ea99007d96917ac4ba50a5a";
+/** Per Drive (se mai lo userai ancora). Non serve per /data/<PROJECT> */
+var Gkey = "AIza...YOUR_KEY_IF_YOU_STILL_USE_DRIVE...";
 
-// global collector used across paginated calls
+/** Collettore globale (Drive/OneDrive) */
 var _googleReturnObj = {
     csvFiles: {},
     imgFiles: {},
@@ -135,14 +130,49 @@ var _googleReturnObj = {
     settingFiles: {},
 };
 
-// Drive helpers / defaults
+/** Base URL degli asset (per cartella progetto) */
+var DE_ASSET_BASE = ""; // tipo: https://acpvarchitects.github.io/CVP.App.DesignExplorer/data/MOX/
+
+/** Ricava la base della app (es: https://acpvarchitects.github.io/CVP.App.DesignExplorer/) */
+function computeAppBase() {
+    // rimuove eventuale file/segmento finale, garantendo trailing slash
+    var p = window.location.pathname;
+    // se termina con '/', va bene così; altrimenti togli l'ultimo segmento
+    if (!/\/$/.test(p)) p = p.replace(/\/[^\/]*$/, "/");
+    return window.location.origin + p;
+}
+
+/** Costruisce l’URL della cartella progetto sotto /data */
+function buildProjectFolderUrl(projectCode) {
+    var base = computeAppBase();
+    return (
+        base.replace(/\/+$/, "") +
+        "/data/" +
+        encodeURIComponent(projectCode) +
+        "/"
+    );
+}
+
+/** Risolve URL immagine: se nel CSV c'è "img_001.jpg", prepend DE_ASSET_BASE */
+function deResolveAssetUrl(nameOrUrl) {
+    if (!nameOrUrl) return null;
+    if (/^https?:\/\//i.test(nameOrUrl)) return nameOrUrl;
+    if (!DE_ASSET_BASE) return nameOrUrl;
+    return (
+        DE_ASSET_BASE.replace(/\/+$/, "") +
+        "/" +
+        String(nameOrUrl).replace(/^\/+/, "")
+    );
+}
+
+/* ========= Drive / OneDrive helpers (compat) ========= */
+
 var DRIVE_COMMON_PARAMS = [
     "supportsAllDrives=true",
     "includeItemsFromAllDrives=true",
     "fields=files(id,name,mimeType,webViewLink,webContentLink,thumbnailLink,shortcutDetails),nextPageToken",
     "pageSize=1000",
 ].join("&");
-
 function buildDriveGetUrl(fileId, fields) {
     var f = fields || "id,name,mimeType,shortcutDetails,driveId";
     return (
@@ -154,7 +184,6 @@ function buildDriveGetUrl(fileId, fields) {
         Gkey
     );
 }
-
 function buildDriveListUrlForUserDrive(folderId) {
     var q = encodeURIComponent(
         "'" + folderId + "' in parents and trashed=false"
@@ -168,7 +197,6 @@ function buildDriveListUrlForUserDrive(folderId) {
         Gkey
     );
 }
-
 function buildDriveListUrlForSharedDrive(folderId, driveId) {
     var q = encodeURIComponent(
         "'" + folderId + "' in parents and trashed=false"
@@ -184,8 +212,6 @@ function buildDriveListUrlForSharedDrive(folderId, driveId) {
         Gkey
     );
 }
-
-// small util
 function ensureParam(url, name, value) {
     if (url.indexOf(name + "=") === -1) {
         url += (url.indexOf("?") === -1 ? "?" : "&") + name + "=" + value;
@@ -193,22 +219,17 @@ function ensureParam(url, name, value) {
     return url;
 }
 
-/* ===========================
-   Core: listing folders
-   =========================== */
+/* ========= CORE: folder prepare (Drive/OneDrive) ========= */
 
 function prepareGFolder(folderLink) {
-    // local collector for this page of results
     var googleReturnObj = {
         csvFiles: {},
         imgFiles: {},
         jsonFiles: {},
         settingFiles: {},
     };
-
     var folder = folderLink;
 
-    // for Google Drive, ensure robust flags (in case URL was hand-built)
     if (folder.type === "GoogleDrive") {
         folder.url = ensureParam(folder.url, "supportsAllDrives", "true");
         folder.url = ensureParam(
@@ -230,17 +251,16 @@ function prepareGFolder(folderLink) {
     }
 
     d3.json(folder.url, function (error, data) {
-        // --- error handling ---
         if (error) {
             try {
                 var errJson =
                     error && error.response ? JSON.parse(error.response) : null;
-                console.error("Drive API error:", errJson || error);
+                console.error("Drive/OneDrive error:", errJson || error);
                 alert(
-                    "Drive API error: " +
-                        (errJson && errJson.error && errJson.error.message
-                            ? errJson.error.message
-                            : error.status || "Bad Request")
+                    "Errore sorgente dati: " +
+                        (errJson?.error?.message ||
+                            error.status ||
+                            "Bad Request")
                 );
             } catch (e) {
                 console.error("HTTP error:", error);
@@ -254,28 +274,23 @@ function prepareGFolder(folderLink) {
             return;
         }
 
-        // --- data guard ---
         if (folder.type === "GoogleDrive") {
             if (!data || !Array.isArray(data.files)) {
                 console.error("Drive API: risposta inattesa", data);
-                alert(
-                    "Non riesco a leggere il contenuto della cartella (risposta inattesa da Drive)."
-                );
+                alert("Risposta inattesa da Google Drive.");
                 return;
             }
         }
 
-        var csvFiles = {};
-        var imgFiles = {};
-        var jsonFiles = {};
-        var settingFiles = {};
+        var csvFiles = {},
+            imgFiles = {},
+            jsonFiles = {},
+            settingFiles = {};
 
         if (folder.type === "GoogleDrive") {
             data.files.forEach(function (item) {
-                var id = item.id;
-                var GLink = "";
-
-                // resolve shortcut to target id (basic)
+                var id = item.id,
+                    GLink = "";
                 if (
                     item.mimeType === "application/vnd.google-apps.shortcut" &&
                     item.shortcutDetails &&
@@ -283,8 +298,6 @@ function prepareGFolder(folderLink) {
                 ) {
                     id = item.shortcutDetails.targetId;
                 }
-
-                // CSV reali o con estensione .csv
                 if (
                     item.mimeType === "text/csv" ||
                     (item.name && item.name.toLowerCase().endsWith(".csv"))
@@ -297,8 +310,6 @@ function prepareGFolder(folderLink) {
                     csvFiles[item.name] = GLink;
                     return;
                 }
-
-                // Google Sheet -> export CSV
                 if (
                     item.mimeType === "application/vnd.google-apps.spreadsheet"
                 ) {
@@ -310,8 +321,6 @@ function prepareGFolder(folderLink) {
                     csvFiles[(item.name || "sheet_" + id) + ".csv"] = GLink;
                     return;
                 }
-
-                // images
                 if (item.mimeType && item.mimeType.indexOf("image") === 0) {
                     GLink =
                         "https://drive.google.com/thumbnail?id=" +
@@ -320,8 +329,6 @@ function prepareGFolder(folderLink) {
                     imgFiles[item.name] = GLink;
                     return;
                 }
-
-                // JSON file classici
                 if (
                     item.mimeType === "application/json" ||
                     (item.name && item.name.toLowerCase().endsWith(".json"))
@@ -331,23 +338,17 @@ function prepareGFolder(folderLink) {
                         id +
                         "?alt=media&key=" +
                         Gkey;
-                    if (item.name && item.name.indexOf("setting") === 0) {
+                    if (item.name && item.name.indexOf("setting") === 0)
                         settingFiles[item.name] = GLink;
-                    } else {
-                        jsonFiles[item.name] = GLink;
-                    }
+                    else jsonFiles[item.name] = GLink;
                     return;
                 }
             });
         } else if (folder.type === "OneDrive") {
             var files = [];
-            if (data && data.children !== undefined) {
-                files = data.children;
-            } else if (data && data.value !== undefined) {
-                files = data.value;
-            } else {
-                console.error("OneDrive: risposta inattesa", data);
-            }
+            if (data && data.children !== undefined) files = data.children;
+            else if (data && data.value !== undefined) files = data.value;
+            else console.error("OneDrive: risposta inattesa", data);
 
             files.forEach(function (item) {
                 var fileName = item.name;
@@ -363,26 +364,21 @@ function prepareGFolder(folderLink) {
                     fileType === "application/json" ||
                     (fileName && fileName.toLowerCase().endsWith(".json"))
                 ) {
-                    if (fileName && fileName.indexOf("setting") === 0) {
+                    if (fileName && fileName.indexOf("setting") === 0)
                         settingFiles[fileName] = fileLink;
-                    } else {
-                        jsonFiles[fileName] = fileLink;
-                    }
+                    else jsonFiles[fileName] = fileLink;
                 }
             });
         }
 
-        // merge into global collector
         $.extend(_googleReturnObj.csvFiles, csvFiles);
         $.extend(_googleReturnObj.imgFiles, imgFiles);
         $.extend(_googleReturnObj.jsonFiles, jsonFiles);
         $.extend(_googleReturnObj.settingFiles, settingFiles);
 
-        // pagination handling
         if (data && data.nextPageToken !== undefined) {
-            if (folder.url.indexOf("&pageToken=") > 0) {
+            if (folder.url.indexOf("&pageToken=") > 0)
                 folder.url = folder.url.split("&pageToken=", 1)[0];
-            }
             folder.url += "&pageToken=" + data.nextPageToken;
             prepareGFolder(folder);
             return;
@@ -396,7 +392,6 @@ function prepareGFolder(folderLink) {
             return;
         }
 
-        // final: look for data.csv
         var csvFile = _googleReturnObj.csvFiles["data.csv"];
         if (csvFile === undefined) {
             var keys = Object.keys(_googleReturnObj.csvFiles || {});
@@ -407,27 +402,30 @@ function prepareGFolder(folderLink) {
         }
 
         if (csvFile === undefined) {
-            alert(
-                "Non trovo il file data.csv nella cartella.\nControlla nome/visibilità.\n(Se usi Google Sheet, l’export CSV è gestito.)"
-            );
+            alert("Non trovo il file data.csv nella cartella sorgente.");
         } else {
             readyToLoad(csvFile);
         }
     });
 }
 
-/* ===========================
-   Load flow
-   =========================== */
+/* ========= Load flow ========= */
 
 function MP_getGoogleIDandLoad(dataMethod) {
     var serverFolderLink;
 
     document.getElementById("csv-file").value = "";
 
+    // NEW: se è presente ?PROJECT=, non chiedo nulla e carico direttamente /data/<PROJECT>/
+    var project = getQueryParam("PROJECT");
+    if (project) {
+        var folder = buildProjectFolderUrl(project);
+        loadFromUrl(folder);
+        return;
+    }
+
     if (dataMethod === "URL") {
         document.getElementById("folderLink").value = "";
-
         var inUrl = window.location.href;
         decodeUrlID(inUrl, function (d) {
             loadFromUrl(d);
@@ -440,51 +438,41 @@ function MP_getGoogleIDandLoad(dataMethod) {
 
 function loadFromUrl(rawUrl) {
     checkInputLink(rawUrl, function (d) {
-        _folderInfo = d; //set global foler obj
+        _folderInfo = d;
 
         if (d.type === "userServerLink") {
-            // user’s direct server link; load csv directly
-            if (d.url.slice(-1) !== "/") d.url += "/";
-            readyToLoad(d.url + "data.csv");
+            var base = d.url;
+            if (base.slice(-1) !== "/") base += "/";
+            DE_ASSET_BASE = base; // es: .../data/MOX/
+            var csvUrl = base + "data.csv";
+            readyToLoad(csvUrl + "?v=" + Date.now());
         } else {
-            // Google / OneDrive
             prepareGFolder(d);
         }
     });
 }
 
+/* ========= UI small helper ========= */
+
 function changeLabelSize(size) {
-    if (size == "largeLabel") {
-        d3.selectAll(".label").style("font-size", "95%");
-    } else if (size == "mediumLabel") {
+    if (size == "largeLabel") d3.selectAll(".label").style("font-size", "95%");
+    else if (size == "mediumLabel")
         d3.selectAll(".label").style("font-size", "85%");
-    } else if (size == "smallLabel") {
+    else if (size == "smallLabel")
         d3.selectAll(".label").style("font-size", "75%");
-    }
 }
 
-/* ===========================
-   Link parsing / detection
-   =========================== */
+/* ========= Link parsing / detection ========= */
 
 function checkInputLink(link, callback) {
-    var folderLinkObj = {
-        DE_PW: "",
-        inLink: "",
-        url: "",
-        type: "",
-    };
+    var folderLinkObj = { DE_PW: "", inLink: "", url: "", type: "" };
 
     if (link.includes("google.com")) {
-        // Google Drive
         var GFolderID = getGFolderID(link);
-
-        // Prima interrogo meta per capire se è shortcut e se è su Shared Drive
         var getUrl = buildDriveGetUrl(
             GFolderID,
             "id,name,mimeType,shortcutDetails,driveId"
         );
-
         d3.json(getUrl, function (error, meta) {
             if (error || !meta) {
                 try {
@@ -503,33 +491,27 @@ function checkInputLink(link, callback) {
                 }
                 return;
             }
-
             function finalizeWith(id, driveId) {
                 var listUrl = driveId
                     ? buildDriveListUrlForSharedDrive(id, driveId)
                     : buildDriveListUrlForUserDrive(id);
-
                 folderLinkObj.url = listUrl;
                 folderLinkObj.type = "GoogleDrive";
                 folderLinkObj.inLink = link;
                 callback(folderLinkObj);
             }
-
             if (
                 meta.mimeType === "application/vnd.google-apps.shortcut" &&
                 meta.shortcutDetails &&
                 meta.shortcutDetails.targetId
             ) {
-                // resolve target
                 var targetUrl = buildDriveGetUrl(
                     meta.shortcutDetails.targetId,
                     "id,name,mimeType,driveId"
                 );
                 d3.json(targetUrl, function (e2, targetMeta) {
                     if (e2 || !targetMeta) {
-                        alert(
-                            "Impossibile risolvere la scorciatoia della cartella."
-                        );
+                        alert("Impossibile risolvere la scorciatoia.");
                         return;
                     }
                     finalizeWith(targetMeta.id, targetMeta.driveId || null);
@@ -539,7 +521,6 @@ function checkInputLink(link, callback) {
             }
         });
     } else if (link.includes("1drv.ms")) {
-        // OneDrive
         folderLinkObj.url =
             "https://api.onedrive.com/v1.0/shares/u!" +
             encodeUrl(link) +
@@ -548,10 +529,7 @@ function checkInputLink(link, callback) {
         folderLinkObj.inLink = link;
         callback(folderLinkObj);
     } else {
-        // user server link
-        if (link.slice(-1) !== "/") {
-            link += "/";
-        }
+        // Qualsiasi URL http(s) di CARTELLA progetto (es: .../data/MOX/)
         folderLinkObj.url = link;
         folderLinkObj.type = "userServerLink";
         folderLinkObj.inLink = link;
@@ -559,46 +537,23 @@ function checkInputLink(link, callback) {
     }
 }
 
-function encodeUrl(url) {
-    var link = btoa(url);
-    return link;
-}
-
-function decodeUrl(encodedString) {
-    var url = "";
-    try {
-        url = atob(encodedString);
-    } catch (err) {
-        console.log(err.message + " But fixed:>");
-        url = atob(encodedString.replace("_", "/").replace("-", "+") + "=");
-    }
-    return url;
-}
-
 function getGFolderID(link) {
     var linkID;
-
     if (link.includes("google.com")) {
-        if (link.includes("?usp=sharing")) {
+        if (link.includes("?usp=sharing"))
             linkID = link.replace("?usp=sharing", "");
-        } else if (link.includes("open?id=")) {
+        else if (link.includes("open?id="))
             linkID = link.replace("open?id=", "");
-        } else {
-            linkID = link;
-        }
+        else linkID = link;
         linkID = linkID.split("/");
         linkID = linkID[linkID.length - 1];
-    } else {
-        //server link or ms
-        linkID = link;
-    }
-
+    } else linkID = link;
     return linkID;
 }
 
-/* ===========================
-   Misc utils
-   =========================== */
+/* ========= Clipboard & shorteners (legacy) ========= */
+
+var BitlyKey = "52e99e2d788d32ae8ea99007d96917ac4ba50a5a";
 
 function CopyToClipboard(element) {
     var $temp = $("<input>");
@@ -609,27 +564,22 @@ function CopyToClipboard(element) {
 }
 
 function makeUrlId(rawUrl, callback) {
-    var longUrl = rawUrl;
-
     $.ajax({
         type: "POST",
         contentType: "application/json",
         url: "https://api-ssl.bitly.com/v4/shorten",
-        data: JSON.stringify({
-            long_url: longUrl,
-        }),
+        data: JSON.stringify({ long_url: rawUrl }),
         headers: {
             Authorization: BitlyKey,
             "Content-Type": "application/json",
         },
-        error: function (e) {
-            callback(encodeUrl(longUrl));
+        error: function () {
+            callback(encodeUrl(rawUrl));
         },
         dataType: "json",
         success: function (response) {
             var UrlID = "";
             if (response.id != null) {
-                // response.id es: https://bit.ly/xyz
                 UrlID = response.id.split("/");
                 UrlID = UrlID[UrlID.length - 1];
             }
@@ -643,17 +593,13 @@ function getUrlID(urlID, callback) {
         url: "https://api-ssl.bitly.com/v4/expand",
         type: "POST",
         dataType: "json",
-        data: JSON.stringify({
-            bitlink_id: "bit.ly/" + urlID,
-        }),
-        headers: {
-            Authorization: BitlyKey,
-        },
+        data: JSON.stringify({ bitlink_id: "bit.ly/" + urlID }),
+        headers: { Authorization: BitlyKey },
         contentType: "application/json",
         success: function (result) {
             callback(result.long_url);
         },
-        error: function (error) {},
+        error: function () {},
     });
 }
 
@@ -663,10 +609,8 @@ function decodeUrlID(rawUrl, callback) {
     var GfolderORUrl = urlVars.GFOLDER;
     var DEID = urlVars.ID;
 
-    // old GFOLDER
     if (GfolderORUrl !== undefined) {
         if (GfolderORUrl.search("/") == -1) {
-            // GfolderORUrl is google folder ID
             serverFolderLink =
                 "https://drive.google.com/drive/folders/" + GfolderORUrl;
         } else {
@@ -674,11 +618,8 @@ function decodeUrlID(rawUrl, callback) {
         }
         callback(serverFolderLink);
     } else if (DEID !== undefined) {
-        // NOTE: la parte con google url shortener è legacy; se non necessario puoi rimuoverla.
-        linkID = DEID;
-
+        var linkID = DEID;
         if (linkID.length === 6) {
-            // Legacy goo.gl (deprecato) – mantenuto per retro-compatibilità
             d3.json(
                 "https://www.googleapis.com/urlshortener/v1/url?key=" +
                     Gkey +
@@ -701,6 +642,6 @@ function decodeUrlID(rawUrl, callback) {
             callback(serverFolderLink);
         }
     } else {
-        // nothing to decode
+        // no ID: niente
     }
 }
