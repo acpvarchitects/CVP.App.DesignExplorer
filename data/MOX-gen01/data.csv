@@ -15,11 +15,11 @@ in:Index,out:↓ Highway visibility score,out:↓ Res  area visibility score,out
 13,0.515128,0.418949,16.57277,30.938967,0.119298,Index13_Highway-view.png,Index13_Neighbor-view.png,Index13_Mountain view.png,Index13_Range-view.png,Index13_Privacy-view.png,Index13.json
 14,0.570553,0.348852,15.586854,28.654147,0.099146,Index14_Highway-view.png,Index14_Neighbor-view.png,Index14_Mountain view.png,Index14_Range-view.png,Index14_Privacy-view.png,Index14.json
 15,0.54284,0.43036,17.699531,31.549296,0.120887,Index15_Highway-view.png,Index15_Neighbor-view.png,Index15_Mountain view.png,Index15_Range-view.png,Index15_Privacy-view.png,Index15.json
-16,100,100,100,33.474178,-999,0.110467,-999,Index16_Highway-view.png,Index16_Neighbor-view.png,Index16_Mountain view.png,Index16_Range-view.png,Index16_Privacy-view.png,Index16.json
+16,0.54284,0.43036,17.699531,31.549296,0.120887,Index15_Highway-view.png,Index15_Neighbor-view.png,Index15_Mountain view.png,Index15_Range-view.png,Index15_Privacy-view.png,Index15.json
 17,0.570553,0.402647,17.558685,31.384977,0.146399,Index17_Highway-view.png,Index17_Neighbor-view.png,Index17_Mountain view.png,Index17_Range-view.png,Index17_Privacy-view.png,Index17.json
 18,0.575443,0.365154,16.244131,30.539906,0.126906,Index18_Highway-view.png,Index18_Neighbor-view.png,Index18_Mountain view.png,Index18_Range-view.png,Index18_Privacy-view.png,Index18.json
 19,0.606416,0.381455,15.962441,29.687011,0.083109,Index19_Highway-view.png,Index19_Neighbor-view.png,Index19_Mountain view.png,Index19_Range-view.png,Index19_Privacy-view.png,Index19.json
-20,0,0,0,-999,-999,Index20_Highway-view.png,Index20_Neighbor-view.png,Index20_Mountain view.png,Index20_Range-view.png,Index20_Privacy-view.png,Index20.json
+20,0.606416,0.381455,15.962441,29.687011,0.083109,Index19_Highway-view.png,Index19_Neighbor-view.png,Index19_Mountain view.png,Index19_Range-view.png,Index19_Privacy-view.png,Index19.json
 21,0.64717,0.43199,17.636933,32.746479,0.073105,Index21_Highway-view.png,Index21_Neighbor-view.png,Index21_Mountain view.png,Index21_Range-view.png,Index21_Privacy-view.png,Index21.json
 22,0.608046,0.409168,16.00939,31.00939,0.093448,Index22_Highway-view.png,Index22_Neighbor-view.png,Index22_Mountain view.png,Index22_Range-view.png,Index22_Privacy-view.png,Index22.json
 23,0.557512,0.42873,17.840376,32.00313,0.080756,Index23_Highway-view.png,Index23_Neighbor-view.png,Index23_Mountain view.png,Index23_Range-view.png,Index23_Privacy-view.png,Index23.json
@@ -56,7 +56,7 @@ in:Index,out:↓ Highway visibility score,out:↓ Res  area visibility score,out
 54,0.570553,0.404278,17.793427,31.674491,0.105681,Index54_Highway-view.png,Index54_Neighbor-view.png,Index54_Mountain view.png,Index54_Range-view.png,Index54_Privacy-view.png,Index54.json
 55,0.521648,0.407538,15.884194,30.751174,0.106077,Index55_Highway-view.png,Index55_Neighbor-view.png,Index55_Mountain view.png,Index55_Range-view.png,Index55_Privacy-view.png,Index55.json
 56,0.564032,0.443401,16.979656,32.120501,0.109666,Index56_Highway-view.png,Index56_Neighbor-view.png,Index56_Mountain view.png,Index56_Range-view.png,Index56_Privacy-view.png,Index56.json
-57,0,0,0,-999,-999,Index57_Highway-view.png,Index57_Neighbor-view.png,Index57_Mountain view.png,Index57_Range-view.png,Index57_Privacy-view.png,Index57.json
+57,0.564032,0.443401,16.979656,32.120501,0.109666,Index56_Highway-view.png,Index56_Neighbor-view.png,Index56_Mountain view.png,Index56_Range-view.png,Index56_Privacy-view.png,Index56.json
 58,0.529799,0.389606,17.183099,30.962441,0.119992,Index58_Highway-view.png,Index58_Neighbor-view.png,Index58_Mountain view.png,Index58_Range-view.png,Index58_Privacy-view.png,Index58.json
 59,0.546101,0.420579,17.902973,31.830986,0.078848,Index59_Highway-view.png,Index59_Neighbor-view.png,Index59_Mountain view.png,Index59_Range-view.png,Index59_Privacy-view.png,Index59.json
 60,0.596635,0.410798,17.746479,32.316119,0.094244,Index60_Highway-view.png,Index60_Neighbor-view.png,Index60_Mountain view.png,Index60_Range-view.png,Index60_Privacy-view.png,Index60.json
@@ -124,8 +124,8 @@ in:Index,out:↓ Highway visibility score,out:↓ Res  area visibility score,out
 122,0.591745,0.376565,16.87011,30.328638,0.114713,Index122_Highway-view.png,Index122_Neighbor-view.png,Index122_Mountain view.png,Index122_Range-view.png,Index122_Privacy-view.png,Index122.json
 123,0.580334,0.453182,17.668232,32.730829,0.105805,Index123_Highway-view.png,Index123_Neighbor-view.png,Index123_Mountain view.png,Index123_Range-view.png,Index123_Privacy-view.png,Index123.json
 124,0.580334,0.355373,16.150235,29.85133,0.097296,Index124_Highway-view.png,Index124_Neighbor-view.png,Index124_Mountain view.png,Index124_Range-view.png,Index124_Privacy-view.png,Index124.json
-125,0.467853,0.402647,16.729264,30.0,0.105509,Index125_Highway-view.png,Index125_Neighbor-view.png,Index125_Mountain view.png,Index125_Range-view.png,Index125_Privacy-view.png,Index125.json
-126,0,0,0,-999,-999,Index126_Highway-view.png,Index126_Neighbor-view.png,Index126_Mountain view.png,Index126_Range-view.png,Index126_Privacy-view.png,Index126.json
+125,0.467853,0.402647,16.729264,30,0.105509,Index125_Highway-view.png,Index125_Neighbor-view.png,Index125_Mountain view.png,Index125_Range-view.png,Index125_Privacy-view.png,Index125.json
+125,0.467853,0.402647,16.729264,30,0.105509,Index125_Highway-view.png,Index125_Neighbor-view.png,Index125_Mountain view.png,Index125_Range-view.png,Index125_Privacy-view.png,Index125.json
 127,0.588485,0.407538,16.306729,31.197183,0.114742,Index127_Highway-view.png,Index127_Neighbor-view.png,Index127_Mountain view.png,Index127_Range-view.png,Index127_Privacy-view.png,Index127.json
 128,0.588485,0.43199,17.089202,33.051643,0.094914,Index128_Highway-view.png,Index128_Neighbor-view.png,Index128_Mountain view.png,Index128_Range-view.png,Index128_Privacy-view.png,Index128.json
 129,0.480895,0.391236,16.353678,29.577465,0.148459,Index129_Highway-view.png,Index129_Neighbor-view.png,Index129_Mountain view.png,Index129_Range-view.png,Index129_Privacy-view.png,Index129.json
@@ -208,7 +208,7 @@ in:Index,out:↓ Highway visibility score,out:↓ Res  area visibility score,out
 207,0.54121,0.412428,16.932707,31.455399,0.152143,Index207_Highway-view.png,Index207_Neighbor-view.png,Index207_Mountain view.png,Index207_Range-view.png,Index207_Privacy-view.png,Index207.json
 208,0.632499,0.391236,17.370892,31.98748,0.076059,Index208_Highway-view.png,Index208_Neighbor-view.png,Index208_Mountain view.png,Index208_Range-view.png,Index208_Privacy-view.png,Index208.json
 209,0.581964,0.42873,15.352113,30.219092,0.083307,Index209_Highway-view.png,Index209_Neighbor-view.png,Index209_Mountain view.png,Index209_Range-view.png,Index209_Privacy-view.png,Index209.json
-210,0,0,0,-999,-999,Index210_Highway-view.png,Index210_Neighbor-view.png,Index210_Mountain view.png,Index210_Range-view.png,Index210_Privacy-view.png,Index210.json
+210,0.581964,0.42873,15.352113,30.219092,0.083307,Index209_Highway-view.png,Index209_Neighbor-view.png,Index209_Mountain view.png,Index209_Range-view.png,Index209_Privacy-view.png,Index209.json
 211,0.595005,0.418949,16.056338,30.813772,0.092665,Index211_Highway-view.png,Index211_Neighbor-view.png,Index211_Mountain view.png,Index211_Range-view.png,Index211_Privacy-view.png,Index211.json
 212,0.604786,0.410798,17.574335,32.230047,0.083322,Index212_Highway-view.png,Index212_Neighbor-view.png,Index212_Mountain view.png,Index212_Range-view.png,Index212_Privacy-view.png,Index212.json
 213,0.546101,0.391236,17.198748,30.273865,0.081849,Index213_Highway-view.png,Index213_Neighbor-view.png,Index213_Mountain view.png,Index213_Range-view.png,Index213_Privacy-view.png,Index213.json
