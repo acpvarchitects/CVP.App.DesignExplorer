@@ -1,4 +1,4 @@
-in:Index,out:N  of Keys,out:Highway visibility,out:Res  area visibility,out:Mountains visibility,out:Open view perc,out:Privacy loss,img_1,img_2,img_3,img_4,img_5,threeD
+in:Index,out:N  of Keys,out:Highway visibility,out:Res  area visibility,out:Mountains visibility,out:Open view perc,out:Privacy loss,test 01,prova,aaa,img_4,img_5,threeD
 0,213,0.616197,3.7738,18.450704,37.511737,0.091176,Index0_Highway-view.png,Index0_Neighbor-view.png,Index0_Mountain view.png,Index0_Range-view.png,Index0_Privacy-view.png,Index0.json
 1,213,0.568923,3.829225,17.496088,35.109546,0.14783,Index1_Highway-view.png,Index1_Neighbor-view.png,Index1_Mountain view.png,Index1_Range-view.png,Index1_Privacy-view.png,Index1.json
 2,213,0.529799,5.260498,16.588419,34.616588,0.08693,Index2_Highway-view.png,Index2_Neighbor-view.png,Index2_Mountain view.png,Index2_Range-view.png,Index2_Privacy-view.png,Index2.json
