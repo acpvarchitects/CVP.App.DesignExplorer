@@ -2,3 +2,12 @@ in:Index,out:↓ Highway visibility score,out:↓ Res  area visibility score,out
 0,0.606416,0.438511,18.450704,32.949922,0.091176,Index0_Highway-view.png,Index0_Neighbor-view.png,Index0_Mountain view.png,Index0_Range-view.png,Index0_Privacy-view.png,Index0.json
 1,0.489045,0.43362,16.85446,31.134585,0.097905,Index1_Highway-view.png,Index1_Neighbor-view.png,Index1_Mountain view.png,Index1_Range-view.png,Index1_Privacy-view.png,Index1.json
 2,0.484155,0.449922,16.85446,31.236307,0.103346,Index2_Highway-view.png,Index2_Neighbor-view.png,Index2_Mountain view.png,Index2_Range-view.png,Index2_Privacy-view.png,Index2.json
+3,0.544471,0.443401,17.104851,31.909233,0.094934,Index3_Highway-view.png,Index3_Neighbor-view.png,Index3_Mountain view.png,Index3_Range-view.png,Index3_Privacy-view.png,Index3.json
+4,0.565662,0.418949,17.198748,31.674491,0.094224,Index4_Highway-view.png,Index4_Neighbor-view.png,Index4_Mountain view.png,Index4_Range-view.png,Index4_Privacy-view.png,Index4.json
+5,0.54284,0.422209,18.059468,32.723005,0.092213,Index5_Highway-view.png,Index5_Neighbor-view.png,Index5_Mountain view.png,Index5_Range-view.png,Index5_Privacy-view.png,Index5.json
+6,0.498826,0.438511,17.683881,31.815336,0.093448,Index6_Highway-view.png,Index6_Neighbor-view.png,Index6_Mountain view.png,Index6_Range-view.png,Index6_Privacy-view.png,Index6.json
+7,0.490676,0.42873,16.932707,31.236307,0.097192,Index7_Highway-view.png,Index7_Neighbor-view.png,Index7_Mountain view.png,Index7_Range-view.png,Index7_Privacy-view.png,Index7.json
+8,0.480895,0.43525,17.574335,31.4241,0.096284,Index8_Highway-view.png,Index8_Neighbor-view.png,Index8_Mountain view.png,Index8_Range-view.png,Index8_Privacy-view.png,Index8.json
+9,0.492306,0.43199,17.668232,31.549296,0.094696,Index9_Highway-view.png,Index9_Neighbor-view.png,Index9_Mountain view.png,Index9_Range-view.png,Index9_Privacy-view.png,Index9.json
+10,0.511868,0.412428,17.496088,31.799687,0.14783,Index10_Highway-view.png,Index10_Neighbor-view.png,Index10_Mountain view.png,Index10_Range-view.png,Index10_Privacy-view.png,Index10.json
+11,0.490676,0.396127,16.838811,30.43036,0.08693,Index11_Highway-view.png,Index11_Neighbor-view.png,Index11_Mountain view.png,Index11_Range-view.png,Index11_Privacy-view.png,Index11.json
