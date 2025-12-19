@@ -648,58 +648,11 @@ function decodeUrlID(rawUrl, callback) {
     }
 }
 
-/* ========= AUTO-BOOT via ?PROJECT o URL cartella ========= */
+/* ========= AUTO-BOOT via URL cartella (GFOLDER/ID) ========= */
+/* NOTA: Il caricamento da MinIO via ?PROJECT= è gestito in index.html window.onload */
 (function () {
-    // 1) Se c'è ?PROJECT=<codice>, carica da MinIO via API
-    var project = (function () {
-        var v = (function (rawUrl) {
-            var out = {};
-            rawUrl.replace(/[?&]+([^=&]+)=([^&]*)/gi, function (_m, k, val) {
-                out[k] = val;
-            });
-            return out;
-        })(window.location.href)["PROJECT"];
-        return v ? decodeURIComponent(v) : undefined;
-    })();
-
-    if (project) {
-        // Evita che il demo di default sovrascriva: parti SUBITO
-        // Usa l'API MinIO per caricare i dati del progetto
-        var folder = (function buildProjectFolderUrlFromApi(projectCode) {
-            return (
-                DE_API_BASE +
-                "/projects/" +
-                encodeURIComponent(projectCode) +
-                "/"
-            );
-        })(project);
-
-        // Reset UI e carica
-        try {
-            unloadPageContent();
-        } catch (e) {}
-        (function loadFromUrlImmediate(url) {
-            // replica del ramo userServerLink per MinIO API
-            var base = url;
-            if (base.slice(-1) !== "/") base += "/";
-            // espone base per le immagini (ora servite da MinIO API)
-            try {
-                DE_ASSET_BASE = base;
-            } catch (e) {
-                window.DE_ASSET_BASE = base;
-            }
-            // carica data.csv con cache-busting leggero
-            try {
-                readyToLoad(base + "data.csv?v=" + Date.now());
-            } catch (e) {
-                console.error(e);
-            }
-        })(folder);
-
-        return; // STOP: non proseguire oltre, così non parte il demo
-    }
-
-    // 2) Se non c'è PROJECT, aspetta l'onload e usa il flusso standard (URL/GFOLDER/ID o input)
+    // Aspetta l'onload e usa il flusso standard (URL/GFOLDER/ID o input)
+    // Il parametro ?PROJECT= viene gestito da index.html per evitare problemi di timing
     window.addEventListener(
         "load",
         function () {
