@@ -2527,20 +2527,28 @@
                     );
                 }
 
-                // --- NUOVO: fallback locale per ?PROJECT=XYZ ----------------------------
-                (function tryLoadLocalProject() {
+                // --- NUOVO: caricamento da MinIO via API per ?PROJECT=XYZ ----------------------------
+                (function tryLoadProjectFromMinIO() {
                     var params = new URLSearchParams(window.location.search);
                     var project = params.get("PROJECT");
                     if (!project) return; // non c'è PROJECT: esce e lascia flusso originale
 
-                    // Nasconde il welcome e forza il caricamento locale
+                    // Nasconde il welcome e forza il caricamento da MinIO
                     d3.select("#welcome").style("display", "none");
 
-                    // Calcola la base assoluta verso /data/<PROJECT>/
-                    var base = new URL(
-                        "data/" + encodeURIComponent(project) + "/",
-                        window.location.href
-                    ).toString();
+                    // Calcola la base assoluta verso l'API MinIO
+                    var base =
+                        DE_API_BASE +
+                        "/projects/" +
+                        encodeURIComponent(project) +
+                        "/";
+
+                    // Imposta DE_ASSET_BASE per la risoluzione delle immagini
+                    try {
+                        DE_ASSET_BASE = base;
+                    } catch (e) {
+                        window.DE_ASSET_BASE = base;
+                    }
 
                     // Imposta _folderInfo per la risoluzione delle immagini
                     try {
@@ -2554,14 +2562,14 @@
                         console.error(e);
                     }
 
-                    // Carica il CSV (cache-busting leggero)
+                    // Carica il CSV da MinIO (cache-busting leggero)
                     try {
                         readyToLoad(base + "data.csv?v=" + Date.now());
                     } catch (e) {
-                        console.error("Failed to load local project CSV:", e);
+                        console.error("Failed to load project CSV from MinIO:", e);
                     }
 
-                    // Fermiamo qui l’onload per evitare che parta il dataset di default
+                    // Fermiamo qui l'onload per evitare che parta il dataset di default
                     throw "__DE_STOP_DEFAULT_LOAD__";
                 })();
                 // ------------------------------------------------------------------------
