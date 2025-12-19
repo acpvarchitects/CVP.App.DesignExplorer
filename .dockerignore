@@ -1,0 +1,24 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# Documentation
+*.md
+doc/
+license.txt
+
+# Docker files (don't copy into image)
+Dockerfile
+.dockerignore
+nginx/
+
+# Source files not needed at runtime
+pc_source_files/
+radar_source_files/
+rating_source_files/
+scatter_matrix_source_files/
+va3c_source_files/
