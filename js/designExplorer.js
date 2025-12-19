@@ -119,7 +119,7 @@ function decodeUrl(encodedString) {
 
 /* ========= Config & globals ========= */
 
-/** Per Drive (se mai lo userai ancora). Non serve per /data/<PROJECT> */
+/** Per Drive (se mai lo userai ancora). Non serve per MinIO/<PROJECT> */
 var Gkey = "AIza...YOUR_KEY_IF_YOU_STILL_USE_DRIVE...";
 
 /** Collettore globale (Drive/OneDrive) */
@@ -131,7 +131,10 @@ var _googleReturnObj = {
 };
 
 /** Base URL degli asset (per cartella progetto) */
-var DE_ASSET_BASE = ""; // tipo: https://acpvarchitects.github.io/CVP.App.DesignExplorer/data/MOX/
+var DE_ASSET_BASE = ""; // tipo: https://api-node.acpv.local/v1/design-explorer/projects/MOX/
+
+/** API base URL for MinIO data source */
+var DE_API_BASE = "https://api-node.acpv.local/v1/design-explorer";
 
 /** Ricava la base della app (es: https://acpvarchitects.github.io/CVP.App.DesignExplorer/) */
 function computeAppBase() {
@@ -142,12 +145,11 @@ function computeAppBase() {
     return window.location.origin + p;
 }
 
-/** Costruisce l’URL della cartella progetto sotto /data */
+/** Costruisce l'URL della cartella progetto usando l'API MinIO */
 function buildProjectFolderUrl(projectCode) {
-    var base = computeAppBase();
     return (
-        base.replace(/\/+$/, "") +
-        "/data/" +
+        DE_API_BASE +
+        "/projects/" +
         encodeURIComponent(projectCode) +
         "/"
     );
@@ -416,7 +418,7 @@ function MP_getGoogleIDandLoad(dataMethod) {
 
     document.getElementById("csv-file").value = "";
 
-    // NEW: se è presente ?PROJECT=, non chiedo nulla e carico direttamente /data/<PROJECT>/
+    // NEW: se è presente ?PROJECT=, non chiedo nulla e carico direttamente da MinIO via API
     var project = getQueryParam("PROJECT");
     if (project) {
         var folder = buildProjectFolderUrl(project);
@@ -443,7 +445,7 @@ function loadFromUrl(rawUrl) {
         if (d.type === "userServerLink") {
             var base = d.url;
             if (base.slice(-1) !== "/") base += "/";
-            DE_ASSET_BASE = base; // es: .../data/MOX/
+            DE_ASSET_BASE = base; // es: .../v1/design-explorer/projects/MOX/
             var csvUrl = base + "data.csv";
             readyToLoad(csvUrl + "?v=" + Date.now());
         } else {
@@ -648,7 +650,7 @@ function decodeUrlID(rawUrl, callback) {
 
 /* ========= AUTO-BOOT via ?PROJECT o URL cartella ========= */
 (function () {
-    // 1) Se c'è ?PROJECT=<codice>, carica /data/<codice>/data.csv
+    // 1) Se c'è ?PROJECT=<codice>, carica da MinIO via API
     var project = (function () {
         var v = (function (rawUrl) {
             var out = {};
@@ -662,15 +664,12 @@ function decodeUrlID(rawUrl, callback) {
 
     if (project) {
         // Evita che il demo di default sovrascriva: parti SUBITO
-        var folder = (function buildProjectFolderUrl(projectCode) {
-            // base della app, es: https://acpvarchitects.github.io/CVP.App.DesignExplorer/
-            var p = window.location.pathname;
-            if (!/\/$/.test(p)) p = p.replace(/\/[^\/]*$/, "/");
-            var appBase = window.location.origin + p;
+        // Usa l'API MinIO per caricare i dati del progetto
+        var folder = (function buildProjectFolderUrlFromApi(projectCode) {
             return (
-                appBase.replace(/\/+$/, "") +
-                "/data/" +
-                encodeURIComponent(project) +
+                DE_API_BASE +
+                "/projects/" +
+                encodeURIComponent(projectCode) +
                 "/"
             );
         })(project);
@@ -680,10 +679,10 @@ function decodeUrlID(rawUrl, callback) {
             unloadPageContent();
         } catch (e) {}
         (function loadFromUrlImmediate(url) {
-            // replica del ramo userServerLink
+            // replica del ramo userServerLink per MinIO API
             var base = url;
             if (base.slice(-1) !== "/") base += "/";
-            // espone base per le immagini locali
+            // espone base per le immagini (ora servite da MinIO API)
             try {
                 DE_ASSET_BASE = base;
             } catch (e) {
