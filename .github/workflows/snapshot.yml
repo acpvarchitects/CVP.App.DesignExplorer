@@ -3,16 +3,18 @@ name: Snapshot (WIP)
 on:
   push:
     branches: [WIP]
+  workflow_dispatch:
 
 jobs:
   changes:
-    if: ${{ github.event.before != '0000000000000000000000000000000000000000' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.before != '0000000000000000000000000000000000000000' }}
     runs-on: ubuntu-latest
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
     steps:
       - uses: actions/checkout@v4
       - id: filter
+        if: ${{ github.event_name != 'workflow_dispatch' }}
         uses: dorny/paths-filter@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -32,7 +34,7 @@ jobs:
 
   snapshot_frontend:
     needs: changes
-    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.frontend == 'true' }}
     uses: ./.github/workflows/build-docker.yml
     with:
       app_name: acpv-app-frontend-designexplorer
