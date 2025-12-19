@@ -131,10 +131,10 @@ var _googleReturnObj = {
 };
 
 /** Base URL degli asset (per cartella progetto) */
-var DE_ASSET_BASE = ""; // tipo: https://api-node.acpv.local/v1/design-explorer/projects/MOX/
+var DE_ASSET_BASE = ""; // tipo: http://api-node.acpv.local/v1/design-explorer/projects/MOX/
 
-/** API base URL for MinIO data source */
-var DE_API_BASE = "https://api-node.acpv.local/v1/design-explorer";
+/** API base URL for MinIO data source (LAN HTTP) */
+var DE_API_BASE = "http://api-node.acpv.local/v1/design-explorer";
 
 /** Ricava la base della app (es: https://acpvarchitects.github.io/CVP.App.DesignExplorer/) */
 function computeAppBase() {
