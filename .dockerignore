@@ -14,7 +14,7 @@ license.txt
 # Docker files (don't copy into image)
 Dockerfile
 .dockerignore
-nginx/
+# Note: nginx/ is NOT excluded - it's needed by the Dockerfile for COPY nginx/*.conf
 
 # Source files not needed at runtime
 pc_source_files/

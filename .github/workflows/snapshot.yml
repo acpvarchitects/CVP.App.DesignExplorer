@@ -1,0 +1,42 @@
+name: Snapshot (WIP)
+
+on:
+  push:
+    branches: [WIP]
+
+jobs:
+  changes:
+    if: ${{ github.event.before != '0000000000000000000000000000000000000000' }}
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: ${{ github.event.before }}
+          filters: |
+            frontend:
+              - js/**
+              - css/**
+              - img/**
+              - index.html
+              - Dockerfile
+              - nginx/**
+              - d3/**
+              - bootstrap_side_bar/**
+              - pace/**
+              - rangeslider_files/**
+
+  snapshot_frontend:
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    uses: ./.github/workflows/build-docker.yml
+    with:
+      app_name: acpv-app-frontend-designexplorer
+      docker_tags: branch-wip,sha-${{ github.sha }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
