@@ -26,11 +26,17 @@ jobs:
               - img/**
               - index.html
               - Dockerfile
+              - .dockerignore
               - nginx/**
               - d3/**
               - bootstrap_side_bar/**
               - pace/**
               - rangeslider_files/**
+              - pc_source_files/**
+              - radar_source_files/**
+              - rating_source_files/**
+              - scatter_matrix_source_files/**
+              - va3c_source_files/**
 
   snapshot_frontend:
     needs: changes
