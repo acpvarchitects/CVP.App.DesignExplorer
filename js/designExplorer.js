@@ -656,6 +656,11 @@ function decodeUrlID(rawUrl, callback) {
     window.addEventListener(
         "load",
         function () {
+            // Se c'è ?PROJECT=, il caricamento è già gestito da index.html
+            // Non chiamare MP_getGoogleIDandLoad per evitare doppio rendering
+            if (getQueryParam("PROJECT")) {
+                return;
+            }
             try {
                 MP_getGoogleIDandLoad("URL");
             } catch (e) {
