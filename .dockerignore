@@ -16,9 +16,6 @@ Dockerfile
 .dockerignore
 # Note: nginx/ is NOT excluded - it's needed by the Dockerfile for COPY nginx/*.conf
 
-# Source files not needed at runtime
-pc_source_files/
-radar_source_files/
-rating_source_files/
-scatter_matrix_source_files/
-va3c_source_files/
+# Note: pc_source_files/, radar_source_files/, rating_source_files/,
+# scatter_matrix_source_files/, va3c_source_files/ are NOT excluded
+# because they contain CSS/JS files referenced by index.html at runtime
