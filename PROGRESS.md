@@ -14,6 +14,13 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
   Extra columns: `img:<view>` (more image views), `analysis:<name>` (GLB analysis meshes).
   `out:` without an up/down arrow = no better/worse direction (e.g. `avrg`): shown, never ranked.
 - The GLB analysis files will be delivered separately by the user.
+- Analysis in the same 3D window as a context model: `context` column (one GLB, same file on
+  every row, loaded once). Must be exported from the same Rhino file/settings as the analysis GLBs.
+- Legends (2026-09-25): Ladybug legend PNGs, one per analysis, shared by all options (same range).
+  Planned column `legend:<analysis name>`, same file on every row; name must match `analysis:<name>`.
+- Comparison design (grilling, see CONTEXT.md): shortlist up to 4, "about the same" = under 2% apart,
+  wins counted only when >2% ahead, no-arrow results shown without verdict, one "Sort by" dropdown,
+  keep "Best balance" with hover explanation.
 - New feature: a 3D viewer that shows a colored (analysis) mesh, with a legend and a "color by" picker.
 - Mesh format: GLB/glTF (vertex colors), loaded with three.js GLTFLoader.
 - Reference project: `http://designexplorer.acpv.local/dev/?PROJECT=Export` (4 options, Path25-28;
@@ -40,10 +47,10 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
 ## Next
 1. User feedback on `v2/`
 2. Real analysis name + GLBs for all paths, uploaded to MinIO with an `analysis:<name>` column
-3. Legend for analysis meshes (colors are baked in the GLB: min/max values + palette source to decide)
+3. Waiting for files: context GLB + legend PNGs (+ real analysis name)
+4. Grilling round 3 (Q11 scoreboard, Q12 2% rule everywhere, Q13 shortlist in link), then /prototype
 
 ## Open questions
 - What is `out:avrg`? (If it has a better direction, add the arrow in the CSV header.)
-- Analysis legend: where do the min/max values and colors come from?
 - Analysis GLB and threeD JSON use different coordinates (GLB x 403..570, JSON x -707..-183),
   so the context model can't be overlaid on the analysis yet.
