@@ -44,11 +44,16 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
       Open: `/v2/?data=/v2/_test/Export/&option=4&mode=analysis`
       Rhino GLB quirks handled in viewer.js: black base material, sRGB n/255 vertex colors.
 
+- [x] Shortlist (up to 4, `?compare=`), one Sort by dropdown (`?sort=`), 2% rule everywhere (`v2/compare.js`)
+- [x] "Best at what" section: prototype of 3 variants (A table, B option cards, C goal bars).
+      Verdict 2026-09-25: user picked **C (goal bars)**, folded into `v2/app.js`.
+      Prototype kept as primary source on branch `prototype/compare-variants` (commit 7dba5e5).
+
 ## Next
 1. User feedback on `v2/`
 2. Real analysis name + GLBs for all paths, uploaded to MinIO with an `analysis:<name>` column
 3. Waiting for files: context GLB + legend PNGs (+ real analysis name)
-4. Grilling round 3 (Q11 scoreboard, Q12 2% rule everywhere, Q13 shortlist in link), then /prototype
+4. Decide when/how to push the branch and deploy `/dev/v2/` (ask user first: push to WIP triggers deploy)
 
 ## Open questions
 - What is `out:avrg`? (If it has a better direction, add the arrow in the CSV header.)

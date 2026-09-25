@@ -13,7 +13,6 @@
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js";
 import { rankGoal, rankGoals, rowOf, winsOf } from "./compare.js";
-import { renderInsight, mountSwitcher } from "./prototype-compare.js";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
 const MAX_CHIPS = 12;
@@ -342,23 +341,72 @@ function renderStrip() {
     }
 }
 
+// "Best at what": one block per goal, options as bars from best to worst.
+// The bar is 100% minus how far the option is behind the best, so it matches
+// the "x% behind best" note under it.
 function renderInsightSection() {
     const scope = inScope();
     const results = rankGoals(scope, goals());
+    const selected = data.options[state.sel];
     $("insightScope").textContent =
         scope === data.options ? `All ${scope.length} options` : `Shortlist · ${scope.length} options`;
-    renderInsight($("insightBody"), {
-        options: scope,
-        results,
-        others: data.schema.outputs.filter((m) => !m.dir),
-        winsOf: (o) => winsOf(results, o),
-        selected: data.options[state.sel],
-        thumbUrl,
-        fmt,
-        pct,
-        esc,
-        directionHint,
+
+    if (!results.length) {
+        $("insightBody").innerHTML = `<p class="muted">This study has no goals yet. Add ↑ or ↓ in front of a result name in the CSV (for example <code>out:↑ Daylight</code>) to compare options on it.</p>`;
+        return;
+    }
+
+    const wins = scope
+        .map((o) => `<span><strong>${esc(o.title)}</strong> wins ${winsOf(results, o)} of ${results.length}</span>`)
+        .join("");
+
+    const blocks = results.map((r) => {
+        const bars = r.rows
+            .map((row) => {
+                const v = verdict(r, row);
+                const width = Math.max(2, Math.min(100, (1 - row.behind) * 100));
+                return `<div class="bar-row ${v.cls} ${row.option === selected ? "sel" : ""}">
+                    <button type="button" class="bar-name" data-select="${row.option.index}">${esc(row.option.title)}</button>
+                    <div class="bar-track"><div class="bar-fill" style="width:${width.toFixed(1)}%"></div></div>
+                    <span class="bar-val">${fmt(row.value)}</span>
+                    <span class="bar-note">${v.text}</span>
+                </div>`;
+            })
+            .join("");
+        return `<div class="goal">
+            <div class="goal-head">${esc(r.goal.label)} <span class="hint">${directionHint(r.goal)}</span></div>
+            <div class="goal-verdict">${headline(r)}</div>
+            ${bars}
+        </div>`;
     });
+
+    const others = data.schema.outputs.filter((m) => !m.dir);
+    const otherBlock = others.length
+        ? `<div class="goal goal-others">
+            <div class="goal-head">No better or worse</div>
+            ${others
+                .map((m) => `<div class="other-row"><span>${esc(m.label)}</span><span>${scope
+                    .map((o) => `${esc(o.title)} <strong>${fmt(o.values[m.col])}</strong>`)
+                    .join(" · ")}</span></div>`)
+                .join("")}
+        </div>`
+        : "";
+
+    $("insightBody").innerHTML = `<div class="wins-line">${wins}</div><div class="goal-grid">${blocks.join("")}${otherBlock}</div>`;
+}
+
+function verdict(result, row) {
+    if (result.winner === row.option) return { cls: "win", text: "Best" };
+    if (row.status !== "behind") return { cls: "same", text: "About the same as best" };
+    return { cls: "behind", text: `${pct(row.behind)} behind best` };
+}
+
+function headline(result) {
+    if (result.winner) {
+        return `<strong>${esc(result.winner.title)}</strong> <span class="muted">${pct(result.lead)} ahead of ${esc(result.runnerUp.title)}</span>`;
+    }
+    const top = result.rows.filter((r) => r.status !== "behind").map((r) => esc(r.option.title));
+    return `<strong>About the same</strong> <span class="muted">${top.join(", ")}</span>`;
 }
 
 function renderFilters() {
@@ -617,7 +665,6 @@ async function init() {
     document.title = `${source.name} · Design Explorer`;
     $("app").hidden = false;
     bindEvents();
-    mountSwitcher(render);
     render();
 }
 
