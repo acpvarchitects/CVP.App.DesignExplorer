@@ -17,6 +17,8 @@ import { rankGoal, rankGoals, rowOf, winsOf } from "./compare.js";
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
 const MAX_CHIPS = 12;
 const MAX_SHORTLIST = 4;
+const MAX_BARS = 5; // bars per goal in "Best at what"
+const MAX_NAMES = 3; // names listed in an "About the same" headline
 const BEST_BALANCE_HELP = "Best average position across all goals of the study";
 const MODES = [
     { key: "image", label: "Image", layers: "images", layerLabel: "View" },
@@ -175,6 +177,7 @@ function fmt(v) {
 }
 
 const pct = (fraction) => `${Math.round(fraction * 100)}%`;
+const ordinal = (n) => n + ((n % 100 >= 11 && n % 100 <= 13) || !["st", "nd", "rd"][(n % 10) - 1] ? "th" : ["st", "nd", "rd"][(n % 10) - 1]);
 
 function esc(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -339,6 +342,10 @@ function renderStrip() {
         const src = thumbUrl(o);
         if (src && img.getAttribute("src") !== src) img.src = src;
     }
+    // Keep the selected card visible in the scrolling strip (without scrolling the page).
+    const sel = byIndex.get(state.sel);
+    const dx = sel.getBoundingClientRect().left - strip.getBoundingClientRect().left;
+    if (dx < 0 || dx + sel.offsetWidth > strip.clientWidth) strip.scrollBy({ left: dx - 12, behavior: "smooth" });
 }
 
 // "Best at what": one block per goal, options as bars from best to worst.
@@ -356,23 +363,34 @@ function renderInsightSection() {
         return;
     }
 
-    const wins = scope
-        .map((o) => `<span><strong>${esc(o.title)}</strong> wins ${winsOf(results, o)} of ${results.length}</span>`)
-        .join("");
+    // Shortlist: everyone in it. Whole study: only the options that win something.
+    const counted = scope.map((o) => ({ o, n: winsOf(results, o) }));
+    const listed = scope === data.options ? counted.filter((c) => c.n > 0).sort((a, b) => b.n - a.n) : counted;
+    const wins = listed.length
+        ? listed.map((c) => `<span><strong>${esc(c.o.title)}</strong> wins ${c.n} of ${results.length}</span>`).join("")
+        : `<span class="muted">No option wins a goal on its own: the top of every goal is about the same.</span>`;
 
+    const bar = (r, row) => {
+        const v = verdict(r, row);
+        const width = Math.max(2, Math.min(100, (1 - row.behind) * 100));
+        return `<div class="bar-row ${v.cls} ${row.option === selected ? "sel" : ""}">
+            <button type="button" class="bar-name" data-select="${row.option.index}">${esc(row.option.title)}</button>
+            <div class="bar-track"><div class="bar-fill" style="width:${width.toFixed(1)}%"></div></div>
+            <span class="bar-val">${fmt(row.value)}</span>
+            <span class="bar-note">${v.text}</span>
+        </div>`;
+    };
+
+    // Big studies: only the top bars, plus the selected option wherever it ranks.
     const blocks = results.map((r) => {
-        const bars = r.rows
-            .map((row) => {
-                const v = verdict(r, row);
-                const width = Math.max(2, Math.min(100, (1 - row.behind) * 100));
-                return `<div class="bar-row ${v.cls} ${row.option === selected ? "sel" : ""}">
-                    <button type="button" class="bar-name" data-select="${row.option.index}">${esc(row.option.title)}</button>
-                    <div class="bar-track"><div class="bar-fill" style="width:${width.toFixed(1)}%"></div></div>
-                    <span class="bar-val">${fmt(row.value)}</span>
-                    <span class="bar-note">${v.text}</span>
-                </div>`;
-            })
-            .join("");
+        const shown = r.rows.slice(0, MAX_BARS);
+        const mine = r.rows.find((row) => row.option === selected);
+        let bars = shown.map((row) => bar(r, row)).join("");
+        if (mine && !shown.includes(mine)) {
+            bars += `<div class="bar-gap">${ordinal(r.rows.indexOf(mine) + 1)} of ${r.rows.length}</div>${bar(r, mine)}`;
+        }
+        const hidden = r.rows.length - shown.length - (mine && !shown.includes(mine) ? 1 : 0);
+        if (hidden > 0) bars += `<div class="bar-more">and ${hidden} more</div>`;
         return `<div class="goal">
             <div class="goal-head">${esc(r.goal.label)} <span class="hint">${directionHint(r.goal)}</span></div>
             <div class="goal-verdict">${headline(r)}</div>
@@ -406,7 +424,8 @@ function headline(result) {
         return `<strong>${esc(result.winner.title)}</strong> <span class="muted">${pct(result.lead)} ahead of ${esc(result.runnerUp.title)}</span>`;
     }
     const top = result.rows.filter((r) => r.status !== "behind").map((r) => esc(r.option.title));
-    return `<strong>About the same</strong> <span class="muted">${top.join(", ")}</span>`;
+    const names = top.length > MAX_NAMES ? `${top.slice(0, MAX_NAMES).join(", ")} and ${top.length - MAX_NAMES} more` : top.join(", ");
+    return `<strong>About the same</strong> <span class="muted">${names}</span>`;
 }
 
 function renderFilters() {
