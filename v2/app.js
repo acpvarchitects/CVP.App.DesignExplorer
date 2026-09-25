@@ -342,10 +342,10 @@ function renderStrip() {
         const src = thumbUrl(o);
         if (src && img.getAttribute("src") !== src) img.src = src;
     }
-    // Keep the selected card visible in the scrolling strip (without scrolling the page).
-    const sel = byIndex.get(state.sel);
-    const dx = sel.getBoundingClientRect().left - strip.getBoundingClientRect().left;
-    if (dx < 0 || dx + sel.offsetWidth > strip.clientWidth) strip.scrollBy({ left: dx - 12, behavior: "smooth" });
+    // Keep the selected card visible in the strip's scroll box (without scrolling the page).
+    const card = byIndex.get(state.sel).getBoundingClientRect();
+    const box = strip.getBoundingClientRect();
+    if (card.top < box.top || card.bottom > box.bottom) strip.scrollBy({ top: card.top - box.top - 4, behavior: "smooth" });
 }
 
 // "Best at what": one block per goal, options as bars from best to worst.

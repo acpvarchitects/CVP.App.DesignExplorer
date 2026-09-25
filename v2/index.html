@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Design Explorer</title>
     <link rel="icon" href="../favicon.png" />
-    <link rel="stylesheet" href="style.css?v=5" />
+    <link rel="stylesheet" href="style.css?v=6" />
     <script type="importmap">
         {
             "imports": {
@@ -31,62 +31,63 @@
         </div>
     </header>
 
-    <main id="app" hidden>
-        <section class="card preview">
-            <div class="preview-bar">
-                <div id="modeSeg" class="seg"></div>
-                <div id="subSeg" class="sub"></div>
-            </div>
-            <div id="stage" class="stage">
-                <img id="stageImg" alt="" />
-                <div id="stage3d" class="stage-3d"></div>
-                <div class="stage-title">
-                    <h1 id="optTitle"></h1>
-                    <p id="optSummary"></p>
-                </div>
-                <button id="prevBtn" class="nav prev" type="button" aria-label="Previous option">&#8249;</button>
-                <button id="nextBtn" class="nav next" type="button" aria-label="Next option">&#8250;</button>
-                <div class="stage-foot">
-                    <span id="stageStatus"></span>
-                    <button id="resetViewBtn" type="button">Reset view</button>
-                </div>
-            </div>
-        </section>
-
-        <div class="strip-bar">
-            <label class="sort">Sort by <select id="sortSel"></select></label>
-            <div id="shortlistInfo" class="shortlist-info"></div>
-        </div>
-        <section id="strip" class="strip" aria-label="All options"></section>
-
-        <section class="card insight">
+    <main id="app" class="layout" hidden>
+        <aside class="card side side-left" aria-label="Filters">
             <div class="card-head">
-                <h2>Best at what</h2>
-                <span id="insightScope" class="muted"></span>
+                <h2>Find options</h2>
+                <span id="matchCount" class="muted"></span>
             </div>
-            <div id="insightBody"></div>
-        </section>
+            <div id="filters"></div>
+            <button id="clearFilters" type="button">Clear filters</button>
+        </aside>
 
-        <section class="lower">
-            <div class="card">
-                <div class="card-head">
-                    <h2>Find options</h2>
-                    <span id="matchCount" class="muted"></span>
+        <div class="center">
+            <section class="card preview">
+                <div class="preview-bar">
+                    <div id="modeSeg" class="seg"></div>
+                    <div id="subSeg" class="sub"></div>
                 </div>
-                <div id="filters"></div>
-                <button id="clearFilters" type="button">Clear filters</button>
-            </div>
-            <div class="card">
-                <div class="card-head">
-                    <h2 id="compareTitle"></h2>
+                <div id="stage" class="stage">
+                    <img id="stageImg" alt="" />
+                    <div id="stage3d" class="stage-3d"></div>
+                    <div class="stage-title">
+                        <h1 id="optTitle"></h1>
+                        <p id="optSummary"></p>
+                    </div>
+                    <button id="prevBtn" class="nav prev" type="button" aria-label="Previous option">&#8249;</button>
+                    <button id="nextBtn" class="nav next" type="button" aria-label="Next option">&#8250;</button>
+                    <div class="stage-foot">
+                        <span id="stageStatus"></span>
+                        <button id="resetViewBtn" type="button">Reset view</button>
+                    </div>
                 </div>
-                <div id="compare"></div>
+            </section>
+
+            <div class="strip-bar">
+                <label class="sort">Sort by <select id="sortSel"></select></label>
+                <div id="shortlistInfo" class="shortlist-info"></div>
             </div>
-        </section>
+            <section id="strip" class="strip" aria-label="All options"></section>
+
+            <section class="card insight">
+                <div class="card-head">
+                    <h2>Best at what</h2>
+                    <span id="insightScope" class="muted"></span>
+                </div>
+                <div id="insightBody"></div>
+            </section>
+        </div>
+
+        <aside class="card side side-right" aria-label="Selected option">
+            <div class="card-head">
+                <h2 id="compareTitle"></h2>
+            </div>
+            <div id="compare"></div>
+        </aside>
     </main>
 
     <div id="message" class="message" hidden></div>
 
-    <script type="module" src="app.js?v=6"></script>
+    <script type="module" src="app.js?v=7"></script>
 </body>
 </html>
