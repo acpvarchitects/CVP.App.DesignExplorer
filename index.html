@@ -2943,6 +2943,7 @@
                         function (app) {
                             //call the UI / functionality modules
                             app.setBackgroundColor(0xffffff);
+                            setupAnalysisLayers(app);
                         }
                     );
                 });
@@ -2956,7 +2957,83 @@
                 );
                 d3.json(jsonFileAddress, function (data) {
                     va3cViewer.loadNewModel(data);
+                    setupAnalysisLayers(va3cViewer);
                 });
+            }
+
+            // Analysis layers. The Grasshopper "DE 3D Analisi" component tags
+            // every mesh with userData.layer: "Contesto" for the context, one
+            // layer per analysis otherwise. The analysis meshes lie on the same
+            // facades, so they are shown one at a time from a dropdown; the
+            // context stays on. The choice is kept while browsing options, so
+            // the same analysis can be compared across designs. Models without
+            // layers (older exports) are left untouched.
+            var CONTEXT_LAYER = "Contesto";
+            var selectedAnalysisLayer = null;
+
+            function analysisLayerNames(app) {
+                var layers =
+                    (app.scene && app.scene.userData && app.scene.userData.layers) || [];
+                return layers
+                    .map(function (l) {
+                        return typeof l === "string" ? l : l && l.name;
+                    })
+                    .filter(function (name) {
+                        return name && name !== CONTEXT_LAYER && name !== "Cameras";
+                    });
+            }
+
+            function applyAnalysisLayer(app) {
+                app.attributes.elementList.forEach(function (el) {
+                    var layer = el.userData && el.userData.layer;
+                    if (!layer || layer === CONTEXT_LAYER) return;
+                    el.visible = layer === selectedAnalysisLayer;
+                });
+            }
+
+            // The dashboard does not enable the Spectacles dat.GUI panel, so the
+            // picker is a plain <select> overlaid on the viewer.
+            function setupAnalysisLayers(app) {
+                var viewer = $("#viewer3d");
+                var select = $("#analysisLayerSelect");
+                if (select.length === 0) {
+                    viewer.css("position", "relative");
+                    select = $('<select id="analysisLayerSelect"></select>')
+                        .css({
+                            position: "absolute",
+                            top: "10px",
+                            left: "10px",
+                            "z-index": 10,
+                            padding: "4px 6px",
+                            font: "13px sans-serif",
+                            background: "rgba(255,255,255,0.9)",
+                            border: "1px solid #ccc",
+                            "border-radius": "3px",
+                        })
+                        .attr("title", "Analisi mostrata sul modello 3D")
+                        .appendTo(viewer);
+                }
+                select.off("change").empty();
+
+                var names = analysisLayerNames(app);
+                if (names.length === 0) {
+                    select.hide();
+                    return;
+                }
+                if (names.indexOf(selectedAnalysisLayer) === -1) {
+                    selectedAnalysisLayer = names[0];
+                }
+                names.forEach(function (name) {
+                    $("<option></option>").val(name).text(name).appendTo(select);
+                });
+                select
+                    .val(selectedAnalysisLayer)
+                    .on("change", function () {
+                        selectedAnalysisLayer = this.value;
+                        applyAnalysisLayer(app);
+                    })
+                    .show();
+                applyAnalysisLayer(app);
             }
 
             // toggle between 2d and 3d
