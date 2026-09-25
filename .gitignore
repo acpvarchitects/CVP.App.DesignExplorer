@@ -4,3 +4,5 @@
 .idea/encodings.xml
 *.xml
 index.html___jb_old___
+# v2 local test data (not committed)
+v2/_test/
