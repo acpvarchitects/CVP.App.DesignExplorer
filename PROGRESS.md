@@ -32,11 +32,18 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
       `viewer.js` (three.js 0.160 from jsdelivr: GLB + legacy JSON parser). Tested on Export:
       image, 3D model, filters, compare, URL state. Open: `/v2/?PROJECT=Export`
 
+- [x] Analysis mode tested with the user's Rhino GLB (`prova_path28_colori.glb`, Path 28) via
+      local test copy `v2/_test/Export/` (gitignored, column `analysis:prova`).
+      Open: `/v2/?data=/v2/_test/Export/&option=4&mode=analysis`
+      Rhino GLB quirks handled in viewer.js: black base material, sRGB n/255 vertex colors.
+
 ## Next
-1. User feedback on `v2/` (localhost:8765/v2/?PROJECT=Export or after deploy /dev/v2/?PROJECT=Export)
-2. Test analysis mode when the GLB files arrive (add `analysis:<name>` columns to data.csv)
-3. Legend for analysis meshes (values/colors are baked in the GLB: legend source to decide)
+1. User feedback on `v2/`
+2. Real analysis name + GLBs for all paths, uploaded to MinIO with an `analysis:<name>` column
+3. Legend for analysis meshes (colors are baked in the GLB: min/max values + palette source to decide)
 
 ## Open questions
 - What is `out:avrg`? (If it has a better direction, add the arrow in the CSV header.)
 - Analysis legend: where do the min/max values and colors come from?
+- Analysis GLB and threeD JSON use different coordinates (GLB x 403..570, JSON x -707..-183),
+  so the context model can't be overlaid on the analysis yet.
