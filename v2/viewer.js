@@ -95,7 +95,7 @@ export class Viewer {
                 this.cache.delete(oldest);
             }
             const promise = /\.(glb|gltf)(\?|#|$)/i.test(url)
-                ? new GLTFLoader().loadAsync(url).then((gltf) => gltf.scene)
+                ? new GLTFLoader().loadAsync(url).then((gltf) => useVertexColors(gltf.scene))
                 : fetch(url)
                       .then((r) => {
                           if (!r.ok) throw new Error(r.status + " " + r.statusText);
@@ -107,6 +107,38 @@ export class Viewer {
         }
         return this.cache.get(url);
     }
+}
+
+// ---- GLB analysis meshes ----
+
+// Analysis meshes carry their result as vertex colors. Rhino's exporter pairs
+// them with a black material (glTF multiplies the two, so the mesh renders
+// black) and writes sRGB byte values (n/255) where glTF expects linear ones.
+function useVertexColors(root) {
+    const material = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+    root.traverse((node) => {
+        const colors = node.isMesh && node.geometry.getAttribute("color");
+        if (!colors) return;
+        if (colors.array instanceof Float32Array && isByteColor(colors.array)) {
+            const c = new THREE.Color();
+            for (let i = 0; i < colors.count; i++) {
+                c.setRGB(colors.getX(i), colors.getY(i), colors.getZ(i), THREE.SRGBColorSpace);
+                colors.setXYZ(i, c.r, c.g, c.b);
+            }
+            colors.needsUpdate = true;
+        }
+        node.material = material;
+    });
+    return root;
+}
+
+function isByteColor(array) {
+    const step = Math.max(1, Math.floor(array.length / 5000));
+    for (let i = 0; i < array.length; i += step) {
+        const v = array[i] * 255;
+        if (Math.abs(v - Math.round(v)) > 1e-3) return false;
+    }
+    return true;
 }
 
 // ---- Legacy three.js JSON (format 3 geometries inside an object scene) ----
