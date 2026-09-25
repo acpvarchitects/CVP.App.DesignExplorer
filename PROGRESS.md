@@ -11,11 +11,19 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
 - Static HTML + D3, same as now: no build step, same Docker/nginx image.
 - Same CSV format as now (`in:` / `out:` / `img` / `threeD` columns).
 - New feature: a 3D viewer that shows a colored (analysis) mesh, with a legend and a "color by" picker.
+- Mesh format: GLB/glTF (vertex colors), loaded with three.js GLTFLoader.
+- Reference project: `http://designexplorer.acpv.local/dev/?PROJECT=Export` (4 options, Path25-28;
+  metrics: view to Bocca d'Arno up, avrg, summer solar radiation down, winter solar radiation up).
+- UX direction (feedback 2026-09-25): less technical. Big preview (Image / 3D model / 3D analysis),
+  filmstrip of all options in the SAME view/analysis to pick by eye, plain-language filters
+  (Any / Better than avg / Best only), per-option comparison vs others (rank, % vs average),
+  no complex sorting. Up/down arrows in CSV headers = direction of "better".
 
 ## Done
 - [x] Branch created
-- [x] Layout mockup shown in chat (top bar, metric tiles, parallel coordinates,
-      design grid, detail panel with 2D/3D toggle + colored mesh + legend + attributes)
+- [x] Mockup 1 shown in chat (top bar, metric tiles, parallel coordinates, grid, detail panel)
+- [x] Mockup 2 shown in chat, built on the Export project data (preview modes, filmstrip, filters, compare panel)
+- [x] Agent skills config (CLAUDE.md, docs/agents/)
 
 ## Next
 1. Get feedback on the mockup layout
@@ -24,5 +32,7 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
 4. 3D viewer for colored meshes (three.js)
 
 ## Open questions
-- Mockup: what should change?
-- Colored mesh file format: Spectacles `.json` (like now), `.glb`, `.ply`, `.obj`, other?
+- Mockup 2 feedback
+- What is `out:avrg`, and is higher better?
+- CSV columns for several views/analyses: proposed `img:Axo`, `img:Top`, `model` (.glb),
+  `analysis:<name>` (.glb): needs confirmation
