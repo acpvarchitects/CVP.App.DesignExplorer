@@ -9,7 +9,11 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
 ## Decisions
 - Separate page (planned: `v2/index.html`). The current `index.html` is not touched.
 - Static HTML + D3, same as now: no build step, same Docker/nginx image.
-- Same CSV format as now (`in:` / `out:` / `img` / `threeD` columns).
+- Same CSV format as now (`in:` / `out:` / `img` / `threeD` columns). Everything is data-driven:
+  labels, filters and comparisons come from column names (user rule: never rename dataset words).
+  Extra columns: `img:<view>` (more image views), `analysis:<name>` (GLB analysis meshes).
+  `out:` without an up/down arrow = no better/worse direction (e.g. `avrg`): shown, never ranked.
+- The GLB analysis files will be delivered separately by the user.
 - New feature: a 3D viewer that shows a colored (analysis) mesh, with a legend and a "color by" picker.
 - Mesh format: GLB/glTF (vertex colors), loaded with three.js GLTFLoader.
 - Reference project: `http://designexplorer.acpv.local/dev/?PROJECT=Export` (4 options, Path25-28;
@@ -24,15 +28,15 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
 - [x] Mockup 1 shown in chat (top bar, metric tiles, parallel coordinates, grid, detail panel)
 - [x] Mockup 2 shown in chat, built on the Export project data (preview modes, filmstrip, filters, compare panel)
 - [x] Agent skills config (CLAUDE.md, docs/agents/)
+- [x] `v2/` first working version: `index.html`, `style.css`, `app.js` (data-driven UI),
+      `viewer.js` (three.js 0.160 from jsdelivr: GLB + legacy JSON parser). Tested on Export:
+      image, 3D model, filters, compare, URL state. Open: `/v2/?PROJECT=Export`
 
 ## Next
-1. Get feedback on the mockup layout
-2. Build the `v2/index.html` skeleton with the new layout
-3. Wire up the CSV loading + parallel coordinates
-4. 3D viewer for colored meshes (three.js)
+1. User feedback on `v2/` (localhost:8765/v2/?PROJECT=Export or after deploy /dev/v2/?PROJECT=Export)
+2. Test analysis mode when the GLB files arrive (add `analysis:<name>` columns to data.csv)
+3. Legend for analysis meshes (values/colors are baked in the GLB: legend source to decide)
 
 ## Open questions
-- Mockup 2 feedback
-- What is `out:avrg`, and is higher better?
-- CSV columns for several views/analyses: proposed `img:Axo`, `img:Top`, `model` (.glb),
-  `analysis:<name>` (.glb): needs confirmation
+- What is `out:avrg`? (If it has a better direction, add the arrow in the CSV header.)
+- Analysis legend: where do the min/max values and colors come from?

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Design Explorer</title>
+    <link rel="icon" href="../favicon.png" />
+    <link rel="stylesheet" href="style.css?v=1" />
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <img src="../img/antonio-citterio-patricia-viel.png" alt="Antonio Citterio Patricia Viel" />
+            <span class="brand-app">Design Explorer</span>
+        </div>
+        <div class="project">
+            <span id="projectName"></span>
+            <span id="optionCount" class="muted"></span>
+        </div>
+        <div class="actions">
+            <button id="shareBtn" type="button">Copy link</button>
+            <a id="classicLink" class="button" href="../">Classic view</a>
+        </div>
+    </header>
+
+    <main id="app" hidden>
+        <section class="card preview">
+            <div class="preview-bar">
+                <div id="modeSeg" class="seg"></div>
+                <div id="subSeg" class="sub"></div>
+            </div>
+            <div id="stage" class="stage">
+                <img id="stageImg" alt="" />
+                <div id="stage3d" class="stage-3d"></div>
+                <div class="stage-title">
+                    <h1 id="optTitle"></h1>
+                    <p id="optSummary"></p>
+                </div>
+                <button id="prevBtn" class="nav prev" type="button" aria-label="Previous option">&#8249;</button>
+                <button id="nextBtn" class="nav next" type="button" aria-label="Next option">&#8250;</button>
+                <div class="stage-foot">
+                    <span id="stageStatus"></span>
+                    <button id="resetViewBtn" type="button">Reset view</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="strip" class="strip" aria-label="All options"></section>
+
+        <section class="lower">
+            <div class="card">
+                <div class="card-head">
+                    <h2>Find options</h2>
+                    <span id="matchCount" class="muted"></span>
+                </div>
+                <div id="filters"></div>
+                <button id="clearFilters" type="button">Clear filters</button>
+            </div>
+            <div class="card">
+                <div class="card-head">
+                    <h2 id="compareTitle"></h2>
+                </div>
+                <div id="compare"></div>
+            </div>
+        </section>
+    </main>
+
+    <div id="message" class="message" hidden></div>
+
+    <script type="module" src="app.js?v=1"></script>
+</body>
+</html>
