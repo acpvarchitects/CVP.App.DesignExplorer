@@ -268,23 +268,84 @@ main {
     margin: 14px 0;
 }
 
+.strip-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+}
+
+.sort select {
+    font: inherit;
+    font-size: 13px;
+    margin-left: 6px;
+    padding: 4px 8px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--card);
+}
+
+.shortlist-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 13px;
+}
+
+.warn {
+    color: var(--warn);
+}
+
 .thumb {
-    text-align: left;
+    display: flex;
+    flex-direction: column;
     padding: 6px;
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
-    white-space: normal;
 }
 
 .thumb:hover {
-    background: var(--card);
     border-color: var(--line-strong);
 }
 
 .thumb.on {
     border: 2px solid var(--accent);
     padding: 5px;
+}
+
+.thumb-main {
+    display: block;
+    width: 100%;
+    padding: 0;
+    text-align: left;
+    white-space: normal;
+    background: none;
+    border: 0;
+}
+
+.thumb-main:hover {
+    background: none;
+}
+
+.pick {
+    margin-top: 4px;
+    font-size: 12px;
+    padding: 3px 8px;
+}
+
+.thumb.picked .pick {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: var(--accent);
+    font-weight: 600;
+}
+
+.insight {
+    margin-bottom: 14px;
 }
 
 .thumb-img {
@@ -389,6 +450,12 @@ main {
 .pill.bad {
     background: var(--bad-soft);
     color: var(--bad);
+}
+
+.pill.same {
+    background: transparent;
+    color: var(--good);
+    box-shadow: inset 0 0 0 1px var(--good-soft);
 }
 
 .dots {

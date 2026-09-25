@@ -12,9 +12,13 @@
 //   analysis:<name>    3D analysis mesh with vertex colors (.glb)
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js";
+import { rankGoal, rankGoals, rowOf, winsOf } from "./compare.js";
+import { renderInsight, mountSwitcher } from "./prototype-compare.js";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
 const MAX_CHIPS = 12;
+const MAX_SHORTLIST = 4;
+const BEST_BALANCE_HELP = "Best average position across all goals of the study";
 const MODES = [
     { key: "image", label: "Image", layers: "images", layerLabel: "View" },
     { key: "model", label: "3D model", layers: "models", layerLabel: "Model" },
@@ -23,8 +27,15 @@ const MODES = [
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
-const state = { sel: 0, mode: "image", layer: { image: 0, model: 0, analysis: 0 }, filters: {} };
-let data; // { source, schema, options, stats }
+const state = {
+    sel: 0,
+    mode: "image",
+    layer: { image: 0, model: 0, analysis: 0 },
+    filters: {},
+    shortlist: [], // option indexes, in the order they were picked
+    sort: "", // result column, or "" for dataset order
+};
+let data; // { source, schema, options, stats, results }
 let viewer;
 
 // ---- Reading the dataset ----
@@ -91,6 +102,7 @@ function computeStats(options, outputs) {
 
 const goals = () => data.schema.outputs.filter((m) => m.dir);
 const varies = (m) => data.stats[m.col].max > data.stats[m.col].min;
+const resultFor = (m) => data.results.find((r) => r.goal === m);
 
 function position(o, m) {
     const s = data.stats[m.col];
@@ -104,12 +116,8 @@ function goodness(o, m) {
     return p == null || m.dir >= 0 ? p : 1 - p;
 }
 
-function rank(o, m) {
-    const v = o.values[m.col];
-    return 1 + data.options.filter((p) => m.dir * (p.values[m.col] - v) > 0).length;
-}
-
-const bestAt = (o) => goals().filter((m) => varies(m) && rank(o, m) === 1);
+// Goals this option wins among all options (2% rule, see compare.js).
+const bestAt = (o) => data.results.filter((r) => r.winner === o).map((r) => r.goal);
 
 function balance(o) {
     const g = goals()
@@ -124,19 +132,12 @@ function isBestBalance(o) {
     return balance(o) === top;
 }
 
-function rankText(r, n) {
-    if (r === 1) return `Best of ${n}`;
-    if (r === n) return `Weakest of ${n}`;
-    const suffix = r % 10 === 2 && r % 100 !== 12 ? "nd" : r % 10 === 3 && r % 100 !== 13 ? "rd" : "th";
-    return `${r}${suffix} of ${n}`;
-}
-
 function matches(o) {
     for (const m of data.schema.outputs) {
         const f = state.filters[m.col] || "any";
         const v = o.values[m.col];
         const mean = data.stats[m.col].mean;
-        if (f === "best" && !(varies(m) && rank(o, m) === 1)) return false;
+        if (f === "best" && rowOf(resultFor(m), o)?.status === "behind") return false;
         if (f === "better" && !(m.dir * (v - mean) > 0)) return false;
         if (f === "above" && !(v > mean)) return false;
         if (f === "below" && !(v < mean)) return false;
@@ -148,6 +149,24 @@ function matches(o) {
     return true;
 }
 
+// Options in the order picked in "Sort by": goals best first, other results high to low.
+function ordered() {
+    const m = data.schema.outputs.find((x) => x.col === state.sort);
+    if (!m) return data.options;
+    const dir = m.dir || 1;
+    return [...data.options].sort((a, b) => {
+        const va = a.values[m.col];
+        const vb = b.values[m.col];
+        if (!Number.isFinite(va)) return 1;
+        if (!Number.isFinite(vb)) return -1;
+        return dir * (vb - va);
+    });
+}
+
+// The options the comparison talks about: the shortlist once it has 2+, else all.
+const inScope = () =>
+    state.shortlist.length >= 2 ? state.shortlist.map((i) => data.options[i]) : data.options;
+
 // ---- Helpers ----
 
 function fmt(v) {
@@ -155,6 +174,8 @@ function fmt(v) {
     const a = Math.abs(v);
     return v.toLocaleString(undefined, { maximumFractionDigits: a >= 100 ? 0 : a >= 10 ? 1 : 2 });
 }
+
+const pct = (fraction) => `${Math.round(fraction * 100)}%`;
 
 function esc(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -170,6 +191,10 @@ const modeInfo = () => MODES.find((m) => m.key === state.mode);
 const layers = (mode = modeInfo()) => data.schema[mode.layers];
 const currentLayer = () => layers()[state.layer[state.mode]];
 const directionHint = (m) => (m.dir > 0 ? "↑ higher is better" : m.dir < 0 ? "↓ lower is better" : "");
+const thumbUrl = (o) => {
+    const img = data.schema.images[state.layer.image];
+    return img ? assetUrl(o.row[img.col]) : null;
+};
 
 function showMessage(html) {
     $("app").hidden = true;
@@ -186,7 +211,9 @@ function setStatus(text) {
 function render() {
     renderModes();
     renderStage();
+    renderStripBar();
     renderStrip();
+    renderInsightSection();
     renderFilters();
     renderCompare();
     saveUrl();
@@ -212,6 +239,7 @@ function renderStage() {
     const o = data.options[state.sel];
     $("optTitle").textContent = o.title;
     $("optSummary").textContent = summary(o);
+    $("optSummary").title = isBestBalance(o) ? BEST_BALANCE_HELP : "";
 
     const layer = currentLayer();
     const url = layer && assetUrl(o.row[layer.col]);
@@ -244,39 +272,93 @@ function summary(o) {
     return parts.join(" · ");
 }
 
+function renderStripBar() {
+    const options = [`<option value="">Dataset order</option>`]
+        .concat(
+            data.schema.outputs.map(
+                (m) => `<option value="${esc(m.col)}" ${m.col === state.sort ? "selected" : ""}>${esc(m.label)}${m.dir ? " (best first)" : " (high to low)"}</option>`
+            )
+        )
+        .join("");
+    if ($("sortSel").dataset.built !== "1") {
+        $("sortSel").innerHTML = options;
+        $("sortSel").dataset.built = "1";
+    }
+    $("sortSel").value = state.sort;
+
+    const n = state.shortlist.length;
+    $("shortlistInfo").innerHTML =
+        n === 0
+            ? `<span class="muted">Pick up to ${MAX_SHORTLIST} options with <strong>Compare</strong> to put them side by side</span>`
+            : `<span><strong>Shortlist:</strong> ${state.shortlist.map((i) => esc(data.options[i].title)).join(", ")}${
+                  n === 1 ? ` <span class="muted">· pick one more to compare</span>` : ""
+              }</span> <button type="button" id="clearShortlist">Clear</button>`;
+}
+
 function renderStrip() {
     const strip = $("strip");
     if (!strip.children.length) {
         strip.innerHTML = data.options
             .map(
-                (o) => `<button type="button" class="thumb" data-index="${o.index}">
-                    <div class="thumb-img"><img loading="lazy" alt="" /></div>
-                    <span class="thumb-name">${esc(o.title)}</span>
-                    <span class="thumb-note"></span>
-                </button>`
+                (o) => `<div class="thumb" data-index="${o.index}">
+                    <button type="button" class="thumb-main" data-select="${o.index}">
+                        <div class="thumb-img"><img loading="lazy" alt="" /></div>
+                        <span class="thumb-name">${esc(o.title)}</span>
+                        <span class="thumb-note"></span>
+                    </button>
+                    <button type="button" class="pick" data-pick="${o.index}">Compare</button>
+                </div>`
             )
             .join("");
     }
     // The strip always shows the image view picked in the preview, so options
     // can be compared by eye from the same point of view.
-    const imageLayer = data.schema.images[state.layer.image];
-    for (const el of strip.children) {
-        const o = data.options[+el.dataset.index];
+    const byIndex = new Map([...strip.children].map((el) => [+el.dataset.index, el]));
+    for (const o of ordered()) {
+        const el = byIndex.get(o.index);
+        strip.appendChild(el); // keeps the "Sort by" order
         const ok = matches(o);
+        const picked = state.shortlist.includes(o.index);
         el.classList.toggle("on", o.index === state.sel);
         el.classList.toggle("out", !ok);
+        el.classList.toggle("picked", picked);
+        const pick = el.querySelector(".pick");
+        pick.textContent = picked ? "✓ In shortlist" : "Compare";
+        pick.setAttribute("aria-pressed", picked);
+
         const best = bestAt(o);
-        el.querySelector(".thumb-note").textContent = !ok
+        const note = el.querySelector(".thumb-note");
+        note.textContent = !ok
             ? "Filtered out"
             : isBestBalance(o)
               ? "Best balance"
               : best.length
                 ? "Best for " + best[0].label
                 : "";
+        note.title = ok && isBestBalance(o) ? BEST_BALANCE_HELP : "";
         const img = el.querySelector("img");
-        const src = imageLayer ? assetUrl(o.row[imageLayer.col]) : null;
+        const src = thumbUrl(o);
         if (src && img.getAttribute("src") !== src) img.src = src;
     }
+}
+
+function renderInsightSection() {
+    const scope = inScope();
+    const results = rankGoals(scope, goals());
+    $("insightScope").textContent =
+        scope === data.options ? `All ${scope.length} options` : `Shortlist · ${scope.length} options`;
+    renderInsight($("insightBody"), {
+        options: scope,
+        results,
+        others: data.schema.outputs.filter((m) => !m.dir),
+        winsOf: (o) => winsOf(results, o),
+        selected: data.options[state.sel],
+        thumbUrl,
+        fmt,
+        pct,
+        esc,
+        directionHint,
+    });
 }
 
 function renderFilters() {
@@ -311,7 +393,6 @@ function renderFilters() {
 
 function renderCompare() {
     const o = data.options[state.sel];
-    const n = data.options.length;
     $("compareTitle").textContent = `How ${o.title} compares`;
 
     const inputs =
@@ -324,13 +405,19 @@ function renderCompare() {
     const metrics = data.schema.outputs.map((m) => {
         const v = o.values[m.col];
         const mean = data.stats[m.col].mean;
-        const r = rank(o, m);
         let pill = "";
-        if (m.dir && !varies(m)) pill = `<span class="pill">Same for all</span>`;
-        else if (m.dir) pill = `<span class="pill ${r === 1 ? "good" : r === n ? "bad" : ""}">${rankText(r, n)}</span>`;
+        if (m.dir) {
+            const result = resultFor(m);
+            const row = rowOf(result, o);
+            const last = row === result.rows[result.rows.length - 1];
+            if (!row) pill = "";
+            else if (result.winner === o) pill = `<span class="pill good">Best</span>`;
+            else if (row.status !== "behind") pill = `<span class="pill same">About the same as best</span>`;
+            else pill = `<span class="pill ${last ? "bad" : ""}">${pct(row.behind)} behind best</span>`;
+        }
 
-        const pct = mean ? Math.round(((v - mean) / Math.abs(mean)) * 100) : null;
-        const vsAverage = pct == null ? "" : pct === 0 ? " · about average" : ` · ${Math.abs(pct)}% ${pct > 0 ? "more" : "less"} than average`;
+        const vsMean = mean ? Math.round(((v - mean) / Math.abs(mean)) * 100) : null;
+        const vsAverage = vsMean == null ? "" : vsMean === 0 ? " · about average" : ` · ${Math.abs(vsMean)}% ${vsMean > 0 ? "more" : "less"} than average`;
 
         const dots = data.options
             .map((p) => {
@@ -360,6 +447,10 @@ function saveUrl() {
     p.set("option", state.sel + 1);
     p.set("mode", state.mode);
     p.set("layer", state.layer[state.mode] + 1);
+    if (state.shortlist.length) p.set("compare", state.shortlist.map((i) => i + 1).join(","));
+    else p.delete("compare");
+    if (state.sort) p.set("sort", state.sort);
+    else p.delete("sort");
     history.replaceState(null, "", "?" + p.toString());
 }
 
@@ -370,6 +461,13 @@ function loadUrlState() {
     if (mode && layers(mode).length) state.mode = mode.key;
     const layer = parseInt(params.get("layer"), 10);
     if (layer >= 1 && layer <= layers().length) state.layer[state.mode] = layer - 1;
+    state.shortlist = (params.get("compare") || "")
+        .split(",")
+        .map((n) => parseInt(n, 10) - 1)
+        .filter((i, k, all) => i >= 0 && i < data.options.length && all.indexOf(i) === k)
+        .slice(0, MAX_SHORTLIST);
+    const sort = params.get("sort");
+    if (data.schema.outputs.some((m) => m.col === sort)) state.sort = sort;
 }
 
 async function copyLink() {
@@ -392,11 +490,22 @@ async function copyLink() {
 // ---- Events ----
 
 function step(delta) {
-    const list = data.options.filter(matches);
-    const pool = list.length ? list : data.options;
+    const list = ordered().filter(matches);
+    const pool = list.length ? list : ordered();
     const at = pool.findIndex((o) => o.index === state.sel);
     const next = at < 0 ? 0 : (at + delta + pool.length) % pool.length;
     state.sel = pool[next].index;
+    render();
+}
+
+function togglePick(index) {
+    const at = state.shortlist.indexOf(index);
+    if (at >= 0) state.shortlist.splice(at, 1);
+    else if (state.shortlist.length < MAX_SHORTLIST) state.shortlist.push(index);
+    else {
+        $("shortlistInfo").insertAdjacentHTML("beforeend", ` <span class="warn">The shortlist holds ${MAX_SHORTLIST}. Remove one first.</span>`);
+        return;
+    }
     render();
 }
 
@@ -414,9 +523,27 @@ function bindEvents() {
         render();
     });
     $("strip").addEventListener("click", (e) => {
-        const b = e.target.closest("[data-index]");
+        const pick = e.target.closest("[data-pick]");
+        const select = e.target.closest("[data-select]");
+        if (pick) togglePick(+pick.dataset.pick);
+        else if (select) {
+            state.sel = +select.dataset.select;
+            render();
+        }
+    });
+    $("sortSel").addEventListener("change", (e) => {
+        state.sort = e.target.value;
+        render();
+    });
+    $("shortlistInfo").addEventListener("click", (e) => {
+        if (!e.target.closest("#clearShortlist")) return;
+        state.shortlist = [];
+        render();
+    });
+    $("insightBody").addEventListener("click", (e) => {
+        const b = e.target.closest("[data-select]");
         if (!b) return;
-        state.sel = +b.dataset.index;
+        state.sel = +b.dataset.select;
         render();
     });
     $("filters").addEventListener("click", (e) => {
@@ -439,7 +566,7 @@ function bindEvents() {
     $("resetViewBtn").addEventListener("click", () => viewer && viewer.resetView());
     $("shareBtn").addEventListener("click", copyLink);
     document.addEventListener("keydown", (e) => {
-        if (e.target.closest("input, textarea, select")) return;
+        if (e.target.closest("input, textarea, select, [contenteditable]")) return;
         if (e.key === "ArrowLeft") step(-1);
         if (e.key === "ArrowRight") step(1);
     });
@@ -455,8 +582,9 @@ async function init() {
         );
         return;
     }
-    $("classicLink").href = "../?" + new URLSearchParams({ PROJECT: params.get("PROJECT") || "" }).toString();
-    if (!params.get("PROJECT")) $("classicLink").href = "../";
+    $("classicLink").href = params.get("PROJECT")
+        ? "../?" + new URLSearchParams({ PROJECT: params.get("PROJECT") }).toString()
+        : "../";
 
     let rows;
     try {
@@ -478,7 +606,9 @@ async function init() {
         showMessage(`<h2>Empty project</h2><p><code>data.csv</code> for <strong>${esc(source.name)}</strong> has no rows.</p>`);
         return;
     }
-    data = { source, schema, options, stats: computeStats(options, schema.outputs) };
+    const stats = computeStats(options, schema.outputs);
+    const results = schema.outputs.filter((m) => m.dir).map((m) => rankGoal(options, m));
+    data = { source, schema, options, stats, results };
     state.mode = (MODES.find((m) => layers(m).length) || MODES[0]).key;
     loadUrlState();
 
@@ -487,6 +617,7 @@ async function init() {
     document.title = `${source.name} · Design Explorer`;
     $("app").hidden = false;
     bindEvents();
+    mountSwitcher(render);
     render();
 }
 
