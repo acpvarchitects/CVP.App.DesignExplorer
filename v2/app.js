@@ -381,20 +381,31 @@ function renderInsightSection() {
         </div>`;
     };
 
-    // Big studies: only the top bars, plus the selected option wherever it ranks.
+    // Short lists show every option. Long lists pin the selected option on top
+    // (with its rank) and then show the top few of the others.
     const blocks = results.map((r) => {
-        const shown = r.rows.slice(0, MAX_BARS);
         const mine = r.rows.find((row) => row.option === selected);
-        let bars = shown.map((row) => bar(r, row)).join("");
-        if (mine && !shown.includes(mine)) {
-            bars += `<div class="bar-gap">${ordinal(r.rows.indexOf(mine) + 1)} of ${r.rows.length}</div>${bar(r, mine)}`;
+        let pinned = "";
+        let bars;
+        if (r.rows.length <= MAX_BARS + 1) {
+            bars = r.rows.map((row) => bar(r, row)).join("");
+        } else {
+            const others = r.rows.filter((row) => row !== mine);
+            bars = others.slice(0, MAX_BARS).map((row) => bar(r, row)).join("");
+            const hidden = others.length - MAX_BARS;
+            if (hidden > 0) bars += `<div class="bar-more">and ${hidden} more</div>`;
+            if (mine) {
+                pinned = `<div class="pinned">
+                    <div class="pinned-rank">${esc(selected.title)} is ${ordinal(r.rows.indexOf(mine) + 1)} of ${r.rows.length}</div>
+                    ${bar(r, mine)}
+                </div>
+                <div class="bar-gap">Top of the others</div>`;
+            }
         }
-        const hidden = r.rows.length - shown.length - (mine && !shown.includes(mine) ? 1 : 0);
-        if (hidden > 0) bars += `<div class="bar-more">and ${hidden} more</div>`;
         return `<div class="goal">
             <div class="goal-head">${esc(r.goal.label)} <span class="hint">${directionHint(r.goal)}</span></div>
             <div class="goal-verdict">${headline(r)}</div>
-            ${bars}
+            ${pinned}${bars}
         </div>`;
     });
 

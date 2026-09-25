@@ -423,6 +423,24 @@ main.layout {
     color: var(--accent);
 }
 
+.bar-row.sel.behind .bar-fill {
+    background: #85b7eb;
+}
+
+.pinned {
+    margin: 0 -6px 10px;
+    padding: 8px 6px 2px;
+    background: var(--accent-soft);
+    border-radius: var(--radius);
+}
+
+.pinned-rank {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 4px;
+}
+
 .bar-track {
     height: 12px;
     background: var(--card);
