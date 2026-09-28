@@ -47,6 +47,22 @@ Then open `http://127.0.0.1:8765/v2/?PROJECT=01_cp,02_veA`. The browser reads th
 | `threeD` | 3D model (`.json` legacy three.js format like the classic app, or `.glb`) |
 | `analysis:<name>` | 3D analysis mesh with vertex colors (`.glb`) |
 
+**Layered 3D export** (MPW, first study `MPW_TEST_01`, spec from the exporter 2026-09-28):
+
+| Column | Meaning |
+|---|---|
+| `context` | shared site model (`context.glb`, same file on every row), loaded once |
+| `an_<name>` | analysis layer; every column starting with `an_` is one (label: name with spaces) |
+| any other column holding `.glb` files | geometry layer of the option (`masses`, `floors`, `short_facades`, `pools`, `decks`) |
+
+All files share one origin (Y up, metres) and are overlaid as they are; the viewer shifts the
+whole scene once by the context centre. Colors are vertex colors stored as **sRGB bytes**: the
+viewer converts them to linear. Empty cells = no such layer for that option (skipped).
+Views (`GENERAL_ONLY` / `ANALYSIS_ONLY` in `app.js`, until the planned `manifest.json`):
+- **3D model** = general view: context + every layer except `floors`, `short_facades`.
+- **3D analysis** = context faded + every layer except `masses` + the chosen `an_*` layer, unlit.
+No legend is exported yet: the page says so instead of inventing a scale.
+
 Labels are the column names as written (arrow removed). Never rename dataset words in code.
 File names are relative to the option's own study folder. Several studies (`?PROJECT=A,B`)
 are merged by column name; each study is shown as a **method** with its own color.
@@ -79,11 +95,11 @@ The URL keeps method, order, option, mode/layer, ranges, shortlist and "Show inp
 
 | File | Role |
 |---|---|
-| `index.html` | markup for layout A, import map; bump `?v=` on `app.js` / `style.css` after edits |
+| `index.html` | markup for layout A, import map. After edits bump every `?v=` (here and on the imports at the top of `app.js`): the server caches `.js` for 30 days |
 | `app.js` | loading, state, filters, rendering, URL state, events |
 | `compare.js` | 2% "about the same" and win rules (pure functions) |
 | `parallel.js` | `ParallelChart` (d3): axes, brushes, lines; `scope` key triggers a rebuild |
-| `viewer.js` | three.js viewer: GLB + legacy JSON; keeps the camera between options; fixes Rhino GLB black material and sRGB vertex colors |
+| `viewer.js` | three.js viewer: `compose([{url, kind}])` with kinds context / geometry / analysis; GLB + legacy JSON; cache per file; keeps the camera between options; sRGB vertex colors (bytes or n/255 floats) to linear; unlit analysis |
 | `style.css` | all styles (one file) |
 
 Earlier designs are kept on branches: `prototype/compare-variants` (Best at what A/B/C),
@@ -98,8 +114,7 @@ ask the user first.
 
 ## Not done yet
 
-- Analysis for all options: waiting for the user's GLBs per option, a shared context GLB
-  (`context` column) and Ladybug legend PNGs (`legend:<analysis name>` column). Only Path 28
-  of the old Export test has an analysis file (local test copy).
-- The context GLB must be exported with the same Rhino settings as the analysis GLBs, or it
-  won't line up.
+- Legend for analyses: not exported yet. The exporter plans a `manifest.json` (layers, kinds,
+  units, legend range and colors). When it exists, read views and legends from it instead of
+  `GENERAL_ONLY` / `ANALYSIS_ONLY`.
+- Only `MPW_TEST_01` (4 options) uses the layered export so far.

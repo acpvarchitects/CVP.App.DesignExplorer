@@ -10,13 +10,18 @@
 //   img, img:<view>    image of the option, one column per view
 //   threeD             3D model (.json like the classic app, or .glb)
 //   analysis:<name>    3D analysis mesh with vertex colors (.glb)
+// Layered 3D export (MPW, see v2/README.md):
+//   context            shared site model, same file on every row
+//   an_<name>          analysis layer (any column starting with an_)
+//   <name>             any other column holding .glb files is a geometry layer
+//                      (masses, floors, short_facades, pools, decks…)
 //
 // Page sections, top to bottom: method tabs + chart, measurement filters,
 // preview (only after clicking an option), gallery, Compare methods, Best at what.
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
-import { Viewer } from "./viewer.js";
-import { rankGoal, rankGoals, winsOf } from "./compare.js";
-import { ParallelChart } from "./parallel.js";
+import { Viewer } from "./viewer.js?v=24";
+import { rankGoal, rankGoals, winsOf } from "./compare.js?v=22";
+import { ParallelChart } from "./parallel.js?v=22";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
 const MAX_SHORTLIST = 4;
@@ -24,6 +29,11 @@ const MAX_BARS = 5; // bars per goal in "Best at what"
 const MAX_NAMES = 3; // names listed in an "About the same" headline
 const STUDY_COLORS = ["#185fa5", "#ba7517", "#0f6e56", "#993556"];
 const BEST_BALANCE_HELP = "Best average position across all goals, among the matching options";
+// Layered export without a manifest yet: which geometry layers each 3D view shows.
+// "3D model" = the general view; "3D analysis" hides the masses so they don't cover the
+// colored facades. Layers not listed appear in both views.
+const GENERAL_ONLY = new Set(["masses"]);
+const ANALYSIS_ONLY = new Set(["floors", "short_facades"]);
 const MODES = [
     { key: "image", label: "Image", layers: "images" },
     { key: "model", label: "3D model", layers: "models" },
@@ -66,8 +76,10 @@ function resolveStudies() {
     });
 }
 
-function readSchema(columns) {
-    const schema = { inputs: [], outputs: [], images: [], models: [], analyses: [] };
+// `rows` (optional) tells which unprefixed columns hold 3D files (geometry layers).
+function readSchema(columns, rows = []) {
+    const schema = { inputs: [], outputs: [], images: [], models: [], analyses: [], layers: [], context: null };
+    const holds3d = (col) => rows.some((r) => /\.(glb|gltf)$/i.test((r[col] || "").trim()));
     for (const col of columns) {
         const sep = col.indexOf(":");
         const prefix = (sep < 0 ? col : col.slice(0, sep)).trim().toLowerCase();
@@ -83,15 +95,23 @@ function readSchema(columns) {
             schema.models.push({ col, label: name || "3D model" });
         } else if (prefix === "analysis" && name) {
             schema.analyses.push({ col, label: name });
+        } else if (sep < 0 && prefix === "context") {
+            schema.context = { col };
+        } else if (sep < 0 && prefix.startsWith("an_")) {
+            schema.analyses.push({ col, label: col.slice(3).replace(/_/g, " "), composed: true });
+        } else if (sep < 0 && holds3d(col)) {
+            schema.layers.push({ col, label: col.replace(/_/g, " ") });
         }
     }
+    // Layered export: "3D model" shows the general view made of the geometry layers.
+    if (schema.layers.length) schema.models.push({ col: null, label: "General view", composed: true });
     return schema;
 }
 
 // `first` is the index of the study's first option in the combined list.
 // `name` is the option's own name; `title` adds the study when several are open.
 function readOptions(rows, study, first, prefixed) {
-    const schema = readSchema(rows.columns);
+    const schema = readSchema(rows.columns, rows);
     const single = schema.inputs.length === 1 ? schema.inputs[0] : null;
     return rows.map((row, i) => {
         const values = {};
@@ -494,12 +514,15 @@ function showMedia(o) {
     if (key === mediaKey) return; // unrelated redraw: keep the loaded image / 3D model
     mediaKey = key;
     const layer = layersOf()[state.layer[state.mode]];
-    const src = layer ? assetUrl(o, o.row[layer.col]) : null;
     const is3d = state.mode !== "image";
+    const parts = is3d && layer ? partsFor(o, layer) : null;
+    const src = is3d ? parts : layer ? assetUrl(o, o.row[layer.col]) : null;
     $("previewImage").hidden = is3d;
     $("preview3d").hidden = !is3d;
     $("resetView").hidden = !is3d;
     $("mediaStatus").textContent = src ? "" : "No file for this view.";
+    $("mediaNote").textContent =
+        state.mode === "analysis" && layer?.composed ? "Colour legend not in this export yet" : "";
     if (!is3d) {
         if (viewer) viewer.clear();
         $("previewImage").alt = `${o.title}, ${layer ? layer.label : ""}`;
@@ -508,8 +531,34 @@ function showMedia(o) {
         return;
     }
     if (!viewer) viewer = new Viewer($("preview3d"), (text) => ($("mediaStatus").textContent = text));
-    if (src) viewer.show(src);
+    if (parts) viewer.compose(parts, { fadeContext: state.mode === "analysis" });
     else viewer.clear();
+}
+
+// The 3D layers of one view for one option, or null when the option has no file for it.
+// Empty cells mean "no such layer for this option" (for example no pools) and are skipped.
+function partsFor(o, layer) {
+    const file = (col) => (col ? assetUrl(o, (o.row[col] || "").trim()) : null);
+    const analysisView = state.mode === "analysis";
+    const own = [];
+    if (!layer.composed) {
+        const url = file(layer.col);
+        if (url) own.push({ url, kind: analysisView ? "analysis" : "geometry" });
+    } else {
+        for (const g of data.schema.layers) {
+            if (analysisView ? GENERAL_ONLY.has(g.col) : ANALYSIS_ONLY.has(g.col)) continue;
+            const url = file(g.col);
+            if (url) own.push({ url, kind: "geometry" });
+        }
+        if (analysisView) {
+            const url = file(layer.col);
+            if (!url) return null; // the analysis itself is missing
+            own.push({ url, kind: "analysis" });
+        }
+    }
+    if (!own.length) return null;
+    const context = data.schema.context && file(data.schema.context.col);
+    return context ? [{ url: context, kind: "context" }, ...own] : own;
 }
 
 // "Where this option stands": actual value positions among the matching options.
@@ -903,7 +952,7 @@ async function init() {
 
     // One combined list: columns are matched by name across studies.
     const columns = [...new Set(loaded.flatMap((l) => l.value.columns))];
-    const schema = readSchema(columns);
+    const schema = readSchema(columns, loaded.flatMap((l) => l.value));
     const options = [];
     studies.forEach((study, i) => options.push(...readOptions(loaded[i].value, study, options.length, studies.length > 1)));
     if (!options.length) {

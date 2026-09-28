@@ -106,3 +106,8 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
   `CONTEXT.md` (+ Method).
 - Next: user feedback; deploy to dev needs `v2/**` in the snapshot.yml paths filter + merge to
   `WIP` + push (ask first); analysis files for all options still pending.
+- 2026-09-28: layered 3D export from the exporter (study `MPW_TEST_01`, 4 options): `context`
+  (shared), geometry layers (masses, floors, short_facades, pools, decks), `an_*` analyses.
+  Viewer composes layers, fades context in analysis views, unlit analysis, byte sRGB colors to
+  linear; view rules `GENERAL_ONLY`/`ANALYSIS_ONLY` in app.js until the planned manifest.json.
+  Legend not exported yet (page says so). Module imports now versioned (`?v=`) for cache busting.

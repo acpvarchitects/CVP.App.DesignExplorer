@@ -1,10 +1,17 @@
-// 3D viewer: loads GLB/glTF (analysis meshes with vertex colors) and the
-// legacy three.js JSON models already used by the classic Design Explorer.
+// 3D viewer. Shows a composition of layers, one file each: [{ url, kind }] where kind is
+//   "context"  shared by every option, loaded once, faded in analysis views
+//   "geometry" the option's own layers (masses, floors, pools…), lit
+//   "analysis" a colored analysis mesh, unlit so its vertex colors match the legend
+// All files of a study share one origin, so they are overlaid as they are. The whole
+// scene sits in one parent group shifted by the centre of the first bounding box,
+// because the coordinates are hundreds of metres from the origin.
+// Loads GLB/glTF and the legacy three.js JSON models of the classic Design Explorer.
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
-const CACHE_SIZE = 8;
+const CACHE_SIZE = 60; // loaded files kept in memory (an option can have ~10 layers)
+const CONTEXT_FADE = 0.45; // context opacity in analysis views
 
 export class Viewer {
     constructor(container, onStatus) {
@@ -19,13 +26,16 @@ export class Viewer {
         const sun = new THREE.DirectionalLight(0xffffff, 1.6);
         sun.position.set(1, 2, 1.4);
         this.scene.add(sun);
+        this.root = new THREE.Group();
+        this.scene.add(this.root);
 
         this.camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100000);
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
 
-        this.cache = new Map(); // url -> Promise<Object3D>
-        this.current = null;
+        this.cache = new Map(); // "kind|url" -> Promise<Object3D>
+        this.shown = new Set(); // objects currently in the scene
+        this.centred = false;
         this.framed = false;
         this.request = 0;
 
@@ -45,91 +55,136 @@ export class Viewer {
         this.camera.updateProjectionMatrix();
     }
 
-    // Shows the model at `url`. The camera is kept between options so that
-    // every option is seen from the same point of view.
-    async show(url) {
+    // One file on its own (legacy studies, single-file analysis).
+    show(url, kind = "geometry") {
+        return this.compose([{ url, kind }]);
+    }
+
+    // Shows exactly these layers. The camera is kept between calls, so every
+    // option is seen from the same point of view.
+    async compose(parts, { fadeContext = false } = {}) {
         const request = ++this.request;
         this.onStatus("Loading 3D model…");
-        try {
-            const object = await this.load(url);
-            if (request !== this.request) return;
-            if (this.current) this.scene.remove(this.current);
-            this.current = object;
-            this.scene.add(object);
-            if (!this.framed) this.resetView();
-            this.onStatus("");
-        } catch (err) {
-            if (request !== this.request) return;
-            console.error("3D load failed", url, err);
-            this.onStatus("Couldn't load this 3D file.");
+        const loaded = await Promise.allSettled(parts.map((p) => this.load(p.url, p.kind)));
+        if (request !== this.request) return;
+
+        const objects = [];
+        loaded.forEach((l, i) => {
+            if (l.status === "fulfilled") objects.push(l.value);
+            else console.error("3D load failed", parts[i].url, l.reason);
+        });
+        for (const o of this.shown) this.root.remove(o);
+        this.shown = new Set(objects);
+        for (const o of objects) {
+            this.root.add(o);
+            if (o.userData.kind === "context") setOpacity(o, fadeContext ? CONTEXT_FADE : 1);
         }
+        if (objects.length && !this.centred) this.centre(objects);
+        if (objects.length && !this.framed) this.resetView();
+
+        const failed = parts.length - objects.length;
+        this.onStatus(!objects.length ? "Couldn't load this 3D file." : failed ? `${failed} of ${parts.length} layers couldn't load.` : "");
     }
 
     clear() {
         this.request++;
-        if (this.current) this.scene.remove(this.current);
-        this.current = null;
+        for (const o of this.shown) this.root.remove(o);
+        this.shown.clear();
         this.onStatus("");
     }
 
+    // Shift everything by the centre of the context (or of the first layer), once.
+    centre(objects) {
+        const ref = objects.find((o) => o.userData.kind === "context") || objects[0];
+        this.root.position.set(0, 0, 0);
+        this.root.updateMatrixWorld(true);
+        const centre = new THREE.Box3().setFromObject(ref).getCenter(new THREE.Vector3());
+        this.root.position.copy(centre).negate();
+        this.root.updateMatrixWorld(true);
+        this.centred = true;
+    }
+
+    // Frames the option's own layers (the context is much larger than the buildings).
     resetView() {
-        if (!this.current) return;
-        const box = new THREE.Box3().setFromObject(this.current);
+        const shown = [...this.shown];
+        const own = shown.filter((o) => o.userData.kind !== "context");
+        const box = new THREE.Box3();
+        for (const o of own.length ? own : shown) box.expandByObject(o);
+        if (box.isEmpty()) return;
         const center = box.getCenter(new THREE.Vector3());
         const radius = box.getSize(new THREE.Vector3()).length() / 2;
         const distance = radius / Math.sin(THREE.MathUtils.degToRad(this.camera.fov / 2));
         const direction = new THREE.Vector3(1, 0.9, 1).normalize();
-        this.camera.position.copy(center).addScaledVector(direction, distance * 0.8);
+        this.camera.position.copy(center).addScaledVector(direction, distance * 0.62);
         this.camera.near = distance / 100;
-        this.camera.far = distance * 10;
+        this.camera.far = distance * 20;
         this.camera.updateProjectionMatrix();
         this.controls.target.copy(center);
         this.controls.update();
         this.framed = true;
     }
 
-    load(url) {
-        if (!this.cache.has(url)) {
-            if (this.cache.size >= CACHE_SIZE) {
-                const oldest = this.cache.keys().next().value;
-                this.cache.delete(oldest);
-            }
-            const promise = /\.(glb|gltf)(\?|#|$)/i.test(url)
-                ? new GLTFLoader().loadAsync(url).then((gltf) => useVertexColors(gltf.scene))
+    load(url, kind) {
+        const key = `${kind}|${url}`;
+        if (!this.cache.has(key)) {
+            if (this.cache.size >= CACHE_SIZE) this.cache.delete(this.cache.keys().next().value);
+            const file = /\.(glb|gltf)(\?|#|$)/i.test(url)
+                ? new GLTFLoader().loadAsync(url).then((gltf) => gltf.scene)
                 : fetch(url)
                       .then((r) => {
                           if (!r.ok) throw new Error(r.status + " " + r.statusText);
                           return r.json();
                       })
                       .then(parseLegacyScene);
-            promise.catch(() => this.cache.delete(url));
-            this.cache.set(url, promise);
+            const promise = file.then((object) => prepare(object, kind));
+            promise.catch(() => this.cache.delete(key));
+            this.cache.set(key, promise);
         }
-        return this.cache.get(url);
+        return this.cache.get(key);
     }
 }
 
-// ---- GLB analysis meshes ----
+// ---- Materials and colors ----
 
-// Analysis meshes carry their result as vertex colors. Rhino's exporter pairs
-// them with a black material (glTF multiplies the two, so the mesh renders
-// black) and writes sRGB byte values (n/255) where glTF expects linear ones.
-function useVertexColors(root) {
-    const material = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+// Colored layers carry their colors per vertex (COLOR_0). The exports pair them with a
+// white (MPW) or black (older Rhino export) material; glTF multiplies the two, so the
+// material is replaced. Analysis layers are unlit so the colors match the legend.
+function prepare(root, kind) {
+    root.userData.kind = kind;
+    const make = (vertexColors) =>
+        kind === "analysis"
+            ? new THREE.MeshBasicMaterial({ vertexColors, side: THREE.DoubleSide })
+            : new THREE.MeshLambertMaterial({ vertexColors, side: THREE.DoubleSide });
+    const materials = {};
     root.traverse((node) => {
-        const colors = node.isMesh && node.geometry.getAttribute("color");
-        if (!colors) return;
-        if (colors.array instanceof Float32Array && isByteColor(colors.array)) {
-            const c = new THREE.Color();
-            for (let i = 0; i < colors.count; i++) {
-                c.setRGB(colors.getX(i), colors.getY(i), colors.getZ(i), THREE.SRGBColorSpace);
-                colors.setXYZ(i, c.r, c.g, c.b);
-            }
-            colors.needsUpdate = true;
-        }
-        node.material = material;
+        if (!node.isMesh) return;
+        const colored = toLinearColors(node.geometry);
+        if (colored || kind !== "geometry") node.material = materials[colored] ||= make(colored);
     });
     return root;
+}
+
+// Exports write sRGB colors (as picked in Grasshopper) where glTF expects linear ones:
+// byte colors, and floats that are exact n/255 values, are converted once.
+function toLinearColors(geometry) {
+    const attr = geometry.getAttribute("color");
+    if (!attr) return false;
+    if (geometry.userData.linearColors) return true;
+    if (!(attr.array instanceof Float32Array) || isByteColor(attr.array)) {
+        const n = attr.itemSize;
+        const out = new Float32Array(attr.count * n);
+        const c = new THREE.Color();
+        for (let i = 0; i < attr.count; i++) {
+            c.setRGB(attr.getX(i), attr.getY(i), attr.getZ(i), THREE.SRGBColorSpace);
+            out[i * n] = c.r;
+            out[i * n + 1] = c.g;
+            out[i * n + 2] = c.b;
+            if (n === 4) out[i * n + 3] = attr.getW(i);
+        }
+        geometry.setAttribute("color", new THREE.BufferAttribute(out, n));
+    }
+    geometry.userData.linearColors = true;
+    return true;
 }
 
 function isByteColor(array) {
@@ -139,6 +194,15 @@ function isByteColor(array) {
         if (Math.abs(v - Math.round(v)) > 1e-3) return false;
     }
     return true;
+}
+
+function setOpacity(root, opacity) {
+    root.traverse((node) => {
+        if (!node.isMesh) return;
+        node.material.transparent = opacity < 1;
+        node.material.opacity = opacity;
+        node.material.depthWrite = opacity >= 1; // a faded context must not hide the analysis
+    });
 }
 
 // ---- Legacy three.js JSON (format 3 geometries inside an object scene) ----
@@ -207,6 +271,7 @@ function legacyGeometry(data) {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.Float32BufferAttribute(position, 3));
     geometry.setAttribute("color", new THREE.Float32BufferAttribute(color, 3));
+    geometry.userData.linearColors = true; // THREE.Color already converted the hex colors
     geometry.computeVertexNormals();
     return geometry;
 }

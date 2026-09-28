@@ -48,8 +48,10 @@ narrow layout only checked in the small browser pane.
    `http://designexplorer.acpv.local/dev/v2/?PROJECT=01_cp,02_veA`. **Ask the user before
    pushing.** `WIP` had no new commits on 2026-09-28; the colleague branch
    `origin/feat/3d-analysis-layers` only touches classic `index.html` (no overlap).
-3. Analysis for all options when the user sends GLBs + context GLB + legend PNGs
-   (`analysis:<name>`, `context`, `legend:<name>` columns; see `v2/README.md`).
+3. ~~Analysis files~~ Done 2026-09-28: the exporter's layered format (`MPW_TEST_01`: `context`,
+   geometry layers, `an_*` analyses) works in v2, see `v2/README.md` "Layered 3D export".
+   Remaining: a legend (not exported yet; the exporter plans `manifest.json` with layers,
+   units and legend). Open: `/v2/?PROJECT=MPW_TEST_01&option=4&mode=analysis&layer=3`.
 
 ---
 
