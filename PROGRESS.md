@@ -1,5 +1,7 @@
 # Design Explorer v2 — progress
 
+> Current continuation: read `HANDOFF-DASHBOARD.md`. User selected A; that document records the final approved layout and next implementation work. Earlier prototype descriptions below are historical.
+
 Branch: `feature/new-dashboard` (from `WIP`)
 
 ## Goal
@@ -71,3 +73,24 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
 - What is `out:avrg`? (If it has a better direction, add the arrow in the CSV header.)
 - Analysis GLB and threeD JSON use different coordinates (GLB x 403..570, JSON x -707..-183),
   so the context model can't be overlaid on the analysis yet.
+
+## Overview prototype — 2026-09-28 (Codex handover)
+- User clarified the primary workflow: overview of both folder/method studies, inspect separately or together, scan options quickly, filter by measurements, and find strongest performers.
+- Added local-only `?variant=A|B|C` layouts on the existing v2 route: combined gallery, methods side by side, results table. Prototype source: `v2/overview-prototype.js` and `.css`; existing loader retained. No layout has been selected yet; capture/promote the winner only after feedback.
+- Shared numeric ranges, measurement ordering, per-method matching counts/percentages and best/median, plus image/3D option dialog with previous/next through filtered results. Labels remain from the CSV. Prototype positions are raw numeric positions, not the original 2% win verdicts.
+- Local run: `python v2/_test/prototype_server.py` then `http://127.0.0.1:8766/v2/?data=/_study/01_cp/,/_study/02_veA/&variant=A`. Gitignored preview helper forwards read-only requests for the two named studies to the API; binds only to loopback. Normal static preview remains on 8765.
+- Browser verified real 140-option load with images; first measurement above-average shortcut gives 52 matches overall and 27 in 02_veA, retained across method/layout changes; lower-first summer radiation ordering and option detail opening work.
+- Still a throwaway layout experiment: filters/sort are memory-only, no shortlist/parallel chart in the prototype. Existing v2 remains reachable using Current v2. No commit, push or deployment performed.
+
+### A refinement — inline preview + chart
+- User chose A (filter sidebar + gallery), requested preview above options and retained parallel-coordinates filtering for their boss.
+- Preview now sits at the top of the results column with image/3D picker, previous/next, result positions and compact/expanded size. Cards update it in place; selection follows remaining options if filters exclude it.
+- Added collapsed-by-default Filter on chart using the existing ParallelChart. Results shown by default, optional numeric inputs, selected-option highlight, explicit active ranges and clear action. Sidebar and chart share the same ranges.
+- Browser verified sidebar-to-brush and brush-to-sidebar updates, reset to 140 options, and card selection updating inline preview (Path 7). Syntax and diff checks passed. This remains the local prototype for feedback, not deployed.
+
+### Preview/readability refinement
+- Restored Image / 3D model / 3D analysis buttons; unavailable modes disabled when the study has no files. Additional views use a secondary selector.
+- Moved expandable chart into the top section beside the heading, initially open. Enlarged media with a narrow right-side results column.
+- Added result-distribution dots (large selected dot), worse/better endpoints respecting direction, and explicit standing among current matching options. Ties, single result, missing result and directionless results handled without invented rankings.
+- Compact Compare methods strip names the selected measurement and labels Best result / Typical result (median).
+- Browser checked mode switching, standings scope changing to 52 filtered options, synchronized chart ranges, and desktop layout. Syntax and diff checks passed.

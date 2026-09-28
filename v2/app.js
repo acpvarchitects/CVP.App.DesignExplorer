@@ -777,6 +777,12 @@ async function init() {
     const stats = computeStats(options, schema.outputs);
     const results = schema.outputs.filter((m) => m.dir).map((m) => rankGoal(options, m));
     data = { studies, schema, options, stats, results };
+    // Throwaway layout exploration, available only on a local development host.
+    if (params.has("variant") && ["localhost", "127.0.0.1"].includes(location.hostname)) {
+        const { mountPrototype } = await import("./overview-prototype.js");
+        mountPrototype(data);
+        return;
+    }
     data.axes = chartAxes();
     state.mode = (MODES.find((m) => layers(m).length) || MODES[0]).key;
     loadUrlState();
