@@ -13,6 +13,7 @@
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js";
 import { rankGoal, rankGoals, rowOf, winsOf } from "./compare.js";
+import { ParallelChart } from "./parallel.js";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
 const MAX_CHIPS = 12;
@@ -38,8 +39,9 @@ const state = {
     shortlist: [], // option indexes, in the order they were picked
     sort: "", // result column, or "" for dataset order
 };
-let data; // { studies, schema, options, stats, results }
+let data; // { studies, schema, options, stats, results, axes }
 let viewer;
+let chart;
 
 // ---- Reading the dataset ----
 
@@ -154,8 +156,19 @@ function matches(o) {
     }
     const studies = state.filters[STUDY];
     if (studies && studies.size && !studies.has(o.study.name)) return false;
-    return true;
+    return !chart || chart.accepts(o);
 }
+
+// Chart axes: inputs every option has (numbers only), then every result.
+function chartAxes() {
+    const common = data.schema.inputs.filter((m) => data.options.every((o) => Number.isFinite(parseFloat(o.row[m.col]))));
+    return [
+        ...common.map((m) => ({ col: m.col, label: m.label, dir: 0, value: (o) => parseFloat(o.row[m.col]) })),
+        ...data.schema.outputs.map((m) => ({ col: m.col, label: m.label, dir: m.dir, value: (o) => o.values[m.col] })),
+    ];
+}
+
+const colorOf = (o) => (data.studies.length > 1 ? o.study.color : STUDY_COLORS[0]);
 
 // Options in the order picked in "Sort by": goals best first, other results high to low.
 function ordered() {
@@ -222,12 +235,37 @@ function setStatus(text) {
 function render() {
     renderModes();
     renderStage();
+    renderChart();
     renderStripBar();
     renderStrip();
     renderInsightSection();
     renderFilters();
     renderCompare();
     saveUrl();
+}
+
+function renderChart() {
+    if (!chart) {
+        chart = new ParallelChart($("pcChart"), {
+            onBrush: render,
+            onSelect: (index) => {
+                state.sel = index;
+                render();
+            },
+        });
+    }
+    $("pcLegend").innerHTML =
+        data.studies.length > 1
+            ? data.studies.map((st) => `<span><span class="study-dot" style="background:${st.color}"></span>${esc(st.name)}</span>`).join("")
+            : "";
+    chart.update({
+        options: data.options,
+        axes: data.axes,
+        selected: data.options[state.sel],
+        matches,
+        colorOf,
+        shortlist: state.shortlist,
+    });
 }
 
 function renderModes() {
@@ -678,6 +716,7 @@ function bindEvents() {
     });
     $("clearFilters").addEventListener("click", () => {
         state.filters = {};
+        if (chart) chart.clearRanges();
         render();
     });
     $("prevBtn").addEventListener("click", () => step(-1));
@@ -738,6 +777,7 @@ async function init() {
     const stats = computeStats(options, schema.outputs);
     const results = schema.outputs.filter((m) => m.dir).map((m) => rankGoal(options, m));
     data = { studies, schema, options, stats, results };
+    data.axes = chartAxes();
     state.mode = (MODES.find((m) => layers(m).length) || MODES[0]).key;
     loadUrlState();
 

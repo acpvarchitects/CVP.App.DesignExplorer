@@ -769,3 +769,73 @@ main.layout {
     color: var(--muted);
     margin-bottom: 4px;
 }
+
+/* ---- Parallel coordinates ---- */
+.chart-card {
+    margin-top: 14px;
+}
+
+.pc-wrap {
+    width: 100%;
+}
+
+.pc {
+    display: block;
+    overflow: visible;
+}
+
+.pc-line {
+    fill: none;
+    stroke-width: 1.2;
+    stroke-opacity: var(--pc-opacity, 0.55);
+    pointer-events: visibleStroke;
+    cursor: pointer;
+}
+
+.pc-line:hover {
+    stroke-width: 3;
+    stroke-opacity: 1;
+}
+
+.pc-l0 {
+    stroke: #d3d1c7;
+    stroke-opacity: 0.5;
+}
+
+.pc-l2 {
+    stroke-width: 2.5;
+    stroke-opacity: 1;
+}
+
+.pc-l3 {
+    stroke: #e24b4a;
+    stroke-width: 3.5;
+    stroke-opacity: 1;
+}
+
+.pc-axis text {
+    font-size: 11px;
+    fill: var(--muted);
+}
+
+.pc-axis .pc-label {
+    font-size: 12px;
+    font-weight: 600;
+    fill: var(--text);
+}
+
+.pc-axis .pc-hint {
+    font-size: 10px;
+}
+
+.pc-brush .selection {
+    fill: var(--accent);
+    fill-opacity: 0.15;
+    stroke: var(--accent);
+}
+
+.study-legend.inline {
+    display: inline-flex;
+    margin: 0 0 0 14px;
+    font-weight: 400;
+}

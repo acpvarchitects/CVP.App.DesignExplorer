@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Design Explorer</title>
     <link rel="icon" href="../favicon.png" />
-    <link rel="stylesheet" href="style.css?v=10" />
+    <link rel="stylesheet" href="style.css?v=12" />
     <script type="importmap">
         {
             "imports": {
@@ -63,6 +63,14 @@
                 </div>
             </section>
 
+            <section class="card chart-card">
+                <div class="card-head">
+                    <h2>All options <span id="pcLegend" class="study-legend inline"></span></h2>
+                    <span class="muted">Drag on an axis to filter · click a line to open that option</span>
+                </div>
+                <div id="pcChart" class="pc-wrap"></div>
+            </section>
+
             <div class="strip-bar">
                 <label class="sort">Sort by <select id="sortSel"></select></label>
                 <div id="shortlistInfo" class="shortlist-info"></div>
@@ -88,6 +96,6 @@
 
     <div id="message" class="message" hidden></div>
 
-    <script type="module" src="app.js?v=9"></script>
+    <script type="module" src="app.js?v=11"></script>
 </body>
 </html>

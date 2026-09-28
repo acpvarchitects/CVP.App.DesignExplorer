@@ -54,6 +54,10 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
 - [x] 2026-09-28: several studies at once: `?PROJECT=01_cp,02_veA` (any list). Study filter chips,
       "Best of each study" per goal + "By study: X wins N of M" (same 2% rule), color per study.
       01_cp (40) + 02_veA (100) = MPW_01 (140). Open: `/v2/?PROJECT=01_cp,02_veA`
+- [x] 2026-09-28: parallel coordinates chart (boss likes the classic one): `v2/parallel.js` (d3 v7 CDN).
+      Axes = inputs every option has + all results; "better" at the top (↓ goals flipped);
+      lines colored by study; drag on an axis = filter (combined with sidebar filters, cleared by
+      "Clear filters"); click a line = select; selected option = thick red line.
 
 ## Next
 1. User feedback on `v2/`
@@ -62,8 +66,8 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
 4. Decide when/how to push the branch and deploy `/dev/v2/` (ask user first: push to WIP triggers deploy)
 
 ## Open questions
-- MOX-gen01/02 use image columns `img_1`..`img_6`: v2 only reads `img` / `img:<view>`, so MOX shows
-  no images yet (asked user whether to support it).
+- MOX-gen01/02 use image columns `img_1`..`img_6` (v2 reads only `img` / `img:<view>`): not needed,
+  user works on MPW (01_cp + 02_veA).
 - What is `out:avrg`? (If it has a better direction, add the arrow in the CSV header.)
 - Analysis GLB and threeD JSON use different coordinates (GLB x 403..570, JSON x -707..-183),
   so the context model can't be overlaid on the analysis yet.
