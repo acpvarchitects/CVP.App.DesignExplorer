@@ -151,9 +151,11 @@ export class Viewer {
 // material is replaced. Analysis layers are unlit so the colors match the legend.
 function prepare(root, kind) {
     root.userData.kind = kind;
+    // The analysis sits exactly on surfaces of other layers (floors, masses): the depth
+    // offset draws it in front of them there, instead of flickering white patches.
     const make = (vertexColors) =>
         kind === "analysis"
-            ? new THREE.MeshBasicMaterial({ vertexColors, side: THREE.DoubleSide })
+            ? new THREE.MeshBasicMaterial({ vertexColors, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 })
             : new THREE.MeshLambertMaterial({ vertexColors, side: THREE.DoubleSide });
     const materials = {};
     root.traverse((node) => {

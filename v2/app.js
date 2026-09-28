@@ -19,7 +19,7 @@
 // Page sections, top to bottom: method tabs + chart, measurement filters,
 // preview (only after clicking an option), gallery, Compare methods, Best at what.
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
-import { Viewer } from "./viewer.js?v=24";
+import { Viewer } from "./viewer.js?v=26";
 import { rankGoal, rankGoals, winsOf } from "./compare.js?v=22";
 import { ParallelChart } from "./parallel.js?v=22";
 

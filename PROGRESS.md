@@ -111,3 +111,7 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
   Viewer composes layers, fades context in analysis views, unlit analysis, byte sRGB colors to
   linear; view rules `GENERAL_ONLY`/`ANALYSIS_ONLY` in app.js until the planned manifest.json.
   Legend not exported yet (page says so). Module imports now versioned (`?v=`) for cache busting.
+- 2026-09-28: analysis views showed white patches: the `floors` layer has vertical faces exactly
+  on the analysis surfaces (6,038 coplanar triangles for Option25; masses 13,244 but masses are
+  hidden there). Fix: analysis material uses a depth offset (polygonOffset) so it draws in front.
+  User didn't want layer checkboxes (tried, removed).
