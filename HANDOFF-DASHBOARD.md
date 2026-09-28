@@ -1,5 +1,60 @@
 # Dashboard handoff — selected layout A
 
+## Current state — 2026-09-28, after integration (read this first)
+
+Layout A is now **the normal v2 page** (`v2/`), no longer a local-only prototype. The sections
+further down ("Start here" onward) are the prototype-phase handoff: still useful background,
+but where they conflict with this section, this section wins.
+
+- Branch `feature/new-dashboard`, all work committed, **not pushed**. Nothing is deployed.
+  Classic `/index.html` untouched. `.claude/` is untracked and belongs to the user's setup: leave it.
+- How v2 works (URLs, CSV conventions, page sections, files, deploy): [`v2/README.md`](v2/README.md).
+  Domain words: [`CONTEXT.md`](CONTEXT.md). History: [`PROGRESS.md`](PROGRESS.md).
+- Run: `python -m http.server 8765 --bind 127.0.0.1` from the repo root, open
+  `http://127.0.0.1:8765/v2/?PROJECT=01_cp,02_veA` (the browser reads the API directly).
+- Prototype preserved on branch `prototype/overview-variants` (commit `cfafe66`, A/B/C + switcher).
+
+### Decisions taken with the user during integration (2026-09-28)
+
+1. **No preview until an option is clicked** (card, chart line, bar name, "Inspect"). When the
+   previewed option gets filtered out, or belongs to another method after a method switch, the
+   preview **closes** and a one-off note says why. (User request + choice.)
+2. **"Best at what" (2% rule) and the shortlist (Compare, up to 4) are kept**, below the gallery
+   after Compare methods. Scope: shortlist once it has 2+, else the matching options.
+3. **"Better than average"** uses the average of the **method shown**: all options when
+   "All methods" is selected, that study's own average when one method is selected. The sidebar
+   shows the average used.
+4. Kept from earlier v2: URL state + Copy link (method, order, option, mode, ranges, shortlist,
+   inputs), 2% rule, legacy JSON + GLB 3D, "Best balance" label (card note + preview summary).
+   Replaced by A (approved): old three-column layout, filmstrip, "How X compares" panel
+   (now "Where this option stands"), Any/Better/Best-only segmented filters (now ranges).
+
+### Verified in the browser (real 140 options, `?PROJECT=01_cp,02_veA`)
+
+Loads 140 options with images, no console errors; preview hidden by default; card click opens
+it in place (red chart line, outlined card); 02_veA tab → 100 lines, "Show inputs" appears,
+open 01_cp option closes with note; "Better than average" on 02_veA → average 20, 46 of 100;
+typed max → chart brush drawn; order by Summer (lowest first); shortlist of 3 → Best at what
+scope "Shortlist · 3"; 3D model loads, Next keeps 3D mode; expand; ← → and Escape; a copied
+link restores order, ranges, shortlist, option and mode. Desktop 1900 px screenshots checked;
+narrow layout only checked in the small browser pane.
+
+### Next
+
+1. User feedback on the integrated page.
+2. Share with colleagues = deploy to dev: add `v2/**` to the `frontend` paths filter in
+   `.github/workflows/snapshot.yml` (otherwise a push with only v2 changes builds nothing),
+   merge `feature/new-dashboard` into `WIP`, push → `branch-wip` image → Watchtower → live at
+   `http://designexplorer.acpv.local/dev/v2/?PROJECT=01_cp,02_veA`. **Ask the user before
+   pushing.** `WIP` had no new commits on 2026-09-28; the colleague branch
+   `origin/feat/3d-analysis-layers` only touches classic `index.html` (no overlap).
+3. Analysis for all options when the user sends GLBs + context GLB + legend PNGs
+   (`analysis:<name>`, `context`, `legend:<name>` columns; see `v2/README.md`).
+
+---
+
+## Prototype-phase handoff (from the Codex session, kept as written)
+
 Updated: 2026-09-28. User explicitly selected **A** and requested this handoff for another agent.
 
 ## Start here

@@ -94,3 +94,15 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
 - Added result-distribution dots (large selected dot), worse/better endpoints respecting direction, and explicit standing among current matching options. Ties, single result, missing result and directionless results handled without invented rankings.
 - Compact Compare methods strip names the selected measurement and labels Best result / Typical result (median).
 - Browser checked mode switching, standings scope changing to 52 filtered options, synchronized chart ranges, and desktop layout. Syntax and diff checks passed.
+
+## Layout A integrated — 2026-09-28 (Claude, after the Codex prototype)
+- Prototype snapshot committed (`cfafe66`) and kept on branch `prototype/overview-variants`.
+- Layout A is now the normal `v2/` page (`28245ae`); B/C variants, switcher and
+  `overview-prototype.*` removed from the feature branch. One consolidated `v2/style.css`.
+- User decisions: preview hidden until an option is clicked, closes (with a note) when its option
+  is filtered out / not in the method shown; "Best at what" + shortlist kept below the gallery;
+  "Better than average" = average of the method shown.
+- Docs for handoff: `HANDOFF-DASHBOARD.md` (current-state section on top), `v2/README.md` (new),
+  `CONTEXT.md` (+ Method).
+- Next: user feedback; deploy to dev needs `v2/**` in the snapshot.yml paths filter + merge to
+  `WIP` + push (ask first); analysis files for all options still pending.
