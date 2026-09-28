@@ -19,7 +19,9 @@ const MAX_CHIPS = 12;
 const MAX_SHORTLIST = 4;
 const MAX_BARS = 5; // bars per goal in "Best at what"
 const MAX_NAMES = 3; // names listed in an "About the same" headline
-const BEST_BALANCE_HELP = "Best average position across all goals of the study";
+const BEST_BALANCE_HELP = "Best average position across all goals";
+const STUDY = "@study"; // filter key for the Study chips (never a CSV column name)
+const STUDY_COLORS = ["#185fa5", "#ba7517", "#0f6e56", "#993556"];
 const MODES = [
     { key: "image", label: "Image", layers: "images", layerLabel: "View" },
     { key: "model", label: "3D model", layers: "models", layerLabel: "Model" },
@@ -36,22 +38,22 @@ const state = {
     shortlist: [], // option indexes, in the order they were picked
     sort: "", // result column, or "" for dataset order
 };
-let data; // { source, schema, options, stats, results }
+let data; // { studies, schema, options, stats, results }
 let viewer;
 
 // ---- Reading the dataset ----
 
-function resolveSource() {
-    const project = params.get("PROJECT");
-    if (project) {
-        return { name: project, base: `${API_BASE}/projects/${encodeURIComponent(project)}/` };
+// One study per project folder; ?PROJECT=A,B opens several studies together.
+function resolveStudies() {
+    const list = (key) => (params.get(key) || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const projects = list("PROJECT");
+    if (projects.length) {
+        return projects.map((name) => ({ name, base: `${API_BASE}/projects/${encodeURIComponent(name)}/` }));
     }
-    const folder = params.get("data");
-    if (folder) {
+    return list("data").map((folder) => {
         const base = folder.replace(/\/*$/, "/");
         return { name: decodeURIComponent(base.split("/").filter(Boolean).pop()), base };
-    }
-    return null;
+    });
 }
 
 function readSchema(columns) {
@@ -76,13 +78,16 @@ function readSchema(columns) {
     return schema;
 }
 
-function readOptions(rows, schema) {
+// `first` is the index of the study's first option in the combined list.
+// With several studies open, titles start with the study name.
+function readOptions(rows, study, first, prefixed) {
+    const schema = readSchema(rows.columns);
     const single = schema.inputs.length === 1 ? schema.inputs[0] : null;
-    return rows.map((row, index) => {
+    return rows.map((row, i) => {
         const values = {};
         for (const m of schema.outputs) values[m.col] = parseFloat(row[m.col]);
-        const title = single ? `${single.label} ${row[single.col]}` : `Option ${index + 1}`;
-        return { index, row, values, title };
+        const title = single ? `${single.label} ${row[single.col]}` : `Option ${i + 1}`;
+        return { index: first + i, row, values, study, title: prefixed ? `${study.name} · ${title}` : title };
     });
 }
 
@@ -147,6 +152,8 @@ function matches(o) {
         const picked = state.filters[m.col];
         if (picked && picked.size && !picked.has(String(o.row[m.col]))) return false;
     }
+    const studies = state.filters[STUDY];
+    if (studies && studies.size && !studies.has(o.study.name)) return false;
     return true;
 }
 
@@ -177,16 +184,18 @@ function fmt(v) {
 }
 
 const pct = (fraction) => `${Math.round(fraction * 100)}%`;
+const studyDot = (o) => (data.studies.length > 1 ? `<span class="study-dot" style="background:${o.study.color}"></span>` : "");
 const ordinal = (n) => n + ((n % 100 >= 11 && n % 100 <= 13) || !["st", "nd", "rd"][(n % 10) - 1] ? "th" : ["st", "nd", "rd"][(n % 10) - 1]);
 
 function esc(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
 
-function assetUrl(name) {
+// File names in the CSV are relative to the option's own study folder.
+function assetUrl(o, name) {
     if (!name) return null;
     if (/^(https?:)?\/\//i.test(name) || name.startsWith("/")) return name;
-    return data.source.base + name;
+    return o.study.base + name;
 }
 
 const modeInfo = () => MODES.find((m) => m.key === state.mode);
@@ -195,7 +204,7 @@ const currentLayer = () => layers()[state.layer[state.mode]];
 const directionHint = (m) => (m.dir > 0 ? "↑ higher is better" : m.dir < 0 ? "↓ lower is better" : "");
 const thumbUrl = (o) => {
     const img = data.schema.images[state.layer.image];
-    return img ? assetUrl(o.row[img.col]) : null;
+    return img ? assetUrl(o, o.row[img.col]) : null;
 };
 
 function showMessage(html) {
@@ -244,7 +253,7 @@ function renderStage() {
     $("optSummary").title = isBestBalance(o) ? BEST_BALANCE_HELP : "";
 
     const layer = currentLayer();
-    const url = layer && assetUrl(o.row[layer.col]);
+    const url = layer && assetUrl(o, o.row[layer.col]);
     const is3d = state.mode !== "image";
     $("stageImg").hidden = is3d;
     $("stage3d").hidden = !is3d;
@@ -305,7 +314,7 @@ function renderStrip() {
                 (o) => `<div class="thumb" data-index="${o.index}">
                     <button type="button" class="thumb-main" data-select="${o.index}">
                         <div class="thumb-img"><img loading="lazy" alt="" /></div>
-                        <span class="thumb-name">${esc(o.title)}</span>
+                        <span class="thumb-name">${studyDot(o)}${esc(o.title)}</span>
                         <span class="thumb-note"></span>
                     </button>
                     <button type="button" class="pick" data-pick="${o.index}">Compare</button>
@@ -381,9 +390,24 @@ function renderInsightSection() {
         </div>`;
     };
 
+    // Several studies: each goal also ranks the best option of each study, with
+    // the same rules, so it says which study (method) produced the better option.
+    const duels = data.studies.length > 1 ? results.map((r) => studyDuel(scope, r.goal)) : [];
+    const duelBox = (duel) =>
+        duel && duel.rows.length > 1
+            ? `<div class="duel"><div class="duel-title">Best of each study</div>${duel.rows.map((row) => bar(duel, row)).join("")}</div>`
+            : "";
+    let studyWins = "";
+    if (duels.some((d) => d.rows.length > 1)) {
+        const tied = duels.filter((d) => d.rows.length > 1 && !d.winner).length;
+        studyWins = `<div class="wins-line study-wins"><span class="muted">By study</span>${data.studies
+            .map((st) => `<span><strong>${esc(st.name)}</strong> wins ${duels.filter((d) => d.winner && d.winner.study === st).length} of ${results.length}</span>`)
+            .join("")}${tied ? `<span class="muted">${tied} about the same</span>` : ""}</div>`;
+    }
+
     // Short lists show every option. Long lists pin the selected option on top
     // (with its rank) and then show the top few of the others.
-    const blocks = results.map((r) => {
+    const blocks = results.map((r, k) => {
         const mine = r.rows.find((row) => row.option === selected);
         let pinned = "";
         let bars;
@@ -405,7 +429,7 @@ function renderInsightSection() {
         return `<div class="goal">
             <div class="goal-head">${esc(r.goal.label)} <span class="hint">${directionHint(r.goal)}</span></div>
             <div class="goal-verdict">${headline(r)}</div>
-            ${pinned}${bars}
+            ${duelBox(duels[k])}${pinned}${bars}
         </div>`;
     });
 
@@ -421,7 +445,15 @@ function renderInsightSection() {
         </div>`
         : "";
 
-    $("insightBody").innerHTML = `<div class="wins-line">${wins}</div><div class="goal-grid">${blocks.join("")}${otherBlock}</div>`;
+    $("insightBody").innerHTML = `${studyWins}<div class="wins-line">${wins}</div><div class="goal-grid">${blocks.join("")}${otherBlock}</div>`;
+}
+
+function studyDuel(scope, goal) {
+    const bests = data.studies
+        .map((st) => rankGoal(scope.filter((o) => o.study === st), goal).rows[0])
+        .filter(Boolean)
+        .map((row) => row.option);
+    return rankGoal(bests, goal);
 }
 
 function verdict(result, row) {
@@ -452,19 +484,23 @@ function renderFilters() {
                 .join("")}</div>
         </div>`;
     });
-    const inputs = data.schema.inputs.map((m) => {
-        const values = [...new Set(data.options.map((o) => String(o.row[m.col])))];
-        if (values.length < 2 || values.length > MAX_CHIPS) return "";
-        values.sort((a, b) => (parseFloat(a) - parseFloat(b)) || a.localeCompare(b));
-        const picked = state.filters[m.col] || new Set();
+    const chips = (key, label, values) => {
+        const picked = state.filters[key] || new Set();
         return `<div class="filter">
-            <div class="filter-label">${esc(m.label)}</div>
+            <div class="filter-label">${esc(label)}</div>
             <div class="chips">${values
-                .map((v) => `<button type="button" data-chip="${esc(m.col)}" data-value="${esc(v)}" class="${picked.has(v) ? "on" : ""}">${esc(v)}</button>`)
+                .map((v) => `<button type="button" data-chip="${esc(key)}" data-value="${esc(v)}" class="${picked.has(v) ? "on" : ""}">${esc(v)}</button>`)
                 .join("")}</div>
         </div>`;
+    };
+    const inputs = data.schema.inputs.map((m) => {
+        const values = [...new Set(data.options.filter((o) => o.row[m.col] !== undefined).map((o) => String(o.row[m.col])))];
+        if (values.length < 2 || values.length > MAX_CHIPS) return "";
+        values.sort((a, b) => (parseFloat(a) - parseFloat(b)) || a.localeCompare(b));
+        return chips(m.col, m.label, values);
     });
-    $("filters").innerHTML = outputs.join("") + inputs.join("");
+    const studies = data.studies.length > 1 ? chips(STUDY, "Study", data.studies.map((s) => s.name)) : "";
+    $("filters").innerHTML = studies + outputs.join("") + inputs.join("");
     const n = data.options.filter(matches).length;
     $("matchCount").textContent = `${n} of ${data.options.length} match`;
 }
@@ -501,7 +537,8 @@ function renderCompare() {
             .map((p) => {
                 const x = m.dir ? goodness(p, m) : position(p, m);
                 if (x == null) return "";
-                return `<span class="dot ${p === o ? "me" : ""}" style="left:${(x * 100).toFixed(1)}%" title="${esc(p.title)}: ${fmt(p.values[m.col])}"></span>`;
+                const color = data.studies.length > 1 && p !== o ? `;background:${p.study.color}` : "";
+                return `<span class="dot ${p === o ? "me" : ""}" style="left:${(x * 100).toFixed(1)}%${color}" title="${esc(p.title)}: ${fmt(p.values[m.col])}"></span>`;
             })
             .join("");
 
@@ -515,7 +552,11 @@ function renderCompare() {
             </div>
         </div>`;
     });
-    $("compare").innerHTML = inputs + metrics.join("");
+    const legend =
+        data.studies.length > 1
+            ? `<div class="study-legend">${data.studies.map((st) => `<span><span class="study-dot" style="background:${st.color}"></span>${esc(st.name)}</span>`).join("")}</div>`
+            : "";
+    $("compare").innerHTML = legend + inputs + metrics.join("");
 }
 
 // ---- State in the URL (so "Copy link" shares exactly this view) ----
@@ -652,47 +693,58 @@ function bindEvents() {
 
 // ---- Start ----
 
+async function loadStudy(study) {
+    const response = await fetch(study.base + "data.csv?v=" + Date.now());
+    if (!response.ok) throw new Error(`${study.name}: ${response.status} ${response.statusText}`);
+    const parsed = csvParse((await response.text()).replace(/^﻿/, ""));
+    const rows = parsed.filter((r) => Object.values(r).some((v) => v !== ""));
+    rows.columns = parsed.columns;
+    return rows;
+}
+
 async function init() {
-    const source = resolveSource();
-    if (!source) {
+    const studies = resolveStudies();
+    if (!studies.length) {
         showMessage(
-            `<h2>No project selected</h2><p>Add the project name to the address, for example <code>?PROJECT=Export</code>.</p>`
+            `<h2>No project selected</h2><p>Add the project name to the address, for example <code>?PROJECT=MPW_01</code>, or several: <code>?PROJECT=01_cp,02_veA</code>.</p>`
         );
         return;
     }
-    $("classicLink").href = params.get("PROJECT")
-        ? "../?" + new URLSearchParams({ PROJECT: params.get("PROJECT") }).toString()
-        : "../";
+    $("classicLink").href =
+        params.get("PROJECT") && studies.length === 1
+            ? "../?" + new URLSearchParams({ PROJECT: studies[0].name }).toString()
+            : "../";
 
-    let rows;
-    try {
-        const response = await fetch(source.base + "data.csv?v=" + Date.now());
-        if (!response.ok) throw new Error(response.status + " " + response.statusText);
-        rows = csvParse((await response.text()).replace(/^﻿/, ""));
-    } catch (err) {
-        console.error(err);
-        showMessage(`<h2>Couldn't load the project</h2><p><code>data.csv</code> for <strong>${esc(source.name)}</strong> didn't load. Check the project name.</p>`);
+    studies.forEach((st, i) => (st.color = STUDY_COLORS[i % STUDY_COLORS.length]));
+    const loaded = await Promise.allSettled(studies.map(loadStudy));
+    const failed = studies.filter((s, i) => loaded[i].status === "rejected");
+    if (failed.length) {
+        loaded.forEach((l) => l.status === "rejected" && console.error(l.reason));
+        showMessage(
+            `<h2>Couldn't load the project</h2><p><code>data.csv</code> for <strong>${failed.map((s) => esc(s.name)).join(", ")}</strong> didn't load. Check the project name.</p>`
+        );
         return;
     }
 
-    const schema = readSchema(rows.columns);
-    const options = readOptions(
-        rows.filter((r) => Object.values(r).some((v) => v !== "")),
-        schema
-    );
+    // One combined list: columns are matched by name across studies.
+    const columns = [...new Set(loaded.flatMap((l) => l.value.columns))];
+    const schema = readSchema(columns);
+    const options = [];
+    studies.forEach((study, i) => options.push(...readOptions(loaded[i].value, study, options.length, studies.length > 1)));
     if (!options.length) {
-        showMessage(`<h2>Empty project</h2><p><code>data.csv</code> for <strong>${esc(source.name)}</strong> has no rows.</p>`);
+        showMessage(`<h2>Empty project</h2><p><code>data.csv</code> for <strong>${studies.map((s) => esc(s.name)).join(", ")}</strong> has no rows.</p>`);
         return;
     }
     const stats = computeStats(options, schema.outputs);
     const results = schema.outputs.filter((m) => m.dir).map((m) => rankGoal(options, m));
-    data = { source, schema, options, stats, results };
+    data = { studies, schema, options, stats, results };
     state.mode = (MODES.find((m) => layers(m).length) || MODES[0]).key;
     loadUrlState();
 
-    $("projectName").textContent = source.name;
+    const name = studies.map((s) => s.name).join(" + ");
+    $("projectName").textContent = name;
     $("optionCount").textContent = `${options.length} options`;
-    document.title = `${source.name} · Design Explorer`;
+    document.title = `${name} · Design Explorer`;
     $("app").hidden = false;
     bindEvents();
     render();

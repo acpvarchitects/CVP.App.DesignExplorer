@@ -7,8 +7,8 @@ A tool for comparing the design options of an architecture study (for example, m
 ### The dataset
 
 **Study**:
-One dataset of design options, loaded as a project (for example, Export).
-_Avoid_: Dataset, CSV (when talking about the domain)
+One dataset of design options from one project folder (for example, 01_cp). Several studies can be open together, usually one per method that generated the options.
+_Avoid_: Dataset, CSV, folder, method (when talking about the domain)
 
 **Option**:
 One design alternative in a study: one row of the dataset (for example, Path 28).
