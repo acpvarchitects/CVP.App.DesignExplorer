@@ -21,12 +21,23 @@ export class ParallelChart {
         }).observe(el);
     }
 
-    // model: { options, axes: [{ col, label, dir, value(o) }], selected, matches(o), colorOf(o), shortlist }
+    // model: { scope, options, axes: [{ col, label, dir, value(o) }], selected, matches(o), colorOf(o), shortlist }
+    // `scope` names the option set (for example the method shown): a new scope redraws the axes.
     update(model) {
-        const axesChanged = !this.model || this.model.axes.map((a) => a.col).join() !== model.axes.map((a) => a.col).join();
+        const rebuild =
+            !this.model ||
+            !this.width ||
+            this.model.scope !== model.scope ||
+            this.model.axes.map((a) => a.col).join() !== model.axes.map((a) => a.col).join();
         this.model = model;
-        if (axesChanged || !this.width) this.build();
+        if (rebuild) this.build();
         else this.drawLines();
+    }
+
+    // Ranges set from outside the chart (the sidebar): column -> [low, high], either end may be infinite.
+    setRanges(ranges) {
+        this.ranges = new Map(ranges);
+        if (this.model) this.build();
     }
 
     // Whether an option passes every axis the user dragged on.
@@ -92,7 +103,9 @@ export class ParallelChart {
             const range = this.ranges.get(a.col);
             if (range) {
                 const y = this.y.get(a.col);
-                bg.call(brush.move, [y(range[0]), y(range[1])].sort((p, q) => p - q));
+                const [d0, d1] = y.domain();
+                const clamp = (v) => Math.min(Math.max(v, Math.min(d0, d1)), Math.max(d0, d1));
+                bg.call(brush.move, [y(clamp(range[0])), y(clamp(range[1]))].sort((p, q) => p - q));
             }
         });
         this.drawLines();

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Design Explorer</title>
     <link rel="icon" href="../favicon.png" />
-    <link rel="stylesheet" href="style.css?v=12" />
+    <link rel="stylesheet" href="style.css?v=21" />
     <script type="importmap">
         {
             "imports": {
@@ -31,71 +31,99 @@
         </div>
     </header>
 
-    <main id="app" class="layout" hidden>
-        <aside class="card side side-left" aria-label="Filters">
-            <div class="card-head">
-                <h2>Find options</h2>
-                <span id="matchCount" class="muted"></span>
+    <main id="app" hidden>
+        <!-- Top: introduction + method choice (left), always-on chart (right) -->
+        <section class="overview-top">
+            <div class="intro">
+                <span class="eyebrow">Explore the study</span>
+                <h1>Find the options worth a closer look</h1>
+                <p id="introText" class="muted"></p>
+                <nav id="methodTabs" class="method-tabs" aria-label="Methods"></nav>
             </div>
-            <div id="filters"></div>
-            <button id="clearFilters" type="button">Clear filters</button>
-        </aside>
-
-        <div class="center">
-            <section class="card preview">
-                <div class="preview-bar">
-                    <div id="modeSeg" class="seg"></div>
-                    <div id="subSeg" class="sub"></div>
+            <div class="chart-panel card">
+                <div class="chart-tools">
+                    <span class="muted">Drag a range on any axis. Click a line to inspect an option.</span>
+                    <label id="inputsToggle"><input id="showInputs" type="checkbox" /> Show inputs</label>
+                    <button id="clearChart" type="button">Clear chart filters</button>
                 </div>
-                <div id="stage" class="stage">
-                    <img id="stageImg" alt="" />
-                    <div id="stage3d" class="stage-3d"></div>
-                    <div class="stage-title">
-                        <h1 id="optTitle"></h1>
-                        <p id="optSummary"></p>
-                    </div>
-                    <button id="prevBtn" class="nav prev" type="button" aria-label="Previous option">&#8249;</button>
-                    <button id="nextBtn" class="nav next" type="button" aria-label="Next option">&#8250;</button>
-                    <div class="stage-foot">
-                        <span id="stageStatus"></span>
-                        <button id="resetViewBtn" type="button">Reset view</button>
-                    </div>
-                </div>
-            </section>
-
-            <section class="card chart-card">
-                <div class="card-head">
-                    <h2>All options <span id="pcLegend" class="study-legend inline"></span></h2>
-                    <span class="muted">Drag on an axis to filter · click a line to open that option</span>
-                </div>
-                <div id="pcChart" class="pc-wrap"></div>
-            </section>
-
-            <div class="strip-bar">
-                <label class="sort">Sort by <select id="sortSel"></select></label>
-                <div id="shortlistInfo" class="shortlist-info"></div>
+                <div id="activeRanges" class="active-ranges"></div>
+                <div class="chart-scroll"><div id="pcChart"></div></div>
+                <p id="chartLegend" class="chart-legend muted"></p>
             </div>
-            <section id="strip" class="strip" aria-label="All options"></section>
+        </section>
 
-            <section class="card insight">
-                <div class="card-head">
-                    <h2>Best at what</h2>
-                    <span id="insightScope" class="muted"></span>
+        <div class="workspace">
+            <!-- Left: measurement filters, shared by every method -->
+            <aside class="filters card" aria-label="Measurement filters">
+                <div class="filters-head">
+                    <h2>Measurements</h2>
+                    <button id="resetFilters" type="button" class="link">Reset</button>
                 </div>
-                <div id="insightBody"></div>
+                <p class="muted small">Keep options within these ranges. Leave a box empty for no limit.</p>
+                <div id="rangeFilters"></div>
+            </aside>
+
+            <section class="results">
+                <!-- Preview: hidden until an option is clicked -->
+                <section id="preview" class="preview card" hidden aria-label="Selected option">
+                    <div class="preview-head">
+                        <div>
+                            <span id="previewMethod" class="method-label"></span>
+                            <h2 id="previewTitle"></h2>
+                            <p id="previewSummary" class="muted small"></p>
+                        </div>
+                        <div class="preview-actions">
+                            <button id="expandPreview" type="button" aria-expanded="false">Expand preview</button>
+                            <button id="closePreview" type="button" aria-label="Close preview">Close ✕</button>
+                        </div>
+                    </div>
+                    <div class="preview-controls">
+                        <button id="prevOption" type="button">← Previous</button>
+                        <div id="modeButtons" class="seg" aria-label="Preview mode"></div>
+                        <select id="layerSelect" aria-label="View" hidden></select>
+                        <button id="nextOption" type="button">Next →</button>
+                    </div>
+                    <div class="preview-body">
+                        <div class="media">
+                            <img id="previewImage" alt="" />
+                            <div id="preview3d" class="media-3d" hidden></div>
+                            <div class="media-foot">
+                                <span id="mediaStatus"></span>
+                                <button id="resetView" type="button" hidden>Reset view</button>
+                            </div>
+                        </div>
+                        <div id="standings" class="standings"></div>
+                    </div>
+                </section>
+
+                <div class="result-toolbar">
+                    <div>
+                        <h2 id="resultCount"></h2>
+                        <span id="scopeNote" class="muted small"></span>
+                    </div>
+                    <label class="order">
+                        Order by <select id="orderSelect"></select>
+                        <small id="orderDirection" class="muted"></small>
+                    </label>
+                </div>
+                <div id="shortlistBar" class="shortlist-bar"></div>
+                <div id="gallery" class="gallery" aria-label="Options"></div>
+
+                <!-- Below the gallery: secondary comparisons -->
+                <section id="methodSummary" class="method-summary"></section>
+                <section class="card insight">
+                    <div class="card-head">
+                        <h2>Best at what</h2>
+                        <span id="insightScope" class="muted"></span>
+                    </div>
+                    <div id="insightBody"></div>
+                </section>
             </section>
         </div>
-
-        <aside class="card side side-right" aria-label="Selected option">
-            <div class="card-head">
-                <h2 id="compareTitle"></h2>
-            </div>
-            <div id="compare"></div>
-        </aside>
     </main>
 
     <div id="message" class="message" hidden></div>
 
-    <script type="module" src="app.js?v=11"></script>
+    <script type="module" src="app.js?v=21"></script>
 </body>
 </html>
