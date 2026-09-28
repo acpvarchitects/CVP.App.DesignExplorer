@@ -19,7 +19,7 @@
 // Page sections, top to bottom: method tabs + chart, measurement filters,
 // preview (only after clicking an option), gallery, Compare methods, Best at what.
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
-import { Viewer } from "./viewer.js?v=26";
+import { Viewer } from "./viewer.js?v=27";
 import { rankGoal, rankGoals, winsOf } from "./compare.js?v=22";
 import { ParallelChart } from "./parallel.js?v=22";
 
@@ -34,6 +34,9 @@ const BEST_BALANCE_HELP = "Best average position across all goals, among the mat
 // colored facades. Layers not listed appear in both views.
 const GENERAL_ONLY = new Set(["masses"]);
 const ANALYSIS_ONLY = new Set(["floors", "short_facades"]);
+// Analyses shown on top of the general view instead (masses on, context not faded),
+// each hiding the layers it replaces: analysis column -> replaced layers.
+const OVER_GENERAL = { an_pool_sun_hours: ["pools", "decks"] };
 const MODES = [
     { key: "image", label: "Image", layers: "images" },
     { key: "model", label: "3D model", layers: "models" },
@@ -531,7 +534,7 @@ function showMedia(o) {
         return;
     }
     if (!viewer) viewer = new Viewer($("preview3d"), (text) => ($("mediaStatus").textContent = text));
-    if (parts) viewer.compose(parts, { fadeContext: state.mode === "analysis" });
+    if (parts) viewer.compose(parts, { fadeContext: state.mode === "analysis" && !OVER_GENERAL[layer.col] });
     else viewer.clear();
 }
 
@@ -545,8 +548,11 @@ function partsFor(o, layer) {
         const url = file(layer.col);
         if (url) own.push({ url, kind: analysisView ? "analysis" : "geometry" });
     } else {
+        const replaced = analysisView ? OVER_GENERAL[layer.col] : null;
         for (const g of data.schema.layers) {
-            if (analysisView ? GENERAL_ONLY.has(g.col) : ANALYSIS_ONLY.has(g.col)) continue;
+            if (replaced) {
+                if (ANALYSIS_ONLY.has(g.col) || replaced.includes(g.col)) continue; // general view minus replaced layers
+            } else if (analysisView ? GENERAL_ONLY.has(g.col) : ANALYSIS_ONLY.has(g.col)) continue;
             const url = file(g.col);
             if (url) own.push({ url, kind: "geometry" });
         }

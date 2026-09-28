@@ -115,3 +115,6 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
   on the analysis surfaces (6,038 coplanar triangles for Option25; masses 13,244 but masses are
   hidden there). Fix: analysis material uses a depth offset (polygonOffset) so it draws in front.
   User didn't want layer checkboxes (tried, removed).
+- 2026-09-28: new analysis `an_pool_sun_hours` (study `MPW_TEST_02`, result `out:↑ Pool Summer
+  Sun Hours`): picked up automatically as an `an_*` column; view rule `OVER_GENERAL` in app.js =
+  general view with pools + decks replaced by the analysis, context not faded.

@@ -61,6 +61,11 @@ viewer converts them to linear. Empty cells = no such layer for that option (ski
 Views (`GENERAL_ONLY` / `ANALYSIS_ONLY` in `app.js`, until the planned `manifest.json`):
 - **3D model** = general view: context + every layer except `floors`, `short_facades`.
 - **3D analysis** = context faded + every layer except `masses` + the chosen `an_*` layer, unlit.
+- Exceptions in `OVER_GENERAL` start from the general view instead (masses on, context not
+  faded) and hide only the layers they replace: `an_pool_sun_hours` replaces `pools` + `decks`
+  (first in `MPW_TEST_02`).
+- The analysis material has a depth offset, so it draws in front of layers that share its
+  surfaces (floors' vertical faces, the ground under decks).
 No legend is exported yet: the page says so instead of inventing a scale.
 
 Labels are the column names as written (arrow removed). Never rename dataset words in code.
