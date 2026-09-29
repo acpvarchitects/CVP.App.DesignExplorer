@@ -147,7 +147,7 @@ export class Viewer {
 // ---- Materials and colors ----
 
 // Colored layers carry their colors per vertex (COLOR_0). The exports pair them with a
-// white (MPW) or black (older Rhino export) material; glTF multiplies the two, so the
+// white (layered export) or black (older Rhino export) material; glTF multiplies the two, so the
 // material is replaced. Analysis layers are unlit so the colors match the legend.
 function prepare(root, kind) {
     root.userData.kind = kind;

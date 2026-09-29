@@ -1,4 +1,4 @@
-// Comparison rules (terms as in CONTEXT.md):
+// Comparison rules:
 // - two values of a goal are "about the same" when under 2% apart,
 //   measured against the best value;
 // - an option wins a goal only when it is best and more than 2% ahead of the next.

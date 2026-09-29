@@ -10,7 +10,7 @@
 //   img, img:<view>    image of the option, one column per view
 //   threeD             3D model (.json like the classic app, or .glb)
 //   analysis:<name>    3D analysis mesh with vertex colors (.glb)
-// Layered 3D export (MPW, see v2/README.md):
+// Layered 3D export (see v2/README.md):
 //   context            shared site model, same file on every row
 //   an_<name>          analysis layer (any column starting with an_)
 //   legend_an_<name>   legend image (PNG) of that analysis
@@ -68,7 +68,7 @@ const cards = new Map(); // option index -> gallery card element
 // ---- Reading the dataset ----
 
 // One study per project folder; ?PROJECT=A,B opens several studies together.
-// "folder:Label" shows Label instead of the folder name (e.g. ?PROJECT=MPW_x_Claude:x).
+// "folder:Label" shows Label instead of the folder name (e.g. ?PROJECT=FOLDER_A:Label).
 function resolveStudies() {
     const list = (key) => (params.get(key) || "").split(",").map((s) => s.trim()).filter(Boolean);
     // The label follows the last ":" that isn't part of "://" and contains no "/".
@@ -172,7 +172,7 @@ async function loadStudy(study) {
 const goals = () => data.schema.outputs.filter((m) => m.dir);
 const inMethod = (o) => !state.methods.size || state.methods.has(o.study.name);
 
-// How the current method choice reads in sentences: "all methods", "02_veA", "A + B".
+// How the current method choice reads in sentences: "all methods", "A", "A + B".
 function scopeLabel() {
     if (data.studies.length < 2) return "all options";
     if (!state.methods.size) return "all methods";
@@ -989,7 +989,7 @@ async function init() {
     const studies = resolveStudies();
     if (!studies.length) {
         showMessage(
-            `<h2>No project selected</h2><p>Add the project name to the address, for example <code>?PROJECT=MPW_01</code>, or several: <code>?PROJECT=01_cp,02_veA</code>.</p>`
+            `<h2>No project selected</h2><p>Add the project name to the address, for example <code>?PROJECT=STUDY</code>, or several: <code>?PROJECT=STUDY_A,STUDY_B</code>.</p>`
         );
         return;
     }
