@@ -375,7 +375,10 @@ function renderChart(view, syncChart) {
         })
         .join("");
     const studies = data.studies.length > 1
-        ? data.studies.map((s) => `<span class="study-dot" style="background:${s.color}"></span>${esc(s.name)}`).join(" &nbsp; ") + " &nbsp;·&nbsp; "
+        ? data.studies
+              .filter((st) => !state.methods.size || state.methods.has(st.name))
+              .map((st) => `<span class="study-dot" style="background:${st.color}"></span>${esc(st.name)}`)
+              .join(" &nbsp; ") + " &nbsp;·&nbsp; "
         : "";
     $("chartLegend").innerHTML = `${studies}dark red: inspected option · pale lines: filtered out`;
 }
