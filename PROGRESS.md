@@ -154,3 +154,6 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
   only, no co-author line). Code on feature/new-dashboard equals WIP except the private README.
   Local testing from 127.0.0.1: the user's Chrome can't fetch the API directly; use the proxy
   `python v2/_test/comparison_server.py` (port 8767) with `?data=/_study/<folder>/,...`.
+- 2026-09-29: 5th collection MPW_260929_03_AI (40 options, no legend PNGs). Method palette 8 colors
+  (was 4: the 5th reused blue); deployed as clean commit `52e100f`, live. Local proxy
+  `v2/_test/comparison_server.py` now allows MPW_260929_03_AI and takes a port (`... 8768`).
