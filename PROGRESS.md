@@ -124,3 +124,6 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
   `legend_an_*` PNG legends shown in the analysis view; noise analysis `an_noise_from_pool_deck`
   (facade view, automatic); pool rule also for the renamed `an_pool_deck_sun_hours`.
   Legend PNG titles are cut off by the exporter ("Noise from p"): tell the exporter.
+- 2026-09-29: MPW_260928_01_AI_Claude showed no legend: its CSV leaves `legend_an_*` cells empty
+  although the PNGs are in the folder (identical to the other 3 collections). Viewer now falls
+  back to `legend_an_<name>.png` in the option's folder. Exporter should fill the cells.

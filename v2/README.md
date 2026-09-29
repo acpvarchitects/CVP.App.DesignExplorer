@@ -54,7 +54,7 @@ Then open `http://127.0.0.1:8765/v2/?PROJECT=01_cp,02_veA`. The browser reads th
 |---|---|
 | `context` | shared site model (`context.glb`, same file on every row), loaded once |
 | `an_<name>` | analysis layer; every column starting with `an_` is one (label: name with spaces) |
-| `legend_an_<name>` | legend image (PNG) of that analysis, shown in its 3D analysis view; empty = "legend not in this export yet" |
+| `legend_an_<name>` | legend image (PNG) of that analysis, shown in its 3D analysis view. Empty cell: the viewer tries `legend_an_<name>.png` in the option's folder (MPW_260928_01_AI_Claude has the files but empty cells); if that fails, "legend not in this export yet" |
 | any other column holding `.glb` files | geometry layer of the option (`masses`, `floors`, `short_facades`, `pools`, `decks`) |
 
 All files share one origin (Y up, metres) and are overlaid as they are; the viewer shifts the

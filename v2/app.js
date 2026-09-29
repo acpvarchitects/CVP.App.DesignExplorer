@@ -545,10 +545,19 @@ function showMedia(o) {
     $("preview3d").hidden = !is3d;
     $("resetView").hidden = !is3d;
     $("mediaStatus").textContent = src ? "" : "No file for this view.";
-    const legend = state.mode === "analysis" && layer?.legendCol ? assetUrl(o, (o.row[layer.legendCol] || "").trim()) : null;
-    $("legendImg").hidden = !legend;
-    if (legend) $("legendImg").src = legend;
-    $("mediaNote").textContent = state.mode === "analysis" && layer?.composed && !legend ? "Colour legend not in this export yet" : "";
+    // Legend: the CSV cell, or (cell left empty by the export) the standard file name
+    // legend_an_<name>.png in the option's own folder. If neither exists, say so.
+    const noLegend = state.mode === "analysis" && layer?.composed ? "Colour legend not in this export yet" : "";
+    const legendFile = layer?.legendCol ? (o.row[layer.legendCol] || "").trim() || `${layer.legendCol}.png` : "";
+    const legend = state.mode === "analysis" && legendFile ? assetUrl(o, legendFile) : null;
+    const img = $("legendImg");
+    img.hidden = !legend;
+    img.onerror = () => {
+        img.hidden = true;
+        $("mediaNote").textContent = noLegend;
+    };
+    if (legend) img.src = legend;
+    $("mediaNote").textContent = legend ? "" : noLegend;
     if (!is3d) {
         if (viewer) viewer.clear();
         $("previewImage").alt = `${o.title}, ${layer ? layer.label : ""}`;
