@@ -993,8 +993,6 @@ async function init() {
         );
         return;
     }
-    $("classicLink").href =
-        params.get("PROJECT") && studies.length === 1 ? "../?" + new URLSearchParams({ PROJECT: studies[0].name }).toString() : "../";
 
     studies.forEach((st, i) => (st.color = STUDY_COLORS[i % STUDY_COLORS.length]));
     const loaded = await Promise.allSettled(studies.map(loadStudy));
