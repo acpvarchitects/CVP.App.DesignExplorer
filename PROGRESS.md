@@ -150,3 +150,7 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
 - 2026-09-29: comparison prototype variant B made real (`v2/comparison.js`), replacing "Best at
   what" (user decision). Noise "about the same" = within 1 dB (user decision), in compare.js.
   Prototype (A/B/C + tweaks) kept on branch `prototype/comparison-variants`. Not deployed yet.
+- 2026-09-29: deployed Compare options: clean commit `606a1e8` on origin/WIP (code + public README
+  only, no co-author line). Code on feature/new-dashboard equals WIP except the private README.
+  Local testing from 127.0.0.1: the user's Chrome can't fetch the API directly; use the proxy
+  `python v2/_test/comparison_server.py` (port 8767) with `?data=/_study/<folder>/,...`.
