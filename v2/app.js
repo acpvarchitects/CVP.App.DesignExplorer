@@ -25,6 +25,9 @@ import { rankGoal, rankGoals, winsOf } from "./compare.js?v=22";
 import { ParallelChart } from "./parallel.js?v=22";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
+// Local-only throwaway comparison layouts; normal/deployed page is unchanged.
+const comparisonPrototype = ['localhost','127.0.0.1'].includes(location.hostname) && new URLSearchParams(location.search).get('prototype') === 'comparison'
+    ? await import('./comparison-prototype.js') : null;
 const MAX_SHORTLIST = 4;
 const MAX_BARS = 5; // bars per goal in "Best at what"
 const MAX_NAMES = 3; // names listed in an "About the same" headline
@@ -683,6 +686,11 @@ function renderMethodSummary(view) {
 // the 2% rule. Scope: the shortlist once it has 2+ options, else the matching options.
 // The bar is 100% minus how far the option is behind the best (matches its note).
 function renderInsight(view) {
+    if (comparisonPrototype) {
+        comparisonPrototype.renderComparison({data, view, selected: state.shortlist, esc, fmt, thumbUrl,
+            change: indexes => { state.shortlist = indexes; render(); }});
+        return;
+    }
     const scope = state.shortlist.length >= 2 ? state.shortlist.map((i) => data.options[i]) : view.visible;
     const shortlisted = scope !== view.visible;
     const results = shortlisted ? rankGoals(scope, goals()) : view.results;
@@ -804,7 +812,7 @@ function saveUrl() {
     set("inputs", state.showInputs ? "1" : "");
     const ranges = Object.entries(state.ranges).map(([col, [lo, hi]]) => [col, Number.isFinite(lo) ? lo : null, Number.isFinite(hi) ? hi : null]);
     set("ranges", ranges.length ? JSON.stringify(ranges) : "");
-    ["variant", "sort"].forEach((k) => p.delete(k)); // from earlier versions
+    (comparisonPrototype ? ["sort"] : ["variant", "sort"]).forEach((k) => p.delete(k)); // from earlier versions
     history.replaceState(null, "", "?" + p.toString());
 }
 
