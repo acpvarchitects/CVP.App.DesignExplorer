@@ -13,6 +13,7 @@ best balance) are defined in [`../CONTEXT.md`](../CONTEXT.md). Use them.
 |---|---|
 | Two methods together (real review study) | `/v2/?PROJECT=01_cp,02_veA` |
 | One study | `/v2/?PROJECT=MPW_01` |
+| Four methods with short display names (`folder:Label`) | `/v2/?PROJECT=MPW_260928_01_AI_Claude:260928_01_AI,MPW_260928_02_PD_Liberal:260928_02_PD_Liberal,MPW_260928_02_PD_Strict:260928_02_PD_Strict,MPW_260929_02_AI_Claude:260929_02_AI` |
 | Local folder copy (for tests) | `/v2/?data=/v2/_test/Export/` |
 
 Online (after a deploy, see below): `http://designexplorer.acpv.local/dev/v2/?PROJECT=01_cp,02_veA`.
@@ -53,6 +54,7 @@ Then open `http://127.0.0.1:8765/v2/?PROJECT=01_cp,02_veA`. The browser reads th
 |---|---|
 | `context` | shared site model (`context.glb`, same file on every row), loaded once |
 | `an_<name>` | analysis layer; every column starting with `an_` is one (label: name with spaces) |
+| `legend_an_<name>` | legend image (PNG) of that analysis, shown in its 3D analysis view; empty = "legend not in this export yet" |
 | any other column holding `.glb` files | geometry layer of the option (`masses`, `floors`, `short_facades`, `pools`, `decks`) |
 
 All files share one origin (Y up, metres) and are overlaid as they are; the viewer shifts the
@@ -62,8 +64,9 @@ Views (`GENERAL_ONLY` / `ANALYSIS_ONLY` in `app.js`, until the planned `manifest
 - **3D model** = general view: context + every layer except `floors`, `short_facades`.
 - **3D analysis** = context faded + every layer except `masses` + the chosen `an_*` layer, unlit.
 - Exceptions in `OVER_GENERAL` start from the general view instead (masses on, context not
-  faded) and hide only the layers they replace: `an_pool_sun_hours` replaces `pools` + `decks`
-  (first in `MPW_TEST_02`).
+  faded) and hide only the layers they replace: `an_pool_sun_hours` (MPW_TEST_02) and
+  `an_pool_deck_sun_hours` (MPW_2609xx collections) replace `pools` + `decks`. A new flat
+  analysis on another layer needs one entry there.
 - The analysis material has a depth offset, so it draws in front of layers that share its
   surfaces (floors' vertical faces, the ground under decks).
 No legend is exported yet: the page says so instead of inventing a scale.
@@ -119,7 +122,8 @@ ask the user first.
 
 ## Not done yet
 
-- Legend for analyses: not exported yet. The exporter plans a `manifest.json` (layers, kinds,
+- Legend for analyses: PNGs per analysis now come with the MPW_2609xx collections
+  (`legend_an_*`); older exports have none. The exporter plans a `manifest.json` (layers, kinds,
   units, legend range and colors). When it exists, read views and legends from it instead of
   `GENERAL_ONLY` / `ANALYSIS_ONLY`.
 - Only `MPW_TEST_01` (4 options) uses the layered export so far.

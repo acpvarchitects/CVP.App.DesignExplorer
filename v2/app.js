@@ -13,13 +13,14 @@
 // Layered 3D export (MPW, see v2/README.md):
 //   context            shared site model, same file on every row
 //   an_<name>          analysis layer (any column starting with an_)
+//   legend_an_<name>   legend image (PNG) of that analysis
 //   <name>             any other column holding .glb files is a geometry layer
 //                      (masses, floors, short_facades, pools, decks…)
 //
 // Page sections, top to bottom: method tabs + chart, measurement filters,
 // preview (only after clicking an option), gallery, Compare methods, Best at what.
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
-import { Viewer } from "./viewer.js?v=27";
+import { Viewer } from "./viewer.js?v=28";
 import { rankGoal, rankGoals, winsOf } from "./compare.js?v=22";
 import { ParallelChart } from "./parallel.js?v=22";
 
@@ -36,7 +37,7 @@ const GENERAL_ONLY = new Set(["masses"]);
 const ANALYSIS_ONLY = new Set(["floors", "short_facades"]);
 // Analyses shown on top of the general view instead (masses on, context not faded),
 // each hiding the layers it replaces: analysis column -> replaced layers.
-const OVER_GENERAL = { an_pool_sun_hours: ["pools", "decks"] };
+const OVER_GENERAL = { an_pool_sun_hours: ["pools", "decks"], an_pool_deck_sun_hours: ["pools", "decks"] };
 const MODES = [
     { key: "image", label: "Image", layers: "images" },
     { key: "model", label: "3D model", layers: "models" },
@@ -67,15 +68,25 @@ const cards = new Map(); // option index -> gallery card element
 // ---- Reading the dataset ----
 
 // One study per project folder; ?PROJECT=A,B opens several studies together.
+// "folder:Label" shows Label instead of the folder name (e.g. ?PROJECT=MPW_x_Claude:x).
 function resolveStudies() {
     const list = (key) => (params.get(key) || "").split(",").map((s) => s.trim()).filter(Boolean);
+    // The label follows the last ":" that isn't part of "://" and contains no "/".
+    const named = (entry) => {
+        const m = entry.match(/^(.+?):(?!\/\/)([^/]+)$/);
+        return m ? [m[1].trim(), m[2].trim()] : [entry, ""];
+    };
     const projects = list("PROJECT");
     if (projects.length) {
-        return projects.map((name) => ({ name, base: `${API_BASE}/projects/${encodeURIComponent(name)}/` }));
+        return projects.map((entry) => {
+            const [folder, label] = named(entry);
+            return { name: label || folder, base: `${API_BASE}/projects/${encodeURIComponent(folder)}/` };
+        });
     }
-    return list("data").map((folder) => {
+    return list("data").map((entry) => {
+        const [folder, label] = named(entry);
         const base = folder.replace(/\/*$/, "/");
-        return { name: decodeURIComponent(base.split("/").filter(Boolean).pop()), base };
+        return { name: label || decodeURIComponent(base.split("/").filter(Boolean).pop()), base };
     });
 }
 
@@ -105,6 +116,16 @@ function readSchema(columns, rows = []) {
         } else if (sep < 0 && holds3d(col)) {
             schema.layers.push({ col, label: col.replace(/_/g, " ") });
         }
+    }
+    // Legend images: legend_<analysis column> (layered export) or legend:<analysis name>.
+    for (const col of columns) {
+        const key = col.trim().toLowerCase();
+        const a = key.startsWith("legend_")
+            ? schema.analyses.find((x) => x.col.toLowerCase() === key.slice(7))
+            : key.startsWith("legend:")
+              ? schema.analyses.find((x) => x.label.toLowerCase() === key.slice(7).trim())
+              : null;
+        if (a) a.legendCol = col;
     }
     // Layered export: "3D model" shows the general view made of the geometry layers.
     if (schema.layers.length) schema.models.push({ col: null, label: "General view", composed: true });
@@ -524,8 +545,10 @@ function showMedia(o) {
     $("preview3d").hidden = !is3d;
     $("resetView").hidden = !is3d;
     $("mediaStatus").textContent = src ? "" : "No file for this view.";
-    $("mediaNote").textContent =
-        state.mode === "analysis" && layer?.composed ? "Colour legend not in this export yet" : "";
+    const legend = state.mode === "analysis" && layer?.legendCol ? assetUrl(o, (o.row[layer.legendCol] || "").trim()) : null;
+    $("legendImg").hidden = !legend;
+    if (legend) $("legendImg").src = legend;
+    $("mediaNote").textContent = state.mode === "analysis" && layer?.composed && !legend ? "Colour legend not in this export yet" : "";
     if (!is3d) {
         if (viewer) viewer.clear();
         $("previewImage").alt = `${o.title}, ${layer ? layer.label : ""}`;
@@ -975,7 +998,7 @@ async function init() {
     document.title = `${name} · Design Explorer`;
     $("introText").textContent =
         studies.length > 1
-            ? "Explore both methods together, or focus on one. Filters apply across methods."
+            ? `Explore ${studies.length === 2 ? "both" : "all"} methods together, or focus on one. Filters apply across methods.`
             : "Filter by measurements, order the gallery, and click an option to look closer.";
     $("showInputs").checked = state.showInputs;
     $("app").hidden = false;

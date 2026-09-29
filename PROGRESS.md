@@ -118,3 +118,9 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
 - 2026-09-28: new analysis `an_pool_sun_hours` (study `MPW_TEST_02`, result `out:↑ Pool Summer
   Sun Hours`): picked up automatically as an `an_*` column; view rule `OVER_GENERAL` in app.js =
   general view with pools + decks replaced by the analysis, context not faded.
+- 2026-09-29: four MPW collections wired together (280 options): MPW_260928_01_AI_Claude (40),
+  MPW_260928_02_PD_Liberal (100), MPW_260928_02_PD_Strict (100), MPW_260929_02_AI_Claude (40).
+  New: `folder:Label` display names in `?PROJECT=` (user: no "Claude" in the names shown);
+  `legend_an_*` PNG legends shown in the analysis view; noise analysis `an_noise_from_pool_deck`
+  (facade view, automatic); pool rule also for the renamed `an_pool_deck_sun_hours`.
+  Legend PNG titles are cut off by the exporter ("Noise from p"): tell the exporter.

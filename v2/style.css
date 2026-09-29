@@ -519,6 +519,21 @@ main {
     height: 100%;
 }
 
+.media .legend {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    width: auto;
+    height: auto;
+    max-height: calc(100% - 24px);
+    max-width: 140px;
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: var(--radius);
+    object-fit: contain;
+    pointer-events: none;
+}
+
 .media-foot {
     position: absolute;
     right: 12px;
