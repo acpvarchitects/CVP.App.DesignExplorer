@@ -147,3 +147,6 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
 - 2026-09-29: folders renamed on MinIO (no "Claude"): MPW_260928_01_AI, MPW_260929_02_AI. Live link:
   `http://designexplorer.acpv.local/dev/v2/?PROJECT=MPW_260928_01_AI,MPW_260928_02_PD_Liberal,MPW_260928_02_PD_Strict,MPW_260929_02_AI`
   (office LAN or ACPV VPN only). Old *_Claude links no longer load.
+- 2026-09-29: comparison prototype variant B made real (`v2/comparison.js`), replacing "Best at
+  what" (user decision). Noise "about the same" = within 1 dB (user decision), in compare.js.
+  Prototype (A/B/C + tweaks) kept on branch `prototype/comparison-variants`. Not deployed yet.

@@ -33,15 +33,15 @@ _Avoid_: Aspect, objective, criterion
 ### Comparing
 
 **About the same**:
-Two values of a goal that are less than 2% apart; neither option is better on that goal.
+Two values of a goal that are less than 2% apart, or within 1 dB for noise; neither option is better on that goal.
 _Avoid_: Equal, tie
 
 **Shortlist**:
-The few options (up to 4) a person picked on purpose to compare closely. Different from filtering, which only hides options.
+The few options (up to 4) a person picked on purpose to compare closely, side by side in Compare options. Different from filtering, which only hides options.
 _Avoid_: Selection, comparison set, favourites
 
 **Win**:
-An option wins a goal when it is the best on it and more than 2% ahead of the next option; when the top is about the same, nobody wins.
+An option wins a goal when it is the best on it and not about the same as the next option; when the top is about the same, nobody wins.
 _Avoid_: Point, score
 
 **Best balance**:

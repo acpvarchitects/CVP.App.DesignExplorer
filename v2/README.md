@@ -92,10 +92,12 @@ are merged by column name; each study is shown as a **method** with its own colo
    "Compare" puts up to 4 options on the shortlist.
 5. **Compare methods** (whenever 2+ methods are shown): per method, matching count/%, best and
    median on the "Order by" result.
-6. **Best at what**: one block per goal with the **2% rule** (`compare.js`): about the same when
-   under 2% apart, a win only when >2% ahead. Scope: the shortlist once it has 2+, else the
-   matching options. With several methods: "Best of each method" and "By method: X wins N of M".
-   Big scopes show the top 5 and pin the previewed option with its rank.
+6. **Compare options** (`comparison.js`, variant B of the comparison prototype, approved
+   2026-09-29; replaced "Best at what"): the shortlist (2 to 4) as slots A–D, a radar of all
+   goals (axes scaled worst→best over all loaded options), "What each option does better"
+   (leads / close to the lead, `compare.js` rules: 2%, 1 dB for noise), and the exact values with
+   the best value found per result. "See comparison ↓" (shortlist line, pop-up) and "Back to
+   options ↑" scroll slowly (1.3–2.6 s). The shortlist pop-up shows for 5 s after Compare on a card.
 
 The URL keeps ticked methods, order, option, mode/layer, ranges, shortlist and "Show inputs", so
 "Copy link" shares exactly the current view.

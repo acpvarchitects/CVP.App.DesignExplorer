@@ -1,13 +1,22 @@
 // Comparison rules:
-// - two values of a goal are "about the same" when under 2% apart,
-//   measured against the best value;
-// - an option wins a goal only when it is best and more than 2% ahead of the next.
+// - two values of a goal are "about the same" when under 2% apart, measured against the
+//   best value; noise results in dB are about the same within 1 dB (about the smallest
+//   difference people can hear);
+// - an option wins a goal only when it is best and not about the same as the next.
 export const ABOUT_THE_SAME = 0.02;
+export const ABOUT_THE_SAME_DB = 1;
 
 // How far `value` is from `best`, as a fraction of the best value.
 export function behind(value, best) {
     if (value === best) return 0;
     return best ? Math.abs(value - best) / Math.abs(best) : Infinity;
+}
+
+// Results measured in decibels, e.g. "Noise from Pool & Deck [dB(A)]".
+const inDecibels = (goal) => /\[\s*dB/i.test(goal.label);
+
+export function aboutTheSame(goal, value, best) {
+    return inDecibels(goal) ? Math.abs(value - best) < ABOUT_THE_SAME_DB : behind(value, best) < ABOUT_THE_SAME;
 }
 
 // Ranks `options` on goal `goal` (dir +1 or -1).
@@ -21,7 +30,7 @@ export function rankGoal(options, goal) {
     const best = rows.length ? rows[0].value : 0;
     rows.forEach((r, i) => {
         r.behind = behind(r.value, best);
-        r.status = i === 0 ? "best" : r.behind < ABOUT_THE_SAME ? "same" : "behind";
+        r.status = i === 0 ? "best" : aboutTheSame(goal, r.value, best) ? "same" : "behind";
     });
     const next = rows[1];
     const winner = next && next.status === "behind" ? rows[0].option : null;
@@ -29,10 +38,3 @@ export function rankGoal(options, goal) {
 }
 
 export const rankGoals = (options, goals) => goals.map((g) => rankGoal(options, g));
-
-export const rowOf = (result, option) => result.rows.find((r) => r.option === option);
-
-export const winsOf = (results, option) => results.filter((r) => r.winner === option).length;
-
-// The options at the top of a goal: the best plus every option about the same as it.
-export const topGroup = (result) => result.rows.filter((r) => r.status !== "behind").map((r) => r.option);
