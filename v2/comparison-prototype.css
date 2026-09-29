@@ -5,3 +5,6 @@
 
 .cp-sticky[hidden]{display:none!important}
 #comparison-prototype.cp-arrived{animation:cp-arrival 1.8s ease-out}@keyframes cp-arrival{0%,30%{box-shadow:0 0 0 3px #629d79;background:#f0f7ee}100%{box-shadow:0 0 0 0 transparent;background:white}}@media(prefers-reduced-motion:reduce){#comparison-prototype.cp-arrived{animation:none;outline:2px solid #629d79}}
+
+/* "Add option": compact, not stretched to the height of the option cards. */
+.cp-picks .cp-add{align-self:flex-start;height:auto;padding:6px 14px;font-size:13px}
