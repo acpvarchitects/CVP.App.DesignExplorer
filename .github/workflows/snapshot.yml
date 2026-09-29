@@ -25,6 +25,7 @@ jobs:
               - css/**
               - img/**
               - index.html
+              - v2/**
               - Dockerfile
               - .dockerignore
               - nginx/**

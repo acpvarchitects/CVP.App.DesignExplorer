@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Design Explorer</title>
+    <link rel="icon" href="../favicon.png" />
+    <link rel="stylesheet" href="style.css?v=31" />
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <img src="../img/antonio-citterio-patricia-viel.png" alt="Antonio Citterio Patricia Viel" />
+            <span class="brand-app">Design Explorer</span>
+        </div>
+        <div class="project">
+            <span id="projectName"></span>
+            <span id="optionCount" class="muted"></span>
+        </div>
+        <div class="actions">
+            <button id="shareBtn" type="button">Copy link</button>
+        </div>
+    </header>
+
+    <main id="app" hidden>
+        <!-- Top: introduction + method choice (left), always-on chart (right) -->
+        <section class="overview-top">
+            <div class="intro">
+                <span class="eyebrow">Explore the study</span>
+                <h1>Find the options worth a closer look</h1>
+                <p id="introText" class="muted"></p>
+                <nav id="methodTabs" class="method-tabs" aria-label="Methods"></nav>
+                <p id="methodHint" class="muted small method-hint">Tick two or more methods to compare them side by side.</p>
+            </div>
+            <div class="chart-panel card">
+                <div class="chart-tools">
+                    <span class="muted">Drag a range on any axis. Click a line to inspect an option.</span>
+                    <label id="inputsToggle"><input id="showInputs" type="checkbox" /> Show inputs</label>
+                    <button id="clearChart" type="button">Clear chart filters</button>
+                </div>
+                <div id="activeRanges" class="active-ranges"></div>
+                <div class="chart-scroll"><div id="pcChart"></div></div>
+                <p id="chartLegend" class="chart-legend muted"></p>
+            </div>
+        </section>
+
+        <div class="workspace">
+            <!-- Left: measurement filters, shared by every method -->
+            <aside class="filters card" aria-label="Measurement filters">
+                <div class="filters-head">
+                    <h2>Measurements</h2>
+                    <button id="resetFilters" type="button" class="link">Reset</button>
+                </div>
+                <p class="muted small">Keep options within these ranges. Leave a box empty for no limit.</p>
+                <div id="rangeFilters"></div>
+            </aside>
+
+            <section class="results">
+                <!-- Preview: hidden until an option is clicked -->
+                <section id="preview" class="preview card" hidden aria-label="Selected option">
+                    <div class="preview-head">
+                        <div>
+                            <span id="previewMethod" class="method-label"></span>
+                            <h2 id="previewTitle"></h2>
+                            <p id="previewSummary" class="muted small"></p>
+                        </div>
+                        <div class="preview-actions">
+                            <button id="expandPreview" type="button" aria-expanded="false">Expand preview</button>
+                            <button id="closePreview" type="button" aria-label="Close preview">Close ✕</button>
+                        </div>
+                    </div>
+                    <div class="preview-controls">
+                        <button id="prevOption" type="button">← Previous</button>
+                        <div id="modeButtons" class="seg" aria-label="Preview mode"></div>
+                        <select id="layerSelect" aria-label="View" hidden></select>
+                        <button id="nextOption" type="button">Next →</button>
+                    </div>
+                    <div class="preview-body">
+                        <div class="media">
+                            <img id="previewImage" alt="" />
+                            <div id="preview3d" class="media-3d" hidden></div>
+                            <img id="legendImg" class="legend" alt="Colour legend" hidden />
+                            <div class="media-foot">
+                                <span id="mediaNote"></span>
+                                <span id="mediaStatus"></span>
+                                <button id="resetView" type="button" hidden>Reset view</button>
+                            </div>
+                        </div>
+                        <div id="standings" class="standings"></div>
+                    </div>
+                </section>
+
+                <div class="result-toolbar">
+                    <div>
+                        <h2 id="resultCount"></h2>
+                        <span id="scopeNote" class="muted small"></span>
+                    </div>
+                    <label class="order">
+                        Order by <select id="orderSelect"></select>
+                        <small id="orderDirection" class="muted"></small>
+                    </label>
+                </div>
+                <div id="shortlistBar" class="shortlist-bar"></div>
+                <div id="gallery" class="gallery" aria-label="Options"></div>
+
+                <!-- Below the gallery: secondary comparisons -->
+                <section id="methodSummary" class="method-summary"></section>
+                <section class="card insight">
+                    <div class="card-head">
+                        <h2>Best at what</h2>
+                        <span id="insightScope" class="muted"></span>
+                    </div>
+                    <div id="insightBody"></div>
+                </section>
+            </section>
+        </div>
+    </main>
+
+    <div id="message" class="message" hidden></div>
+
+    <script type="module" src="app.js?v=33"></script>
+</body>
+</html>
