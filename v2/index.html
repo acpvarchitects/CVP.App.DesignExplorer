@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Design Explorer</title>
     <link rel="icon" href="../favicon.png" />
-    <link rel="stylesheet" href="style.css?v=31" />
+    <link rel="stylesheet" href="style.css?v=37" />
     <script type="importmap">
         {
             "imports": {
@@ -113,19 +113,17 @@
 
                 <!-- Below the gallery: secondary comparisons -->
                 <section id="methodSummary" class="method-summary"></section>
-                <section class="card insight">
-                    <div class="card-head">
-                        <h2>Best at what</h2>
-                        <span id="insightScope" class="muted"></span>
-                    </div>
-                    <div id="insightBody"></div>
-                </section>
+                <!-- Compare options: the shortlist side by side (2 or more), see comparison.js -->
+                <section id="comparison" class="card comparison" aria-label="Compare options" hidden></section>
             </section>
         </div>
+
+        <!-- Pops up for a few seconds after Compare on a card -->
+        <nav id="shortlistPopup" class="shortlist-popup" aria-label="Shortlist" hidden></nav>
     </main>
 
     <div id="message" class="message" hidden></div>
 
-    <script type="module" src="app.js?v=33"></script>
+    <script type="module" src="app.js?v=37"></script>
 </body>
 </html>

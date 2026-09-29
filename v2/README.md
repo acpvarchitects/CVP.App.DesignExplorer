@@ -76,8 +76,11 @@ Views (`GENERAL_ONLY`, `ANALYSIS_ONLY`, `OVER_GENERAL` in `app.js`):
    matching options.
 4. **Gallery** of matching options ("Order by" one result); "Compare" builds a shortlist of up to 4.
 5. **Compare methods** (2+ methods shown): matching count, best and median per method.
-6. **Best at what**: per goal, "about the same" when under 2% apart, a win only when more than
-   2% ahead (`compare.js`); on the shortlist or the matching options; "By method" when several.
+6. **Compare options** (2 to 4 shortlisted options): slots A–D, a radar of all goals (axes
+   scaled worst→best over all loaded options), "What each option does better" and the exact
+   values with the best value found per result. Close results are "about the same": under 2%
+   apart, or within 1 dB for noise (`compare.js`). "See comparison ↓" (shortlist line, and a
+   pop-up for a few seconds after Compare) and "Back to options ↑" scroll there and back.
 
 The URL keeps ticked methods, order, option, mode/layer, ranges, shortlist and "Show inputs",
 so "Copy link" shares the current view.
@@ -89,6 +92,7 @@ so "Copy link" shares the current view.
 | `index.html` | markup and import map. After edits bump every `?v=` (here and on the imports at the top of `app.js`): the server caches `.js` for 30 days |
 | `app.js` | loading, state, filters, rendering, URL state, events |
 | `compare.js` | "about the same" and win rules |
+| `comparison.js` | the Compare options section (radar, strengths, values table) |
 | `parallel.js` | parallel-coordinates chart (d3) |
 | `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera |
 | `style.css` | all styles |

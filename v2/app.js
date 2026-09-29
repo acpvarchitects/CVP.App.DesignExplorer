@@ -18,16 +18,15 @@
 //                      (masses, floors, short_facades, pools, decks…)
 //
 // Page sections, top to bottom: method tabs + chart, measurement filters,
-// preview (only after clicking an option), gallery, Compare methods, Best at what.
+// preview (only after clicking an option), gallery, Compare methods, Compare options.
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=28";
-import { rankGoal, rankGoals, winsOf } from "./compare.js?v=22";
+import { rankGoals } from "./compare.js?v=37";
+import { comparisonHtml } from "./comparison.js?v=37";
 import { ParallelChart } from "./parallel.js?v=22";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
 const MAX_SHORTLIST = 4;
-const MAX_BARS = 5; // bars per goal in "Best at what"
-const MAX_NAMES = 3; // names listed in an "About the same" headline
 const STUDY_COLORS = ["#185fa5", "#ba7517", "#0f6e56", "#993556"];
 const BEST_BALANCE_HELP = "Best average position across all goals, among the matching options";
 // Layered export without a manifest yet: which geometry layers each 3D view shows.
@@ -259,8 +258,6 @@ function fmt(v) {
     return v.toLocaleString(undefined, { maximumFractionDigits: a >= 100 ? 0 : a >= 10 ? 1 : 2 });
 }
 
-const pct = (fraction) => `${Math.round(fraction * 100)}%`;
-const ordinal = (n) => n + ((n % 100 >= 11 && n % 100 <= 13) || !["st", "nd", "rd"][(n % 10) - 1] ? "th" : ["st", "nd", "rd"][(n % 10) - 1]);
 
 function esc(s) {
     return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -313,7 +310,7 @@ function render({ syncChart = false } = {}) {
     renderShortlistBar();
     renderGallery(view);
     renderMethodSummary(view);
-    renderInsight(view);
+    renderComparison();
     saveUrl();
 }
 
@@ -447,10 +444,12 @@ function renderShortlistBar() {
     const n = state.shortlist.length;
     $("shortlistBar").innerHTML =
         n === 0
-            ? `<span class="muted">Use <strong>Compare</strong> on up to ${MAX_SHORTLIST} options to put them side by side in Best at what.</span>`
+            ? `<span class="muted">Use <strong>Compare</strong> on up to ${MAX_SHORTLIST} options to put them side by side.</span>`
             : `<span><strong>Shortlist:</strong> ${state.shortlist.map((i) => esc(data.options[i].title)).join(", ")}${
                   n === 1 ? ` <span class="muted">· pick one more to compare</span>` : ""
-              }</span> <button type="button" data-clear-shortlist>Clear</button>`;
+              }</span> <button type="button" data-clear-shortlist>Clear</button>${
+                  n >= 2 ? ` <button type="button" class="cp-primary" data-see>See comparison ↓</button>` : ""
+              }`;
 }
 
 // Cards are built once and then only reordered, shown or hidden (no image flicker).
@@ -679,114 +678,102 @@ function renderMethodSummary(view) {
     box.innerHTML = `<div class="method-summary-label"><strong>Compare methods</strong><span class="muted">${esc(m.label)} · matching options only</span></div>${parts.join("")}`;
 }
 
-// "Best at what": one block per goal, options as bars from best to worst, with
-// the 2% rule. Scope: the shortlist once it has 2+ options, else the matching options.
-// The bar is 100% minus how far the option is behind the best (matches its note).
-function renderInsight(view) {
-    const scope = state.shortlist.length >= 2 ? state.shortlist.map((i) => data.options[i]) : view.visible;
-    const shortlisted = scope !== view.visible;
-    const results = shortlisted ? rankGoals(scope, goals()) : view.results;
-    const selected = state.sel != null ? data.options[state.sel] : null;
-    $("insightScope").textContent = shortlisted ? `Shortlist · ${scope.length} options` : `Matching options · ${scope.length}`;
+// "Compare options" below the gallery: the shortlist (2 or more) side by side, see comparison.js.
+function renderComparison() {
+    const box = $("comparison");
+    const chosen = state.shortlist.map((i) => data.options[i]);
+    const detailsOpen = box.querySelector("details")?.open; // keep "exact values" open across redraws
+    box.hidden = chosen.length < 2;
+    box.innerHTML = box.hidden ? "" : comparisonHtml({ data, chosen, esc, fmt, thumbUrl, maxOptions: MAX_SHORTLIST });
+    if (detailsOpen && box.querySelector("details")) box.querySelector("details").open = true;
+    renderPopup();
+}
 
-    if (!results.length) {
-        $("insightBody").innerHTML = `<p class="muted">This study has no goals yet. Add ↑ or ↓ in front of a result name in the CSV (for example <code>out:↑ Daylight</code>) to compare options on it.</p>`;
-        return;
-    }
-    if (scope.length < 2) {
-        $("insightBody").innerHTML = `<p class="muted">Fewer than 2 matching options: widen the filters to compare.</p>`;
-        return;
-    }
+// The shortlist pop-up at the bottom: shown for a few seconds after Compare on a card,
+// not all the time (it stays while the pointer is on it).
+const POPUP_MS = 5000;
+let popupTimer = null;
 
-    const counted = scope.map((o) => ({ o, n: winsOf(results, o) }));
-    const listed = shortlisted ? counted : counted.filter((c) => c.n > 0).sort((a, b) => b.n - a.n);
-    const wins = listed.length
-        ? listed.map((c) => `<span><strong>${esc(c.o.title)}</strong> wins ${c.n} of ${results.length}</span>`).join("")
-        : `<span class="muted">No option wins a goal on its own: the top of every goal is about the same.</span>`;
+function renderPopup() {
+    const n = state.shortlist.length;
+    $("shortlistPopup").innerHTML = `<strong>${n} selected</strong><span>${
+        n === 0 ? "Use Compare on gallery cards" : n === 1 ? "Select one more option" : ""
+    }</span><button type="button" data-see ${n < 2 ? "disabled" : ""}>See comparison ↓</button>${
+        n ? `<button type="button" class="ghost" data-clear-shortlist>Clear</button>` : ""
+    }<button type="button" class="ghost" data-back>Back to options ↑</button>`;
+    if (!n) $("shortlistPopup").hidden = true;
+}
 
-    const bar = (r, row) => {
-        const v = verdict(r, row);
-        const width = Math.max(2, Math.min(100, (1 - row.behind) * 100));
-        return `<div class="bar-row ${v.cls} ${row.option === selected ? "sel" : ""}">
-            <button type="button" class="bar-name" data-open="${row.option.index}">${esc(row.option.title)}</button>
-            <span class="bar-val">${fmt(row.value)}</span>
-            <div class="bar-track"><div class="bar-fill" style="width:${width.toFixed(1)}%"></div></div>
-            <span class="bar-note">${v.text}</span>
-        </div>`;
+function popUp(ms = POPUP_MS) {
+    if (!state.shortlist.length) return;
+    $("shortlistPopup").hidden = false;
+    clearTimeout(popupTimer);
+    popupTimer = setTimeout(() => ($("shortlistPopup").hidden = true), ms);
+}
+
+// Slow smooth scroll (1.3 to 2.6 s) so you can follow where the page goes. A wheel, touch or
+// key press stops it; with "reduce motion" it jumps straight there.
+let cancelScroll = null;
+let returnTo = null; // where "Back to options" goes after "See comparison"
+
+function scrollPage(top, arrival) {
+    cancelScroll?.();
+    const start = window.scrollY;
+    const target = Math.max(0, Math.min(top, document.documentElement.scrollHeight - window.innerHeight));
+    const arrive = () => {
+        if (!arrival) return;
+        arrival.classList.remove("arrived");
+        void arrival.offsetWidth; // restart the highlight animation
+        arrival.classList.add("arrived");
     };
-
-    // Several studies in scope: each goal also ranks the best option of each study.
-    const studies = data.studies.filter((s) => scope.some((o) => o.study === s));
-    const duels = studies.length > 1 ? results.map((r) => studyDuel(scope, r.goal, studies)) : [];
-    let studyWins = "";
-    if (duels.length) {
-        const tied = duels.filter((d) => d.rows.length > 1 && !d.winner).length;
-        studyWins = `<div class="wins-line study-wins"><span class="muted">By method</span>${studies
-            .map((st) => `<span><strong>${esc(st.name)}</strong> wins ${duels.filter((d) => d.winner && d.winner.study === st).length} of ${results.length}</span>`)
-            .join("")}${tied ? `<span class="muted">${tied} about the same</span>` : ""}</div>`;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        window.scrollTo({ top: target, behavior: "instant" });
+        arrive();
+        return;
     }
-
-    // Short lists show every option. Long lists pin the selected option on top.
-    const blocks = results.map((r, k) => {
-        const mine = r.rows.find((row) => row.option === selected);
-        let pinned = "";
-        let bars;
-        if (r.rows.length <= MAX_BARS + 1) {
-            bars = r.rows.map((row) => bar(r, row)).join("");
-        } else {
-            const others = r.rows.filter((row) => row !== mine);
-            bars = others.slice(0, MAX_BARS).map((row) => bar(r, row)).join("");
-            const hidden = others.length - MAX_BARS;
-            if (hidden > 0) bars += `<div class="bar-more">and ${hidden} more</div>`;
-            if (mine) {
-                pinned = `<div class="pinned"><div class="pinned-rank">${esc(selected.title)} is ${ordinal(r.rows.indexOf(mine) + 1)} of ${r.rows.length}</div>${bar(r, mine)}</div><div class="bar-gap">Top of the others</div>`;
-            }
+    const duration = Math.min(2600, Math.max(1300, Math.abs(target - start) * 0.3));
+    let frame;
+    let began;
+    const stop = () => {
+        cancelAnimationFrame(frame);
+        ["wheel", "touchstart", "keydown"].forEach((t) => window.removeEventListener(t, stop));
+        cancelScroll = null;
+    };
+    cancelScroll = stop;
+    ["wheel", "touchstart", "keydown"].forEach((t) => window.addEventListener(t, stop, { passive: true }));
+    const tick = (now) => {
+        began ??= now;
+        const t = Math.min(1, (now - began) / duration);
+        window.scrollTo({ top: start + (target - start) * (-(Math.cos(Math.PI * t) - 1) / 2), behavior: "instant" });
+        if (t < 1) frame = requestAnimationFrame(tick);
+        else {
+            stop();
+            arrive();
         }
-        const duel = duels[k] && duels[k].rows.length > 1
-            ? `<div class="duel"><div class="duel-title">Best of each method</div>${duels[k].rows.map((row) => bar(duels[k], row)).join("")}</div>`
-            : "";
-        return `<div class="goal">
-            <div class="goal-head">${esc(r.goal.label)} <span class="hint">${directionText(r.goal).toLowerCase()}</span></div>
-            <div class="goal-verdict">${headline(r)}</div>
-            ${duel}${pinned}${bars}
-        </div>`;
-    });
-
-    const others = data.schema.outputs.filter((m) => !m.dir);
-    const otherBlock = others.length
-        ? `<div class="goal"><div class="goal-head">No better or worse</div>${others
-              .map((m) => {
-                  const shown = scope.slice(0, 6).map((o) => `${esc(o.title)} <strong>${fmt(o.values[m.col])}</strong>`);
-                  if (scope.length > 6) shown.push(`and ${scope.length - 6} more`);
-                  return `<div class="other-row"><span>${esc(m.label)}</span><span>${shown.join(" · ")}</span></div>`;
-              })
-              .join("")}</div>`
-        : "";
-
-    $("insightBody").innerHTML = `${studyWins}<div class="wins-line">${wins}</div><div class="goal-grid">${blocks.join("")}${otherBlock}</div>`;
+    };
+    frame = requestAnimationFrame(tick);
 }
 
-function studyDuel(scope, goal, studies) {
-    const bests = studies
-        .map((st) => rankGoal(scope.filter((o) => o.study === st), goal).rows[0])
-        .filter(Boolean)
-        .map((row) => row.option);
-    return rankGoal(bests, goal);
+function seeComparison() {
+    if (state.shortlist.length < 2) return;
+    returnTo = window.scrollY;
+    $("shortlistPopup").hidden = true;
+    scrollPage(window.scrollY + $("comparison").getBoundingClientRect().top - 20, $("comparison"));
 }
 
-function verdict(result, row) {
-    if (result.winner === row.option) return { cls: "win", text: "Best" };
-    if (row.status !== "behind") return { cls: "same", text: "About the same as best" };
-    return { cls: "behind", text: `${pct(row.behind)} behind best` };
+function backToOptions() {
+    scrollPage(returnTo ?? window.scrollY + $("gallery").getBoundingClientRect().top - 20);
+    returnTo = null;
 }
 
-function headline(result) {
-    if (result.winner) {
-        return `<strong>${esc(result.winner.title)}</strong> <span class="muted">${pct(result.lead)} ahead of ${esc(result.runnerUp.title)}</span>`;
-    }
-    const top = result.rows.filter((r) => r.status !== "behind").map((r) => esc(r.option.title));
-    const names = top.length > MAX_NAMES ? `${top.slice(0, MAX_NAMES).join(", ")} and ${top.length - MAX_NAMES} more` : top.join(", ");
-    return `<strong>About the same</strong> <span class="muted">${names}</span>`;
+// "Add option +": the first matching option (in gallery order) that isn't compared yet.
+function addToComparison() {
+    if (state.shortlist.length >= MAX_SHORTLIST) return;
+    const taken = new Set(state.shortlist);
+    const next = (lastView?.visible || []).find((o) => !taken.has(o.index)) || data.options.find((o) => !taken.has(o.index));
+    if (!next) return;
+    state.shortlist.push(next.index);
+    render();
 }
 
 // ---- State in the URL (so "Copy link" shares exactly this view) ----
@@ -804,7 +791,7 @@ function saveUrl() {
     set("inputs", state.showInputs ? "1" : "");
     const ranges = Object.entries(state.ranges).map(([col, [lo, hi]]) => [col, Number.isFinite(lo) ? lo : null, Number.isFinite(hi) ? hi : null]);
     set("ranges", ranges.length ? JSON.stringify(ranges) : "");
-    ["variant", "sort"].forEach((k) => p.delete(k)); // from earlier versions
+    ["variant", "sort", "prototype"].forEach((k) => p.delete(k)); // from earlier versions
     history.replaceState(null, "", "?" + p.toString());
 }
 
@@ -905,6 +892,7 @@ function togglePick(index) {
         return;
     }
     render();
+    popUp();
 }
 
 function bindEvents() {
@@ -943,13 +931,31 @@ function bindEvents() {
     $("app").addEventListener("click", (e) => {
         const pick = e.target.closest("[data-pick]");
         const open = e.target.closest("[data-open]");
+        const remove = e.target.closest("[data-remove]");
         if (pick) togglePick(+pick.dataset.pick);
         else if (open) openOption(+open.dataset.open, true);
-        else if (e.target.closest("[data-clear-shortlist]")) {
+        else if (e.target.closest("[data-see]")) seeComparison();
+        else if (e.target.closest("[data-back]")) backToOptions();
+        else if (e.target.closest("[data-add]")) addToComparison();
+        else if (remove) {
+            state.shortlist = state.shortlist.filter((i) => i !== +remove.dataset.remove);
+            render();
+        } else if (e.target.closest("[data-clear-shortlist]")) {
             state.shortlist = [];
             render();
         }
     });
+    // Compare options: pick another option in a slot (A to D).
+    $("comparison").addEventListener("change", (e) => {
+        const slot = e.target.closest("[data-slot]");
+        if (!slot) return;
+        const ids = [...state.shortlist];
+        ids[+slot.dataset.slot] = +slot.value;
+        state.shortlist = [...new Set(ids)];
+        render();
+    });
+    $("shortlistPopup").addEventListener("mouseenter", () => clearTimeout(popupTimer));
+    $("shortlistPopup").addEventListener("mouseleave", () => popUp(1500));
     $("closePreview").addEventListener("click", () => {
         state.sel = null;
         render();

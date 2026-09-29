@@ -872,167 +872,313 @@ main {
     color: var(--method);
 }
 
-/* ---- Below the gallery: Best at what (2% rule) ---- */
-.hint {
-    font-weight: 400;
-    font-size: 12px;
-    color: var(--muted);
+/* ---- Below the gallery: Compare options (comparison.js) ---- */
+.comparison {
+    margin: 12px 0 24px;
+    padding: 24px;
+    scroll-margin-top: 16px;
 }
 
-.wins-line {
+.comparison h2 {
+    font-size: 24px;
+    margin: 5px 0;
+}
+
+.comparison h3 {
+    font-size: 15px;
+    margin-bottom: 10px;
+}
+
+.comparison.arrived {
+    animation: arrived 1.8s ease-out;
+}
+
+@keyframes arrived {
+    0%,
+    30% {
+        box-shadow: 0 0 0 3px #629d79;
+        background: #f0f7ee;
+    }
+    100% {
+        box-shadow: 0 0 0 0 transparent;
+        background: var(--card);
+    }
+}
+
+/* "See comparison" / "Back to options": one compact dark button. */
+.cp-primary {
+    align-self: flex-start;
+    padding: 6px 14px;
+    background: var(--accent-dark);
+    color: #fff;
+    border: 1px solid var(--accent-dark);
+    font-weight: 600;
+}
+
+button.cp-primary:hover:not(:disabled) {
+    background: #1b2e26;
+}
+
+.cp-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.cp-picks {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px 18px;
-    margin-bottom: 14px;
-    font-size: 13px;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 18px 0;
 }
 
-.study-wins {
-    margin-bottom: 8px;
-}
-
-.goal-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 14px;
-}
-
-.goal {
-    background: var(--soft);
-    border-radius: var(--radius);
-    padding: 12px 14px;
-}
-
-.goal-head {
-    font-weight: 600;
-}
-
-.goal-verdict {
-    margin: 2px 0 10px;
-    font-size: 13px;
-}
-
-/* Name and value on one line, a full-width bar under them. */
-.bar-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    column-gap: 10px;
-    margin-bottom: 8px;
-    font-size: 13px;
-}
-
-.bar-name {
+.cp-picks article {
+    flex: 1 1 210px;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    padding: 0;
-    border: 0;
-    background: none;
-    text-align: left;
-    font-weight: 600;
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    background: var(--soft);
+    border-top: 3px solid var(--option);
+    border-radius: 6px;
 }
 
-.bar-name:hover:not(:disabled) {
-    background: none;
-    text-decoration: underline;
-}
-
-.bar-row.sel .bar-name {
-    color: var(--accent);
-}
-
-.bar-val {
-    text-align: right;
-}
-
-.bar-track {
-    grid-column: 1 / 3;
-    height: 12px;
-    margin-top: 2px;
+.cp-picks img {
+    width: 86px;
+    height: 85px;
+    object-fit: contain;
     background: var(--card);
-    border-radius: 6px;
-    overflow: hidden;
 }
 
-.bar-fill {
-    height: 100%;
-    background: var(--faint);
-    border-radius: 6px;
+.cp-picks article > div {
+    flex: 1;
+    min-width: 0;
 }
 
-.bar-row.win .bar-fill {
-    background: var(--good);
+.cp-picks b {
+    color: var(--option);
 }
 
-.bar-row.same .bar-fill {
-    background: #97c459;
+.cp-picks select {
+    width: 100%;
+    font-size: 12px;
+    padding: 5px;
 }
 
-.bar-row.sel.behind .bar-fill {
-    background: #8fb3a1;
+.cp-picks small {
+    display: block;
+    margin: 5px 0;
+    font-size: 10px;
+    color: var(--muted);
+    overflow-wrap: anywhere;
 }
 
-.bar-note {
-    grid-column: 1 / 3;
+.cp-picks article button {
+    font-size: 11px;
+    padding: 3px 8px;
+}
+
+.cp-picks .cp-add {
+    align-self: flex-start;
+    padding: 6px 14px;
+}
+
+.cp-radar-layout {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 28px;
+}
+
+.cp-radar svg {
+    width: 100%;
+    max-height: 400px;
+}
+
+.cp-radar p {
+    text-align: center;
     font-size: 11px;
     color: var(--muted);
 }
 
-.bar-row.win .bar-note {
-    color: var(--good);
-    font-weight: 600;
+.cp-radar ol {
+    columns: 2;
+    font-size: 11px;
+    line-height: 1.8;
 }
 
-.pinned,
-.duel {
-    margin: 0 -6px 10px;
-    padding: 8px 6px 2px;
-    border-radius: var(--radius);
+.cp-strength {
+    margin: 0 0 12px;
+    padding: 12px 15px;
+    background: var(--soft);
+    border-left: 3px solid var(--option);
 }
 
-.pinned {
-    background: var(--accent-soft);
-}
-
-.duel {
-    background: var(--card);
-}
-
-.pinned-rank,
-.duel-title {
-    font-size: 12px;
-    font-weight: 600;
-    margin-bottom: 4px;
-}
-
-.pinned-rank {
-    color: var(--accent);
-}
-
-.duel-title {
-    color: var(--muted);
-}
-
-.bar-gap,
-.bar-more {
-    font-size: 12px;
-    color: var(--muted);
-    margin: 2px 0 6px;
-}
-
-.bar-gap {
-    border-top: 1px dashed var(--line-strong);
-    padding-top: 4px;
-}
-
-.other-row {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    margin-top: 6px;
+.cp-strength strong {
+    color: var(--option);
     font-size: 13px;
+}
+
+.cp-strength p {
+    margin: 6px 0;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.cp-strength small {
+    font-size: 11px;
+    color: var(--muted);
+}
+
+.cp-note {
+    margin-top: 18px;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--muted);
+}
+
+.comparison details summary {
+    cursor: pointer;
+    font-size: 12px;
+    padding: 12px;
+    background: var(--soft);
+}
+
+.cp-table-wrap {
+    overflow: auto;
+}
+
+.cp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.cp-table th,
+.cp-table td {
+    min-width: 130px;
+    padding: 13px 12px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+}
+
+.cp-table tbody th {
+    width: 28%;
+}
+
+.cp-table small {
+    display: block;
+    margin-top: 5px;
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--muted);
+}
+
+.cp-table td b {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.cp-leading {
+    background: #edf5e8;
+}
+
+.cp-reference {
+    background: #f2f4f0;
+    color: var(--muted);
+}
+
+/* Shortlist pop-up: appears for a few seconds after Compare on a card. */
+.shortlist-popup {
+    position: fixed;
+    z-index: 95;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 95vw;
+    padding: 12px 18px;
+    background: var(--accent-dark);
+    color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 18px #0003;
+    white-space: nowrap;
+    animation: pop 0.25s ease-out;
+}
+
+@keyframes pop {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 12px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+.shortlist-popup strong {
+    font-size: 13px;
+}
+
+.shortlist-popup span {
+    font-size: 12px;
+    color: #d1ddd4;
+}
+
+.shortlist-popup button {
+    font-size: 12px;
+    background: #fff;
+    color: var(--accent-dark);
+    border: 0;
+}
+
+.shortlist-popup button.ghost {
+    background: transparent;
+    color: #fff;
+    border: 1px solid #ffffff50;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .comparison.arrived {
+        animation: none;
+        outline: 2px solid #629d79;
+    }
+
+    .shortlist-popup {
+        animation: none;
+    }
+}
+
+@media (max-width: 850px) {
+    .cp-radar-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .cp-head {
+        display: block;
+    }
+
+    .comparison {
+        padding: 14px;
+    }
+
+    .cp-picks article {
+        flex-basis: 100%;
+    }
+}
+
+@media (max-width: 700px) {
+    .shortlist-popup {
+        flex-wrap: wrap;
+        gap: 6px;
+        width: 94vw;
+        padding: 9px;
+        white-space: normal;
+    }
 }
 
 /* ---- Messages ---- */
