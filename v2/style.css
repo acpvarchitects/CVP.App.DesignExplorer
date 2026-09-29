@@ -265,6 +265,38 @@ main {
     margin-left: 6px;
 }
 
+.method-tick {
+    display: inline-flex;
+    align-items: center;
+}
+
+.method-tick .tick {
+    display: inline-grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    border: 2px solid var(--method);
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+}
+
+.method-tick.on {
+    border-color: var(--method);
+    box-shadow: inset 0 0 0 1px var(--method);
+}
+
+.method-tick.on .tick {
+    background: var(--method);
+}
+
+.method-hint {
+    margin-top: 8px;
+}
+
 .chart-panel {
     padding: 8px 12px;
 }

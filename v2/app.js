@@ -47,7 +47,7 @@ const MODES = [
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const state = {
-    method: "", // "" = all methods, else a study name
+    methods: new Set(), // ticked study names; empty = all methods
     ranges: {}, // column -> [low, high]; either end may be ±Infinity (no limit)
     showInputs: false, // input axes on the chart
     order: "", // result column that orders the gallery
@@ -170,7 +170,14 @@ async function loadStudy(study) {
 // ---- Scope, filters and order ----
 
 const goals = () => data.schema.outputs.filter((m) => m.dir);
-const inMethod = (o) => !state.method || o.study.name === state.method;
+const inMethod = (o) => !state.methods.size || state.methods.has(o.study.name);
+
+// How the current method choice reads in sentences: "all methods", "02_veA", "A + B".
+function scopeLabel() {
+    if (data.studies.length < 2) return "all options";
+    if (!state.methods.size) return "all methods";
+    return data.studies.filter((s) => state.methods.has(s.name)).map((s) => s.name).join(" + ");
+}
 const valueOf = (o, col) => (col in o.values ? o.values[col] : parseFloat(o.row[col]));
 const outputByCol = (col) => data.schema.outputs.find((m) => m.col === col);
 
@@ -310,17 +317,19 @@ function render({ syncChart = false } = {}) {
     saveUrl();
 }
 
+// "All methods" plus one tick box per method: tick two or more to compare them.
 function renderMethodTabs() {
     const tabs = $("methodTabs");
     tabs.hidden = data.studies.length < 2;
+    $("methodHint").hidden = tabs.hidden;
     if (tabs.hidden) return;
-    tabs.innerHTML = [["", "All methods"], ...data.studies.map((s) => [s.name, s.name])]
-        .map(([key, label]) => {
-            const n = data.options.filter((o) => !key || o.study.name === key).length;
-            const dot = key ? `<span class="study-dot" style="background:${data.studies.find((s) => s.name === key).color}"></span>` : "";
-            return `<button type="button" data-method="${esc(key)}" aria-pressed="${state.method === key}">${dot}${esc(label)} <span class="count">${n}</span></button>`;
-        })
-        .join("");
+    const all = `<button type="button" data-all-methods aria-pressed="${!state.methods.size}">All methods <span class="count">${data.options.length}</span></button>`;
+    const ticks = data.studies.map((st) => {
+        const on = state.methods.has(st.name);
+        const n = data.options.filter((o) => o.study === st).length;
+        return `<button type="button" role="checkbox" aria-checked="${on}" data-method="${esc(st.name)}" class="method-tick ${on ? "on" : ""}" style="--method:${st.color}"><span class="tick">${on ? "✓" : ""}</span>${esc(st.name)} <span class="count">${n}</span></button>`;
+    });
+    tabs.innerHTML = all + ticks.join("");
 }
 
 function renderChart(view, syncChart) {
@@ -342,7 +351,7 @@ function renderChart(view, syncChart) {
         ...data.schema.outputs.map((m) => ({ col: m.col, label: m.label, dir: m.dir, value: (o) => o.values[m.col] })),
     ];
     const model = {
-        scope: `${state.method}|${state.showInputs}`,
+        scope: `${[...state.methods].sort()}|${state.showInputs}`,
         options: view.scope,
         axes,
         selected: state.sel != null ? data.options[state.sel] : null,
@@ -391,7 +400,7 @@ function renderFilters(view) {
             .join("");
     }
     const scopeStats = computeStats(view.scope, data.schema.outputs);
-    const scopeName = state.method || (data.studies.length > 1 ? "all methods" : "all options");
+    const scopeName = scopeLabel();
     for (const fs of box.querySelectorAll("fieldset")) {
         const col = fs.dataset.col;
         const s = scopeStats[col];
@@ -412,7 +421,7 @@ function renderFilters(view) {
 function renderToolbar(view, notice) {
     const filters = Object.keys(state.ranges).length;
     $("resultCount").textContent = `${view.visible.length} of ${view.scope.length} options`;
-    const scope = state.method || (data.studies.length > 1 ? "All methods" : "All options");
+    const scope = scopeLabel().replace(/^a/, "A");
     $("scopeNote").textContent = [
         scope,
         filters ? `${filters} measurement filter${filters > 1 ? "s" : ""}` : "No measurement filters",
@@ -602,7 +611,7 @@ function partsFor(o, layer) {
 // "Where this option stands": actual value positions among the matching options.
 // Plain counts only; the 2% "about the same" rule lives in Best at what.
 function renderStandings(o, view) {
-    const scope = state.method || (data.studies.length > 1 ? "all methods" : "all options");
+    const scope = scopeLabel();
     const rows = data.schema.outputs.map((m) => {
         const others = view.visible.filter((p) => Number.isFinite(p.values[m.col]));
         const v = o.values[m.col];
@@ -647,10 +656,11 @@ function renderStandings(o, view) {
 // Compare methods: per method, the matching options on the "Order by" result.
 function renderMethodSummary(view) {
     const box = $("methodSummary");
-    box.hidden = state.method !== "" || data.studies.length < 2;
+    const shown = data.studies.filter((st) => !state.methods.size || state.methods.has(st.name));
+    box.hidden = shown.length < 2;
     if (box.hidden) return;
     const m = outputByCol(state.order);
-    const parts = data.studies.map((s) => {
+    const parts = shown.map((s) => {
         const total = data.options.filter((o) => o.study === s).length;
         const rows = view.visible.filter((o) => o.study === s);
         const best = rows.find((o) => Number.isFinite(o.values[m.col])); // visible is already ordered best first
@@ -781,7 +791,8 @@ function headline(result) {
 function saveUrl() {
     const p = new URLSearchParams(location.search);
     const set = (key, value) => (value === "" || value == null ? p.delete(key) : p.set(key, value));
-    set("method", state.method);
+    set("methods", [...state.methods].join(","));
+    p.delete("method"); // single-method links from earlier versions
     set("order", state.order);
     set("option", state.sel != null ? state.sel + 1 : "");
     set("mode", state.sel != null ? state.mode : "");
@@ -795,8 +806,8 @@ function saveUrl() {
 }
 
 function loadUrlState() {
-    const method = params.get("method");
-    if (data.studies.some((s) => s.name === method)) state.method = method;
+    const picked = (params.get("methods") || params.get("method") || "").split(",").filter((n) => data.studies.some((s) => s.name === n));
+    state.methods = new Set(picked.length === data.studies.length ? [] : picked);
     const order = params.get("order") || params.get("sort");
     state.order = outputByCol(order) ? order : data.schema.outputs[0]?.col || "";
     const option = parseInt(params.get("option"), 10);
@@ -855,8 +866,9 @@ function step(delta) {
     if (next) openOption(next.index, false);
 }
 
-function setMethod(method) {
-    state.method = method;
+// Tick / untick one method; unticking the last one, or ticking all, means all methods.
+function setMethods(names) {
+    state.methods = new Set(names.length === data.studies.length ? [] : names);
     // Input ranges only make sense where every option has that input.
     const inputs = inputAxesFor(data.options.filter(inMethod)).map((m) => m.col);
     for (const col of Object.keys(state.ranges)) {
@@ -895,7 +907,11 @@ function togglePick(index) {
 function bindEvents() {
     $("methodTabs").addEventListener("click", (e) => {
         const b = e.target.closest("[data-method]");
-        if (b) setMethod(b.dataset.method);
+        if (e.target.closest("[data-all-methods]")) setMethods([]);
+        if (!b) return;
+        const next = new Set(state.methods);
+        next.has(b.dataset.method) ? next.delete(b.dataset.method) : next.add(b.dataset.method);
+        setMethods([...next]);
     });
     $("rangeFilters").addEventListener("change", (e) => {
         const input = e.target.closest("input[data-bound]");

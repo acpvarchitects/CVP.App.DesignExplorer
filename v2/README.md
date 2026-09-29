@@ -77,7 +77,8 @@ are merged by column name; each study is shown as a **method** with its own colo
 
 ## Page, top to bottom (layout A, approved 2026-09-28)
 
-1. **Method tabs** (All methods / each study) and the **parallel-coordinates chart** (always on).
+1. **Method tick boxes** ("All methods" + one tick box per study: tick 2 or more to compare just
+   those; `?methods=A,B`) and the **parallel-coordinates chart** (always on).
    Goals are drawn with "better" at the top (↓ goals flipped). Drag on an axis = range filter.
    "Show inputs" adds input axes only when every option in scope has that input as a number.
 2. **Measurements** sidebar: min/max per result (empty = no limit) and "Better than average"
@@ -89,14 +90,14 @@ are merged by column name; each study is shown as a **method** with its own colo
    among the matching options (plain counts, not the 2% rule).
 4. **Gallery** of matching options, ordered by one result ("Order by", preferred direction).
    "Compare" puts up to 4 options on the shortlist.
-5. **Compare methods** (All methods only): per method, matching count/%, best and median on the
-   "Order by" result.
+5. **Compare methods** (whenever 2+ methods are shown): per method, matching count/%, best and
+   median on the "Order by" result.
 6. **Best at what**: one block per goal with the **2% rule** (`compare.js`): about the same when
    under 2% apart, a win only when >2% ahead. Scope: the shortlist once it has 2+, else the
    matching options. With several methods: "Best of each method" and "By method: X wins N of M".
    Big scopes show the top 5 and pin the previewed option with its rank.
 
-The URL keeps method, order, option, mode/layer, ranges, shortlist and "Show inputs", so
+The URL keeps ticked methods, order, option, mode/layer, ranges, shortlist and "Show inputs", so
 "Copy link" shares exactly the current view.
 
 ## Files

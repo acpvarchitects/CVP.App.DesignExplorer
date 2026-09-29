@@ -127,3 +127,7 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
 - 2026-09-29: MPW_260928_01_AI_Claude showed no legend: its CSV leaves `legend_an_*` cells empty
   although the PNGs are in the folder (identical to the other 3 collections). Viewer now falls
   back to `legend_an_<name>.png` in the option's folder. Exporter should fill the cells.
+- 2026-09-29: methods are tick boxes (user request): tick 2+ to see and compare just those;
+  scope, chart, averages ("Better than average"), Compare methods and Best at what "By method"
+  follow the ticked set; `?methods=A,B` (old `?method=` links still load). Legend "missing"
+  report was the blue collection's empty cells (fixed before, needs Ctrl+F5).
