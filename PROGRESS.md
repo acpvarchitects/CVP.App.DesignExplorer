@@ -131,3 +131,16 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
   scope, chart, averages ("Better than average"), Compare methods and Best at what "By method"
   follow the ticked set; `?methods=A,B` (old `?method=` links still load). Legend "missing"
   report was the blue collection's empty cells (fixed before, needs Ctrl+F5).
+
+## Deployed to dev — 2026-09-29
+- Pushed ONE clean commit `9dcbfb3` to `origin/WIP` (fast-forward from e2193e7): only `v2/` code,
+  a generic public `v2/README.md`, `.gitignore`/`.dockerignore` lines and `v2/**` in the
+  snapshot.yml paths filter. No private docs (HANDOFF, PROGRESS, CONTEXT, CLAUDE.md,
+  docs/agents), no study/site names, no "Claude" (user request: no co-author line either),
+  "Classic view" button removed (user request). Repo is PUBLIC.
+- GitHub Actions run 36544118577: success (branch-wip image pushed). Live URL once Watchtower
+  updates: `http://designexplorer.acpv.local/dev/v2/?PROJECT=…`.
+- How to deploy later (keep private stuff out): on `WIP`, `git checkout feature/new-dashboard --
+  v2/<code files>` (NOT v2/README.md: the public one lives on WIP), scan for private strings
+  (claude, study names, usernames), commit without co-author line, push. `feature/new-dashboard`
+  keeps the detailed README and private docs; its code is synced with WIP (`214b4f7`).

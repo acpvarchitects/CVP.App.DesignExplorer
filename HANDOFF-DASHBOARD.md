@@ -1,5 +1,12 @@
 # Dashboard handoff — selected layout A
 
+## Update 2026-09-29: deployed to dev
+
+v2 is on `origin/WIP` as one clean public commit (`9dcbfb3`) and builds to the dev image; see the
+"Deployed to dev" section at the end of `PROGRESS.md` for what was (not) published and how to
+deploy again without private content. The repo is public: never push this file, PROGRESS.md,
+CONTEXT.md, CLAUDE.md or docs/agents; no "Claude" in commits or UI names (user request).
+
 ## Current state — 2026-09-28, after integration (read this first)
 
 Layout A is now **the normal v2 page** (`v2/`), no longer a local-only prototype. The sections
