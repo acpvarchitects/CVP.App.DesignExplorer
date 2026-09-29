@@ -144,3 +144,6 @@ Show it to colleagues first, and launch it only if it works well. Keep it simple
   v2/<code files>` (NOT v2/README.md: the public one lives on WIP), scan for private strings
   (claude, study names, usernames), commit without co-author line, push. `feature/new-dashboard`
   keeps the detailed README and private docs; its code is synced with WIP (`214b4f7`).
+- 2026-09-29: folders renamed on MinIO (no "Claude"): MPW_260928_01_AI, MPW_260929_02_AI. Live link:
+  `http://designexplorer.acpv.local/dev/v2/?PROJECT=MPW_260928_01_AI,MPW_260928_02_PD_Liberal,MPW_260928_02_PD_Strict,MPW_260929_02_AI`
+  (office LAN or ACPV VPN only). Old *_Claude links no longer load.
