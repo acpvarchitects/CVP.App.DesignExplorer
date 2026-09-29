@@ -1,6 +1,14 @@
 // THROWAWAY: three comparison structures on /v2/?prototype=comparison&variant=A|B|C.
 // Uses the host's real data/shortlist. No deployment or persistence beyond host URL state.
 let ctx, root, switcher, baseline, sticky, returnPosition=null, variant='B';
+// The bottom bar is not permanent: it pops up for a few seconds after the shortlist changes.
+let lastCount=null, hideTimer=null;
+const POPUP_MS=5000;
+function popUp(){
+    sticky.hidden=false;
+    clearTimeout(hideTimer);
+    hideTimer=setTimeout(()=>{sticky.hidden=true;},POPUP_MS);
+}
 let cancelScroll;
 function scrollWithinPage(top, arrival) {
     cancelScroll?.();
@@ -8,12 +16,13 @@ function scrollWithinPage(top, arrival) {
     const target=Math.max(0,Math.min(top,document.documentElement.scrollHeight-window.innerHeight));
     const finish=()=>{if(arrival){arrival.classList.remove('cp-arrived');void arrival.offsetWidth;arrival.classList.add('cp-arrived');}};
     if(matchMedia('(prefers-reduced-motion: reduce)').matches){window.scrollTo({top:target,behavior:'instant'});finish();return;}
-    const duration=Math.min(1600,Math.max(900,Math.abs(target-start)*.12));
+    // Slow enough to follow where you're going: 1.3 s for short jumps, up to 2.6 s for long ones.
+    const duration=Math.min(2600,Math.max(1300,Math.abs(target-start)*.3));
     let frame, began;
     const stop=()=>{cancelAnimationFrame(frame);window.removeEventListener('wheel',stop);window.removeEventListener('touchstart',stop);window.removeEventListener('keydown',stop);cancelScroll=null;};
     cancelScroll=stop;
     window.addEventListener('wheel',stop,{passive:true});window.addEventListener('touchstart',stop,{passive:true});window.addEventListener('keydown',stop);
-    function tick(now){began??=now;const t=Math.min(1,(now-began)/duration);const eased=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;window.scrollTo({top:start+(target-start)*eased,behavior:'instant'});if(t<1)frame=requestAnimationFrame(tick);else{stop();finish();}}
+    function tick(now){began??=now;const t=Math.min(1,(now-began)/duration);const eased=-(Math.cos(Math.PI*t)-1)/2;window.scrollTo({top:start+(target-start)*eased,behavior:'instant'});if(t<1)frame=requestAnimationFrame(tick);else{stop();finish();}}
     frame=requestAnimationFrame(tick);
 }
 function scrollToComparison(){scrollWithinPage(window.scrollY+root.getBoundingClientRect().top-20,root);}
@@ -22,13 +31,18 @@ const names={A:'Pictures + comparison table',B:'Radar + strengths',C:'Compare ag
 export function renderComparison(next) {
     ctx=next;
     if(!root){
-        const css=document.createElement('link');css.rel='stylesheet';css.href='./comparison-prototype.css';document.head.append(css);
+        const css=document.createElement('link');css.rel='stylesheet';css.href='./comparison-prototype.css?v=2';document.head.append(css);
         root=document.createElement('section');root.id='comparison-prototype';root.className='card';
         document.querySelector('.insight').before(root);
         document.querySelector('.insight').hidden=true;
         switcher=document.createElement('div');switcher.className='compare-switcher';root.after(switcher);
         sticky=document.createElement('nav');sticky.className='cp-sticky';sticky.setAttribute('aria-label','Shortlist comparison');document.body.append(sticky);
-        sticky.onclick=e=>{if(e.target.closest('[data-see]')&&ctx.selected.length>=2){returnPosition={x:scrollX,y:scrollY};scrollToComparison();}if(e.target.closest('[data-clear]'))ctx.change([]);if(e.target.closest('[data-back]'))goBack();};
+        sticky.hidden=true;
+        sticky.onclick=e=>{if(e.target.closest('[data-see]')&&ctx.selected.length>=2){sticky.hidden=true;returnPosition={x:scrollX,y:scrollY};scrollToComparison();}if(e.target.closest('[data-clear]'))ctx.change([]);if(e.target.closest('[data-back]'))goBack();};
+        sticky.onmouseenter=()=>clearTimeout(hideTimer); // stays while the pointer is on it
+        sticky.onmouseleave=()=>{hideTimer=setTimeout(()=>{sticky.hidden=true;},1500);};
+        // Same "See comparison" in the shortlist line above the gallery (scrolls with the page).
+        document.getElementById('shortlistBar').addEventListener('click',e=>{if(e.target.closest('[data-see-inline]')&&ctx.selected.length>=2){returnPosition={x:scrollX,y:scrollY};scrollToComparison();}});
         switcher.onclick=e=>{const b=e.target.closest('[data-variant]');if(b){variant=b.dataset.variant;draw();root.scrollIntoView({block:'start',behavior:'smooth'});}};
         root.addEventListener('change',e=>{
             if(e.target.matches('[data-slot]')){const ids=chosen().map(o=>o.index);ids[+e.target.dataset.slot]=+e.target.value;ctx.change([...new Set(ids)]);}
@@ -46,7 +60,11 @@ function goBack(){
 function chosen(){return ctx.selected.map(i=>ctx.data.options[i]);}
 function draw(){
     const {data,esc:E,fmt:F,thumbUrl}=ctx, options=chosen(), goals=data.schema.outputs.filter(m=>m.dir), all=data.options;
-    sticky.hidden = options.length === 0;
+    if(lastCount!==null&&options.length!==lastCount&&options.length>0)popUp();
+    if(!options.length)sticky.hidden=true;
+    lastCount=options.length;
+    document.querySelectorAll('.cp-see-inline').forEach(b=>b.remove());
+    if(options.length>=2)document.getElementById('shortlistBar').insertAdjacentHTML('beforeend','<button type="button" class="cp-see-inline" data-see-inline>See comparison ↓</button>');
     sticky.innerHTML=`<strong>${options.length} selected</strong><span>${options.length===0?'Use Compare on gallery cards':options.length===1?'Select one more option':''}</span><button data-see ${options.length<2?'disabled':''}>See comparison ↓</button>${options.length?'<button data-clear>Clear</button>':''}<button data-back>Back to options ↑</button>`;
     root.hidden=options.length<2;switcher.hidden=options.length<2;
     if(options.length<2)return;

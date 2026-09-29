@@ -13,3 +13,8 @@ Best found reference is per measurement across all loaded options, independent o
 Verified real 280-option load, A/B/C rendering, and changing a selected option updating its summary. No deployment, push, or commit. Await user preference before promoting; preserve variants as prototype evidence when a decision is validated.
 
 User selected B. Radar now sits below gallery/method summary. Fixed shortlist bar enables See comparison at 2+ real selections, Clear, and Back to options restoring window scroll position saved at the jump. No automatic example selection remains. Prior layout switcher is inline below comparison. Verified jump and exact return position in browser; local only.
+
+2026-09-29 feedback on B: jump scroll too fast, permanent bottom bar annoying. Changed: scroll
+1.3–2.6 s (0.3 ms/px) with ease-in-out-sine (reduced-motion still jumps instantly); bottom bar
+is no longer permanent — it pops up for 5 s after the shortlist changes (stays while hovered),
+and "See comparison ↓" also sits in the shortlist line above the gallery.
