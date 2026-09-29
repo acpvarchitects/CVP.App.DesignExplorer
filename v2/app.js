@@ -27,7 +27,7 @@ import { ParallelChart } from "./parallel.js?v=22";
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
 // Local-only throwaway comparison layouts; normal/deployed page is unchanged.
 const comparisonPrototype = ['localhost','127.0.0.1'].includes(location.hostname) && new URLSearchParams(location.search).get('prototype') === 'comparison'
-    ? await import('./comparison-prototype.js?v=2') : null;
+    ? await import('./comparison-prototype.js?v=3') : null;
 const MAX_SHORTLIST = 4;
 const MAX_BARS = 5; // bars per goal in "Best at what"
 const MAX_NAMES = 3; // names listed in an "About the same" headline
