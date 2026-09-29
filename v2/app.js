@@ -27,7 +27,8 @@ import { ParallelChart } from "./parallel.js?v=22";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
 const MAX_SHORTLIST = 4;
-const STUDY_COLORS = ["#185fa5", "#ba7517", "#0f6e56", "#993556"];
+// One color per method (study), in load order; enough for 8 methods before repeating.
+const STUDY_COLORS = ["#185fa5", "#ba7517", "#0f6e56", "#993556", "#6f42c1", "#d1495b", "#4a5a6a", "#8b5e34"];
 const BEST_BALANCE_HELP = "Best average position across all goals, among the matching options";
 // Layered export without a manifest yet: which geometry layers each 3D view shows.
 // "3D model" = the general view; "3D analysis" hides the masses so they don't cover the
