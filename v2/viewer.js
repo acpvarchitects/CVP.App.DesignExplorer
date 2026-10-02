@@ -159,11 +159,41 @@ function prepare(root, kind) {
             : new THREE.MeshLambertMaterial({ vertexColors, side: THREE.DoubleSide });
     const materials = {};
     root.traverse((node) => {
+        if (node.isLine && kind === "analysis") {
+            node.material = toLinearColors(node.geometry) ? edgeLines.colored : edgeLines.plain;
+            return;
+        }
         if (!node.isMesh) return;
         const colored = toLinearColors(node.geometry);
         if (colored || kind !== "geometry") node.material = materials[colored] ||= make(colored);
     });
     return root;
+}
+
+// Edge lines of an analysis (the unit outlines) lie exactly on its faces, which the offset
+// above pulls towards the camera; polygon offset does not apply to lines, so they are pulled
+// further instead: along their own view ray (same pixel, nearer depth), by a fraction of their
+// distance so the margin follows the zoom. Lines cannot be drawn thinner than 1 px, so they
+// are half transparent to read lighter.
+const EDGE_PULL = 0.004;
+const EDGE_OPACITY = 0.45;
+const edgeLines = { colored: edgeLineMaterial(true), plain: edgeLineMaterial(false) };
+
+function edgeLineMaterial(vertexColors) {
+    const material = new THREE.LineBasicMaterial({
+        vertexColors,
+        color: vertexColors ? 0xffffff : 0x000000,
+        transparent: EDGE_OPACITY < 1,
+        opacity: EDGE_OPACITY,
+        depthWrite: false,
+    });
+    material.onBeforeCompile = (shader) => {
+        shader.vertexShader = shader.vertexShader.replace(
+            "#include <project_vertex>",
+            `#include <project_vertex>\n\tgl_Position = projectionMatrix * vec4( mvPosition.xyz * ${1 - EDGE_PULL}, 1.0 );`
+        );
+    };
+    return material;
 }
 
 // Exports write sRGB colors (as picked in Grasshopper) where glTF expects linear ones:
