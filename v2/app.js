@@ -10,6 +10,9 @@
 //   img, img:<view>    image of the option, one column per view
 //   threeD             3D model (.json like the classic app, or .glb)
 //   analysis:<name>    3D analysis mesh with vertex colors (.glb)
+//   target:<result>    optional target of the out: column with that name (arrow optional),
+//                      drawn as a red dot on the result's bar
+//   table_<name>       small table per option (.csv, first row = header), "Table" view
 // Layered 3D export (see v2/README.md):
 //   context            shared site model, same file on every row
 //   an_<name>          analysis layer (any column starting with an_)
@@ -42,6 +45,7 @@ const MODES = [
     { key: "image", label: "Image", layers: "images" },
     { key: "model", label: "3D model", layers: "models" },
     { key: "analysis", label: "3D analysis", layers: "analyses" },
+    { key: "table", label: "Table", layers: "tables" },
 ];
 
 const $ = (id) => document.getElementById(id);
@@ -53,7 +57,7 @@ const state = {
     order: "", // result column that orders the gallery
     sel: null, // option index shown in the preview; null = preview closed
     mode: "image",
-    layer: { image: 0, model: 0, analysis: 0 },
+    layer: { image: 0, model: 0, analysis: 0, table: 0 },
     expanded: false,
     shortlist: [], // option indexes, in the order they were picked
     notice: "", // one-off message, e.g. why the preview closed
@@ -92,8 +96,10 @@ function resolveStudies() {
 
 // `rows` (optional) tells which unprefixed columns hold 3D files (geometry layers).
 function readSchema(columns, rows = []) {
-    const schema = { inputs: [], outputs: [], images: [], models: [], analyses: [], layers: [], context: null };
+    const schema = { inputs: [], outputs: [], images: [], models: [], analyses: [], layers: [], tables: [], context: null };
     const holds3d = (col) => rows.some((r) => /\.(glb|gltf)$/i.test((r[col] || "").trim()));
+    const targets = new Map(); // result name (arrow removed) -> target column
+    const bare = (name) => name.replace(/^[↑↓]/, "").trim();
     for (const col of columns) {
         const sep = col.indexOf(":");
         const prefix = (sep < 0 ? col : col.slice(0, sep)).trim().toLowerCase();
@@ -109,6 +115,10 @@ function readSchema(columns, rows = []) {
             schema.models.push({ col, label: name || "3D model" });
         } else if (prefix === "analysis" && name) {
             schema.analyses.push({ col, label: name });
+        } else if (prefix === "target" && name) {
+            targets.set(bare(name), col);
+        } else if (sep < 0 && prefix.startsWith("table_")) {
+            schema.tables.push({ col, label: col.slice(6).replace(/_/g, " ") });
         } else if (sep < 0 && prefix === "context") {
             schema.context = { col };
         } else if (sep < 0 && prefix.startsWith("an_")) {
@@ -117,6 +127,7 @@ function readSchema(columns, rows = []) {
             schema.layers.push({ col, label: col.replace(/_/g, " ") });
         }
     }
+    for (const m of schema.outputs) m.targetCol = targets.get(bare(m.col.slice(m.col.indexOf(":") + 1)));
     // Legend images: legend_<analysis column> (layered export) or legend:<analysis name>.
     for (const col of columns) {
         const key = col.trim().toLowerCase();
@@ -139,9 +150,13 @@ function readOptions(rows, study, first, prefixed) {
     const single = schema.inputs.length === 1 ? schema.inputs[0] : null;
     return rows.map((row, i) => {
         const values = {};
-        for (const m of schema.outputs) values[m.col] = parseFloat(row[m.col]);
+        const targets = {};
+        for (const m of schema.outputs) {
+            values[m.col] = parseFloat(row[m.col]);
+            if (m.targetCol) targets[m.col] = parseFloat(row[m.targetCol]);
+        }
         const name = single ? `${single.label} ${row[single.col]}` : `Option ${i + 1}`;
-        return { index: first + i, row, values, study, name, title: prefixed ? `${study.name} · ${name}` : name };
+        return { index: first + i, row, values, targets, study, name, title: prefixed ? `${study.name} · ${name}` : name };
     });
 }
 
@@ -550,11 +565,13 @@ function showMedia(o) {
     if (key === mediaKey) return; // unrelated redraw: keep the loaded image / 3D model
     mediaKey = key;
     const layer = layersOf()[state.layer[state.mode]];
-    const is3d = state.mode !== "image";
+    const isTable = state.mode === "table";
+    const is3d = state.mode === "model" || state.mode === "analysis";
     const parts = is3d && layer ? partsFor(o, layer) : null;
-    const src = is3d ? parts : layer ? assetUrl(o, o.row[layer.col]) : null;
-    $("previewImage").hidden = is3d;
+    const src = is3d ? parts : layer ? assetUrl(o, (o.row[layer.col] || "").trim()) : null;
+    $("previewImage").hidden = is3d || isTable;
     $("preview3d").hidden = !is3d;
+    $("previewTable").hidden = !isTable;
     $("resetView").hidden = !is3d;
     $("mediaStatus").textContent = src ? "" : "No file for this view.";
     // Legend: the CSV cell, or (cell left empty by the export) the standard file name
@@ -570,6 +587,11 @@ function showMedia(o) {
     };
     if (legend) img.src = legend;
     $("mediaNote").textContent = legend ? "" : noLegend;
+    if (isTable) {
+        if (viewer) viewer.clear();
+        showTable(src, key);
+        return;
+    }
     if (!is3d) {
         if (viewer) viewer.clear();
         $("previewImage").alt = `${o.title}, ${layer ? layer.label : ""}`;
@@ -580,6 +602,37 @@ function showMedia(o) {
     if (!viewer) viewer = new Viewer($("preview3d"), (text) => ($("mediaStatus").textContent = text));
     if (parts) viewer.compose(parts, { fadeContext: state.mode === "analysis" && !OVER_GENERAL[layer.col] });
     else viewer.clear();
+}
+
+// Table view: a small CSV per option (first row = header). Numeric cells are formatted like
+// every other value; a first cell reading "Total" marks the totals row.
+async function showTable(url, key) {
+    const box = $("previewTable");
+    box.replaceChildren();
+    if (!url) return;
+    let rows;
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(response.status + " " + response.statusText);
+        rows = csvParse((await response.text()).replace(/^﻿/, ""));
+    } catch (e) {
+        if (mediaKey === key) $("mediaStatus").textContent = "The table didn't load.";
+        return;
+    }
+    if (mediaKey !== key) return; // another option or view was opened meanwhile
+    const cell = (v) => {
+        const n = Number(v);
+        return v !== "" && Number.isFinite(n) ? `<td class="num">${fmt(n)}</td>` : `<td>${esc(v)}</td>`;
+    };
+    box.innerHTML = `<table>
+        <thead><tr>${rows.columns.map((c, i) => `<th${i ? ' class="num"' : ""}>${esc(c)}</th>`).join("")}</tr></thead>
+        <tbody>${rows
+            .map((r) => {
+                const total = /^total/i.test(String(r[rows.columns[0]] ?? "").trim());
+                return `<tr${total ? ' class="total"' : ""}>${rows.columns.map((c) => cell(r[c] ?? "")).join("")}</tr>`;
+            })
+            .join("")}</tbody>
+    </table>`;
 }
 
 // The 3D layers of one view for one option, or null when the option has no file for it.
@@ -621,7 +674,10 @@ function renderStandings(o, view) {
         if (!Number.isFinite(v) || !others.length) {
             return `<div class="standing"><div class="standing-heading"><span>${esc(m.label)}</span><strong>—</strong></div><small class="standing-verdict">No result available</small></div>`;
         }
-        const vals = others.map((p) => p.values[m.col]);
+        // The target (optional) widens the bar so the red dot always fits on it.
+        const target = o.targets?.[m.col];
+        const hasTarget = Number.isFinite(target);
+        const vals = others.map((p) => p.values[m.col]).concat(hasTarget ? [target] : []);
         const lo = Math.min(...vals);
         const hi = Math.max(...vals);
         const pos = (n) => (hi === lo ? 50 : 100 * (m.dir < 0 ? (hi - n) / (hi - lo) : (n - lo) / (hi - lo)));
@@ -643,11 +699,20 @@ function renderStandings(o, view) {
             .filter((p) => p !== o)
             .map((p) => `<i class="other-dot" style="left:${pos(p.values[m.col]).toFixed(1)}%;--method:${p.study.color}"></i>`)
             .join("");
+        const tPos = hasTarget ? pos(target) : 0;
+        const targetMark = hasTarget
+            ? `<i class="target-dot" style="left:${tPos.toFixed(1)}%"></i><span class="target-label${
+                  tPos < 15 ? " at-start" : tPos > 85 ? " at-end" : ""
+              }" style="left:${tPos.toFixed(1)}%">target ${fmt(target)}</span>`
+            : "";
+        const toTarget = hasTarget && target ? ` · ${fmt((100 * v) / target)}% of target` : "";
         return `<div class="standing">
             <div class="standing-heading"><span>${esc(m.label)}</span><strong>${fmt(v)}</strong></div>
-            <div class="standing-track" role="img" aria-label="${esc(`${m.label}: ${fmt(v)}. ${verdict}`)}">${dots}<i class="selected-dot" style="left:${pos(v).toFixed(1)}%"></i></div>
+            <div class="standing-track${hasTarget ? " has-target" : ""}" role="img" aria-label="${esc(
+                `${m.label}: ${fmt(v)}. ${verdict}${hasTarget ? `. Target ${fmt(target)}` : ""}`
+            )}">${dots}${targetMark}<i class="selected-dot" style="left:${pos(v).toFixed(1)}%"></i></div>
             <div class="standing-ends"><span>${m.dir ? "Worse" : "Lower"}</span><span>${m.dir ? "Better" : "Higher"}</span></div>
-            <small class="standing-verdict">${verdict}</small>
+            <small class="standing-verdict">${verdict}${toTarget}</small>
         </div>`;
     });
     $("standings").innerHTML = `<h3>Where this option stands</h3>

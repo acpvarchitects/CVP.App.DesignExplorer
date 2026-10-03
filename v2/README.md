@@ -41,6 +41,8 @@ from Docker (local test data).
 | `img`, `img:<view>` | image, one column per view |
 | `threeD` | 3D model (`.json` legacy three.js format like the classic app, or `.glb`) |
 | `analysis:<name>` | 3D analysis mesh with vertex colors (`.glb`) |
+| `target:<result>` | optional target of the `out:` column with that name (arrow optional), e.g. `target:SUL (75% GFA) [m²]`; drawn as a red dot with its value on that result's bar in "Where this option stands", plus "% of target" |
+| `table_<name>` | small table per option (`.csv`, first row = header) shown in the **Table** view; numbers are formatted, a first cell `Total` marks the totals row |
 
 Labels are the column names as written (arrow removed). File names are relative to the
 option's own study folder. Several studies are merged by column name.
