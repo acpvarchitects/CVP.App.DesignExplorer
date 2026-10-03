@@ -195,6 +195,9 @@ function scopeLabel() {
 }
 const valueOf = (o, col) => (col in o.values ? o.values[col] : parseFloat(o.row[col]));
 const outputByCol = (col) => data.schema.outputs.find((m) => m.col === col);
+// "Order by" also offers the inputs (e.g. the option Index), above the results, lowest first.
+const inputByCol = (col) => data.schema.inputs.find((m) => m.col === col);
+const orderBy = (col) => outputByCol(col) || (inputByCol(col) && { ...inputByCol(col), dir: 0, input: true });
 
 // Inputs that every option in the scope has as a number (only those can be chart axes).
 const inputAxesFor = (scope) =>
@@ -210,12 +213,12 @@ function passes(o) {
 
 // Order by: goals best first (↓ goals lowest first), other results high to low.
 function ordered(list) {
-    const m = outputByCol(state.order);
+    const m = orderBy(state.order);
     if (!m) return list;
-    const dir = m.dir || 1;
+    const dir = m.input ? -1 : m.dir || 1;
     return [...list].sort((a, b) => {
-        const va = a.values[m.col];
-        const vb = b.values[m.col];
+        const va = valueOf(a, m.col);
+        const vb = valueOf(b, m.col);
         if (!Number.isFinite(va)) return 1;
         if (!Number.isFinite(vb)) return -1;
         return dir * (vb - va);
@@ -459,11 +462,21 @@ function renderToolbar(view, notice) {
 
     const select = $("orderSelect");
     if (!select.options.length) {
-        select.innerHTML = data.schema.outputs.map((m) => `<option value="${esc(m.col)}">${esc(m.label)}${arrow(m)}</option>`).join("");
+        select.innerHTML = [...data.schema.inputs, ...data.schema.outputs]
+            .map((m) => `<option value="${esc(m.col)}">${esc(m.label)}${arrow(m)}</option>`)
+            .join("");
     }
     select.value = state.order;
-    const m = outputByCol(state.order);
-    $("orderDirection").textContent = m ? (m.dir < 0 ? "Lower is better · lowest first" : m.dir > 0 ? "Higher is better · highest first" : "High to low · no preferred direction") : "";
+    const m = orderBy(state.order);
+    $("orderDirection").textContent = !m
+        ? ""
+        : m.input
+          ? "Input · lowest first"
+          : m.dir < 0
+            ? "Lower is better · lowest first"
+            : m.dir > 0
+              ? "Higher is better · highest first"
+              : "High to low · no preferred direction";
 }
 
 function renderShortlistBar() {
@@ -499,7 +512,7 @@ function renderGallery(view) {
             cards.set(o.index, el);
         }
     }
-    const m = outputByCol(state.order);
+    const m = orderBy(state.order);
     for (const o of data.options) {
         const el = cards.get(o.index);
         el.hidden = !view.visibleSet.has(o);
@@ -507,7 +520,7 @@ function renderGallery(view) {
         const img = el.querySelector("img");
         const src = thumbUrl(o);
         if (src && img.getAttribute("src") !== src) img.src = src;
-        el.querySelector(".card-value strong").textContent = m ? fmt(o.values[m.col]) : "";
+        el.querySelector(".card-value strong").textContent = m ? fmt(valueOf(o, m.col)) : "";
         el.querySelector(".card-value span").textContent = m ? m.label : "";
         const best = bestAt(o, view);
         const note = el.querySelector(".card-note");
@@ -737,16 +750,16 @@ function renderMethodSummary(view) {
     const shown = data.studies.filter((st) => !state.methods.size || state.methods.has(st.name));
     box.hidden = shown.length < 2;
     if (box.hidden) return;
-    const m = outputByCol(state.order);
+    const m = orderBy(state.order);
     const parts = shown.map((s) => {
         const total = data.options.filter((o) => o.study === s).length;
         const rows = view.visible.filter((o) => o.study === s);
-        const best = rows.find((o) => Number.isFinite(o.values[m.col])); // visible is already ordered best first
+        const best = rows.find((o) => Number.isFinite(valueOf(o, m.col))); // visible is already ordered best first
         return `<article class="method-card" style="--method:${s.color}">
             <div class="method-card-head"><strong>${esc(s.name)}</strong><span class="muted">${rows.length}/${total} match · ${Math.round((rows.length / total) * 100)}%</span></div>
             <div class="summary-values">
-                <span>${m.dir ? "Best result" : "Highest result"} <b>${fmt(best?.values[m.col])}</b></span>
-                <span>Typical result <small>(median)</small> <b>${fmt(median(rows.map((o) => o.values[m.col])))}</b></span>
+                <span>${m.input ? "Lowest" : m.dir ? "Best result" : "Highest result"} <b>${fmt(best ? valueOf(best, m.col) : NaN)}</b></span>
+                <span>Typical ${m.input ? "value" : "result"} <small>(median)</small> <b>${fmt(median(rows.map((o) => valueOf(o, m.col))))}</b></span>
             </div>
             ${best ? `<button type="button" class="link" data-open="${best.index}">Inspect ${esc(best.name)} ↗</button>` : `<span class="muted small">No matching options</span>`}
         </article>`;
@@ -875,7 +888,7 @@ function loadUrlState() {
     const picked = (params.get("methods") || params.get("method") || "").split(",").filter((n) => data.studies.some((s) => s.name === n));
     state.methods = new Set(picked.length === data.studies.length ? [] : picked);
     const order = params.get("order") || params.get("sort");
-    state.order = outputByCol(order) ? order : data.schema.outputs[0]?.col || "";
+    state.order = orderBy(order) ? order : data.schema.outputs[0]?.col || "";
     const option = parseInt(params.get("option"), 10);
     if (option >= 1 && option <= data.options.length) state.sel = option - 1;
     const mode = modeInfo(params.get("mode") || "");
