@@ -26,7 +26,7 @@ import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=29";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml } from "./comparison.js?v=37";
-import { ParallelChart } from "./parallel.js?v=23";
+import { ParallelChart } from "./parallel.js?v=24";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
 const MAX_SHORTLIST = 4;
@@ -369,7 +369,7 @@ function renderChart(view, syncChart) {
                 dir: m.dir,
                 value: (o) => o.values[m.col],
                 target,
-                targetText: Number.isFinite(target) ? `target ${fmt(target)}` : "",
+                targetText: Number.isFinite(target) ? fmt(target) : "",
             };
         }),
     ];
