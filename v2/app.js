@@ -216,7 +216,10 @@ function ordered(list) {
     const m = orderBy(state.order);
     if (!m) return list;
     const dir = m.input ? -1 : m.dir || 1;
+    // An input (e.g. Index) is not a ranking: keep each loaded batch (study) together, in load order.
+    const batch = (o) => data.studies.indexOf(o.study);
     return [...list].sort((a, b) => {
+        if (m.input && a.study !== b.study) return batch(a) - batch(b);
         const va = valueOf(a, m.col);
         const vb = valueOf(b, m.col);
         if (!Number.isFinite(va)) return 1;
