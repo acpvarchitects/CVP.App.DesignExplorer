@@ -64,7 +64,8 @@ export class ParallelChart {
         this.x = d3.scalePoint(axes.map((a) => a.col), [MARGIN.left, this.width - MARGIN.right]);
         this.y = new Map(
             axes.map((a) => {
-                const vals = options.map((o) => a.value(o)).filter(Number.isFinite);
+                // An optional target widens the axis so its marker always fits.
+                const vals = options.map((o) => a.value(o)).concat(a.target ?? []).filter(Number.isFinite);
                 const scale = d3.scaleLinear().domain(d3.extent(vals)).nice();
                 // Better at the top: ↓ goals put their lowest value up.
                 scale.range(a.dir < 0 ? [MARGIN.top, HEIGHT - MARGIN.bottom] : [HEIGHT - MARGIN.bottom, MARGIN.top]);
@@ -106,6 +107,15 @@ export class ParallelChart {
                 const [d0, d1] = y.domain();
                 const clamp = (v) => Math.min(Math.max(v, Math.min(d0, d1)), Math.max(d0, d1));
                 bg.call(brush.move, [y(clamp(range[0])), y(clamp(range[1]))].sort((p, q) => p - q));
+            }
+            // Target (optional): red dot on the axis with its value, above the brush, not catching the mouse.
+            if (Number.isFinite(a.target)) {
+                const t = g
+                    .append("g")
+                    .attr("class", "pc-target")
+                    .attr("transform", `translate(0,${this.y.get(a.col)(a.target)})`);
+                t.append("circle").attr("r", 4.5);
+                t.append("text").attr("x", 8).attr("dy", "0.32em").text(a.targetText || "target");
             }
         });
         this.drawLines();
