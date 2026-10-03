@@ -402,6 +402,26 @@ main {
     stroke: var(--accent);
 }
 
+/* Optional target of a result (target:<result> column), drawn on its axis. */
+.pc-target {
+    pointer-events: none;
+}
+
+.pc-target circle {
+    fill: #c62828;
+    stroke: var(--card);
+    stroke-width: 1.5;
+}
+
+.pc-axis .pc-target text {
+    font-size: 10px;
+    font-weight: 600;
+    fill: #c62828;
+    paint-order: stroke;
+    stroke: var(--card);
+    stroke-width: 3px;
+}
+
 /* ---- Workspace: filters | results ---- */
 .workspace {
     display: grid;

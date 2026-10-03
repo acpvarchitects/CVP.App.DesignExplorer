@@ -11,7 +11,7 @@
 //   threeD             3D model (.json like the classic app, or .glb)
 //   analysis:<name>    3D analysis mesh with vertex colors (.glb)
 //   target:<result>    optional target of the out: column with that name (arrow optional),
-//                      drawn as a red dot on the result's bar
+//                      drawn as a red dot on the result's chart axis and bar
 //   table_<name>       small table per option (.csv, first row = header), "Table" view
 // Layered 3D export (see v2/README.md):
 //   context            shared site model, same file on every row
@@ -26,7 +26,7 @@ import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=29";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml } from "./comparison.js?v=37";
-import { ParallelChart } from "./parallel.js?v=22";
+import { ParallelChart } from "./parallel.js?v=23";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
 const MAX_SHORTLIST = 4;
@@ -361,7 +361,17 @@ function renderChart(view, syncChart) {
     $("inputsToggle").hidden = !inputAxes.length;
     const axes = [
         ...(state.showInputs ? inputAxes.map((m) => ({ col: m.col, label: m.label, dir: 0, value: (o) => parseFloat(o.row[m.col]) })) : []),
-        ...data.schema.outputs.map((m) => ({ col: m.col, label: m.label, dir: m.dir, value: (o) => o.values[m.col] })),
+        ...data.schema.outputs.map((m) => {
+            const target = view.scope.map((o) => o.targets?.[m.col]).find(Number.isFinite);
+            return {
+                col: m.col,
+                label: m.label,
+                dir: m.dir,
+                value: (o) => o.values[m.col],
+                target,
+                targetText: Number.isFinite(target) ? `target ${fmt(target)}` : "",
+            };
+        }),
     ];
     const model = {
         scope: `${[...state.methods].sort()}|${state.showInputs}`,
