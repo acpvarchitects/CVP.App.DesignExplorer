@@ -115,7 +115,10 @@ export class ParallelChart {
                     .attr("class", "pc-target")
                     .attr("transform", `translate(0,${this.y.get(a.col)(a.target)})`);
                 t.append("circle").attr("r", 4.5);
-                t.append("text").attr("x", 8).attr("dy", "0.32em").text(a.targetText || "target");
+                // two lines: "target", then the value
+                const label = t.append("text").attr("x", 8).attr("y", -3);
+                label.append("tspan").attr("x", 8).text("target");
+                if (a.targetText) label.append("tspan").attr("x", 8).attr("dy", "1.1em").text(a.targetText);
             }
         });
         this.drawLines();

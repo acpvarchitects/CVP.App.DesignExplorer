@@ -228,19 +228,28 @@ main {
 }
 
 /* ---- Top: introduction + method tabs, chart ---- */
+/* Same columns as .workspace, so the chart lines up with the results / preview below. */
 .overview-top {
     display: grid;
-    grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.6fr);
-    gap: 20px;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 24px;
     align-items: start;
     margin-bottom: 18px;
 }
 
 .intro h1 {
-    font-size: 24px;
-    letter-spacing: -0.5px;
-    max-width: 380px;
+    font-size: 19px;
+    line-height: 1.25;
+    letter-spacing: -0.3px;
     margin: 6px 0 8px;
+}
+
+.intro > p {
+    font-size: 13px;
+}
+
+.intro .method-tabs button {
+    padding: 7px 12px;
 }
 
 .method-tabs {
