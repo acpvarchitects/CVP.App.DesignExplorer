@@ -1064,7 +1064,10 @@ function loadUrlState() {
     const picked = (params.get("methods") || params.get("method") || "").split(",").filter((n) => data.studies.some((s) => s.name === n));
     state.methods = new Set(picked.length === data.studies.length ? [] : picked);
     const order = params.get("order") || params.get("sort");
-    state.order = orderBy(order) ? order : data.schema.outputs[0]?.col || "";
+    // Default order: the Index input when there is one (each batch together, in index order),
+    // otherwise the first result.
+    const index = data.schema.inputs.find((m) => /^index$/i.test(m.label));
+    state.order = orderBy(order) ? order : index?.col || data.schema.outputs[0]?.col || "";
     const option = parseInt(params.get("option"), 10);
     if (option >= 1 && option <= data.options.length) state.sel = option - 1;
     const mode = modeInfo(params.get("mode") || "");

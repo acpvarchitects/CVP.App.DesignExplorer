@@ -109,7 +109,8 @@ reflections, one without): one block per group of studies, with their colour dot
    expand, ← → and Escape. A 3D analysis shows its score for the option top right (`score_label`
    + value + unit) and, like the Table view, an "ⓘ About" button. "Where this option stands" shows actual value positions among the
    matching options.
-4. **Gallery** of matching options ("Order by" one result); "Compare" builds a shortlist of up to 4.
+4. **Gallery** of matching options ("Order by" one result or Index; Index by default when the study
+   has it, each batch together); "Compare" builds a shortlist of up to 4.
 5. **Compare methods** (2+ methods shown): matching count, best and median per method.
 6. **Compare options** (2 to 4 shortlisted options): slots A–D, a radar of all goals (axes
    scaled worst→best over all loaded options), "What each option does better" and the exact
