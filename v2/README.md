@@ -109,8 +109,9 @@ reflections, one without): one block per group of studies, with their colour dot
    apart, or within 1 dB for noise (`compare.js`). "See comparison ↓" (shortlist line, and a
    pop-up for a few seconds after Compare) and "Back to options ↑" scroll there and back.
 
-The URL keeps ticked methods, order, option, mode/layer, ranges, shortlist and "Show inputs",
-so "Copy link" shares the current view.
+The URL keeps ticked methods, order, option, mode/layer, ranges, batch filter, shortlist and
+"Show inputs", so the address bar shares the current view. "Copy link" copies the home page
+instead: only `PROJECT` / `data` (which studies are open), none of the current state.
 
 ## Files
 

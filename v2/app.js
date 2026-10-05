@@ -1014,8 +1014,13 @@ function loadUrlState() {
     }
 }
 
+// "Copy link" shares the study's home page: only which studies are open (PROJECT or data),
+// none of the current filters, option or view (the address bar still keeps those).
 async function copyLink() {
-    const url = location.href;
+    // encodeURI keeps "," and ":" readable (PROJECT=A:Label,B); "&", "#", "+" are escaped by hand
+    const enc = (v) => encodeURI(v).replace(/[&#+]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
+    const home = ["PROJECT", "data"].filter((k) => params.has(k)).map((k) => `${k}=${enc(params.get(k))}`);
+    const url = location.origin + location.pathname + (home.length ? "?" + home.join("&") : "");
     try {
         await navigator.clipboard.writeText(url);
     } catch {
