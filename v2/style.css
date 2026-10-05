@@ -677,6 +677,29 @@ main {
 }
 
 /* ---- About this analysis (card over the page) ---- */
+.pc-group {
+    cursor: pointer;
+}
+
+.pc-group.off {
+    opacity: 0.25;
+}
+
+.pc-group:hover {
+    opacity: 1;
+    stroke: var(--text);
+    stroke-width: 1;
+}
+
+.pc-axis .pc-group-name {
+    font-size: 12px;
+    font-weight: 600;
+    paint-order: stroke;
+    stroke: var(--card);
+    stroke-width: 3px;
+    pointer-events: none;
+}
+
 .pc-axis .pc-label.has-info {
     cursor: pointer;
 }

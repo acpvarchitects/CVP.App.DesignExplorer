@@ -26,7 +26,7 @@ import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=29";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml } from "./comparison.js?v=37";
-import { ParallelChart } from "./parallel.js?v=25";
+import { ParallelChart } from "./parallel.js?v=26";
 import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=1";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
@@ -356,7 +356,7 @@ function renderMethodTabs() {
     if (tabs.hidden) return;
     const all = `<button type="button" data-all-methods aria-pressed="${!state.methods.size}">All methods <span class="count">${data.options.length}</span></button>`;
     const ticks = data.studies.map((st) => {
-        const on = state.methods.has(st.name);
+        const on = !state.methods.size || state.methods.has(st.name); // "All methods" = every method ticked
         const n = data.options.filter((o) => o.study === st).length;
         return `<button type="button" role="checkbox" aria-checked="${on}" data-method="${esc(st.name)}" class="method-tick ${on ? "on" : ""}" style="--method:${st.color}"><span class="tick">${on ? "✓" : ""}</span>${esc(st.name)} <span class="count">${n}</span></button>`;
     });
@@ -374,12 +374,34 @@ function renderChart(view, syncChart) {
                 if (lastView.visibleSet.has(data.options[index])) openOption(index, true);
             },
             onInfo: (col) => openAbout(described(shownStudies(), (st) => entryForResult(st, col))),
+            // Index bar of a batch: show only that batch; the same bar again shows all.
+            onGroup: (name) => setMethods(state.methods.size === 1 && state.methods.has(name) ? [] : [name]),
         });
     }
     const inputAxes = inputAxesFor(view.scope);
     $("inputsToggle").hidden = !inputAxes.length;
+    $("inputsLabel").textContent = inputAxes.length === 1 ? `Show ${inputAxes[0].label.toLowerCase()}` : "Show inputs";
+    // Several batches: an input axis is split per batch (gap + coloured bar), so their
+    // index ranges don't overlap; the bars filter, so these axes keep no drag range.
+    const grouped = data.studies.length > 1;
+    if (grouped) for (const m of inputAxes) delete state.ranges[m.col];
+    const groupsOf = (m) =>
+        data.studies
+            .map((st) => {
+                const vals = data.options.filter((o) => o.study === st).map((o) => parseFloat(o.row[m.col])).filter(Number.isFinite);
+                return { key: st.name, color: st.color, on: inMethod({ study: st }), count: vals.length, domain: [Math.min(...vals), Math.max(...vals)] };
+            })
+            .filter((g) => g.count);
     const axes = [
-        ...(state.showInputs ? inputAxes.map((m) => ({ col: m.col, label: m.label, dir: 0, value: (o) => parseFloat(o.row[m.col]) })) : []),
+        ...(state.showInputs
+            ? inputAxes.map((m) => ({
+                  col: m.col,
+                  label: m.label,
+                  dir: 0,
+                  value: (o) => parseFloat(o.row[m.col]),
+                  ...(grouped ? { groups: groupsOf(m), groupOf: (o) => o.study.name } : {}),
+              }))
+            : []),
         ...data.schema.outputs.map((m) => {
             const target = view.scope.map((o) => o.targets?.[m.col]).find(Number.isFinite);
             return {
@@ -1055,9 +1077,10 @@ function bindEvents() {
         const b = e.target.closest("[data-method]");
         if (e.target.closest("[data-all-methods]")) setMethods([]);
         if (!b) return;
-        const next = new Set(state.methods);
+        // Start from what is ticked (all, under "All methods"); the last ticked method stays ticked.
+        const next = new Set(state.methods.size ? state.methods : data.studies.map((st) => st.name));
         next.has(b.dataset.method) ? next.delete(b.dataset.method) : next.add(b.dataset.method);
-        setMethods([...next]);
+        if (next.size) setMethods([...next]);
     });
     $("rangeFilters").addEventListener("change", (e) => {
         const input = e.target.closest("input[data-bound]");
