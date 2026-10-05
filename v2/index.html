@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Design Explorer</title>
     <link rel="icon" href="../favicon.png" />
-    <link rel="stylesheet" href="style.css?v=44" />
+    <link rel="stylesheet" href="style.css?v=45" />
     <script type="importmap">
         {
             "imports": {
@@ -56,7 +56,7 @@
             <!-- Left: filters, shared by every method; one expandable section per way of filtering -->
             <aside class="filters card" aria-label="Filters">
                 <details class="filter-section" id="measurementsSection" open>
-                    <summary><span class="filter-title">Measurements</span><span id="measurementsBadge" class="filter-badge"></span></summary>
+                    <summary><span class="filter-title">Measurements</span><span id="measurementsBadge" class="filter-badge"></span><button id="measurementsClear" type="button" class="filter-clear" data-clear="measurements" hidden>×</button></summary>
                     <div class="filter-body">
                         <div class="filters-head">
                             <p class="muted small">Keep options within these ranges. Leave a box empty for no limit.</p>
@@ -66,7 +66,7 @@
                     </div>
                 </details>
                 <details class="filter-section" id="paretoSection">
-                    <summary><span class="filter-title">Pareto front</span><span id="paretoBadge" class="filter-badge"></span></summary>
+                    <summary><span class="filter-title">Pareto front</span><span id="paretoBadge" class="filter-badge"></span><button id="paretoClear" type="button" class="filter-clear" data-clear="pareto" hidden>×</button></summary>
                     <div class="filter-body">
                         <label class="pareto-on"><input id="paretoOn" type="checkbox" /> Only options on the front</label>
                         <p id="paretoCount" class="muted small"></p>
@@ -157,6 +157,6 @@
         </section>
     </div>
 
-    <script type="module" src="app.js?v=51"></script>
+    <script type="module" src="app.js?v=52"></script>
 </body>
 </html>

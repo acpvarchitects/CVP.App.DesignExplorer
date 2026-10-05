@@ -97,6 +97,7 @@ reflections, one without): one block per group of studies, with their colour dot
    on again, or "Clear chart filters", means no filter (no drag filter on that axis). Pale lines
    are not clickable.
 2. **Filters** sidebar, one expandable section per way of filtering (badge = active):
+   Header of a section: a small count when it is active and × to clear just that section.
    - **Measurements**: min/max per result and "Better than average" (average of the methods
      shown). Sidebar and chart share one range state. "Reset" clears these ranges only.
    - **Pareto front** (`pareto.js`): "Only options on the front" keeps the options that no other

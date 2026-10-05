@@ -511,7 +511,11 @@ function renderFilters(view) {
     const scopeStats = computeStats(view.scope, data.schema.outputs);
     const scopeName = scopeLabel();
     const n = Object.keys(state.ranges).length;
-    $("measurementsBadge").textContent = n ? `${n} active` : "";
+    // Section header: a small number when active (ranges set) and × to clear just this section.
+    $("measurementsBadge").textContent = n ? String(n) : "";
+    $("measurementsBadge").title = n ? `${n} measurement filter${n > 1 ? "s" : ""} active` : "";
+    $("measurementsClear").hidden = !n;
+    $("measurementsClear").title = "Clear the measurement filters";
     for (const fs of box.querySelectorAll("fieldset")) {
         const col = fs.dataset.col;
         const s = scopeStats[col];
@@ -546,7 +550,10 @@ function renderPareto(view) {
     $("paretoCount").textContent = chosen.length
         ? `${front.size} of ${view.scope.length} options are on the front of ${chosen.length} goal${chosen.length === 1 ? "" : "s"}.`
         : "Tick at least one goal.";
-    $("paretoBadge").textContent = state.pareto ? `on · ${front.size}` : "";
+    $("paretoBadge").textContent = state.pareto ? String(front.size) : "";
+    $("paretoBadge").title = state.pareto ? `${front.size} options on the front` : "";
+    $("paretoClear").hidden = !state.pareto;
+    $("paretoClear").title = "Turn the Pareto filter off";
     $("paretoSection").classList.toggle("active", state.pareto);
 }
 
@@ -1182,6 +1189,15 @@ function bindEvents() {
         state.ranges = {};
         state.batches.clear();
         state.pareto = false;
+        render({ syncChart: true });
+    });
+    // × in a section header: clear that section only, without opening/closing it.
+    document.querySelector(".filters").addEventListener("click", (e) => {
+        const b = e.target.closest("[data-clear]");
+        if (!b) return;
+        e.preventDefault();
+        if (b.dataset.clear === "measurements") state.ranges = {};
+        if (b.dataset.clear === "pareto") state.pareto = false;
         render({ syncChart: true });
     });
     $("resetFilters").addEventListener("click", () => {

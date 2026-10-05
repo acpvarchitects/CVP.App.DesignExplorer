@@ -463,8 +463,8 @@ main {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    padding: 7px 12px;
+    gap: 6px;
+    padding: 5px 12px;
     list-style: none;
     cursor: pointer;
     border: 1px solid var(--line-strong);
@@ -490,22 +490,50 @@ main {
 
 .filter-section > summary .filter-title {
     flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .filter-section.active > summary,
-.filter-section > summary:has(.filter-badge:not(:empty)) {
+.filter-section:has(.filter-badge:not(:empty)) > summary {
     border-color: var(--accent);
     background: var(--accent-soft);
     color: var(--accent);
 }
 
+/* active: a small round count, then × to clear the section */
 .filter-badge:not(:empty) {
-    font-size: 11px;
-    font-weight: 600;
-    padding: 1px 8px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
     border-radius: 999px;
     background: var(--accent);
     color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.filter-clear {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 20px;
+    margin-right: -4px;
+}
+
+.filter-clear:hover:not(:disabled) {
+    background: var(--card);
+    color: var(--accent);
 }
 
 .filter-body {
