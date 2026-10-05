@@ -440,10 +440,11 @@ main {
     align-items: start;
 }
 
+/* Always the full window height while the page scrolls; open sections scroll inside it. */
 .filters {
     position: sticky;
     top: 16px;
-    max-height: calc(100vh - 32px);
+    height: calc(100vh - 32px);
     overflow-y: auto;
 }
 
@@ -714,6 +715,18 @@ main {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 270px;
     gap: 22px;
+}
+
+/* "Where this option stands" is as tall as the image / 3D view and scrolls inside, so there
+   is no empty band under the view. */
+.preview-body .standings {
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.preview.expanded .preview-body .standings {
+    max-height: 620px;
 }
 
 .media {
@@ -1644,7 +1657,13 @@ code {
 
     .filters {
         position: static;
+        height: auto;
         max-height: none;
+    }
+
+    .preview-body .standings,
+    .preview.expanded .preview-body .standings {
+        max-height: none; /* below the view on narrow screens: no inner scroll */
     }
 
     #rangeFilters {
