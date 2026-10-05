@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Design Explorer</title>
     <link rel="icon" href="../favicon.png" />
-    <link rel="stylesheet" href="style.css?v=40" />
+    <link rel="stylesheet" href="style.css?v=41" />
     <script type="importmap">
         {
             "imports": {
@@ -89,6 +89,10 @@
                             <div id="preview3d" class="media-3d" hidden></div>
                             <div id="previewTable" class="media-table" hidden></div>
                             <img id="legendImg" class="legend" alt="Colour legend" hidden />
+                            <div class="media-top">
+                                <span id="viewScore" class="view-score" hidden></span>
+                                <button id="aboutView" type="button" hidden>ⓘ About</button>
+                            </div>
                             <div class="media-foot">
                                 <span id="mediaNote"></span>
                                 <span id="mediaStatus"></span>
@@ -125,6 +129,20 @@
 
     <div id="message" class="message" hidden></div>
 
-    <script type="module" src="app.js?v=44"></script>
+    <!-- About this analysis: opened from a chart axis title or the "About" of a 3D analysis / table -->
+    <div id="aboutOverlay" class="about-overlay" hidden>
+        <section class="about-card" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+            <div class="about-head">
+                <div>
+                    <h2 id="aboutTitle"></h2>
+                    <p id="aboutSub" class="muted small"></p>
+                </div>
+                <button id="aboutClose" type="button" aria-label="Close">✕</button>
+            </div>
+            <div id="aboutBody" class="about-body"></div>
+        </section>
+    </div>
+
+    <script type="module" src="app.js?v=45"></script>
 </body>
 </html>

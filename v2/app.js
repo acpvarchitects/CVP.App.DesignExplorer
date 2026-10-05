@@ -26,7 +26,8 @@ import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=29";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml } from "./comparison.js?v=37";
-import { ParallelChart } from "./parallel.js?v=24";
+import { ParallelChart } from "./parallel.js?v=25";
+import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=1";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
 const MAX_SHORTLIST = 4;
@@ -180,6 +181,17 @@ async function loadStudy(study) {
     const rows = parsed.filter((r) => Object.values(r).some((v) => v !== ""));
     rows.columns = parsed.columns;
     return rows;
+}
+
+// layers.json (optional): descriptions, score names and settings of the analyses. A study
+// without one simply shows no "About" and no score.
+async function loadManifest(study) {
+    try {
+        const response = await fetch(study.base + "layers.json?v=" + Date.now());
+        study.manifest = response.ok ? await response.json() : null;
+    } catch (e) {
+        study.manifest = null;
+    }
 }
 
 // ---- Scope, filters and order ----
@@ -361,6 +373,7 @@ function renderChart(view, syncChart) {
             onSelect: (index) => {
                 if (lastView.visibleSet.has(data.options[index])) openOption(index, true);
             },
+            onInfo: (col) => openAbout(described(shownStudies(), (st) => entryForResult(st, col))),
         });
     }
     const inputAxes = inputAxesFor(view.scope);
@@ -374,6 +387,7 @@ function renderChart(view, syncChart) {
                 label: m.label,
                 dir: m.dir,
                 value: (o) => o.values[m.col],
+                info: described(shownStudies(), (st) => entryForResult(st, m.col)).length > 0,
                 target,
                 targetText: Number.isFinite(target) ? fmt(target) : "",
             };
@@ -583,7 +597,56 @@ function renderPreview(view) {
     $("nextOption").disabled = at >= view.visible.length - 1;
 
     renderStandings(o, view);
+    renderViewInfo(o);
     showMedia(o);
+}
+
+// ---- About this analysis (texts from layers.json, see about.js) and the view's score ----
+
+const shownStudies = () => data.studies.filter((st) => !state.methods.size || state.methods.has(st.name));
+const unitOf = (m) => (m.label.match(/\[([^\]]+)\]\s*$/) || [])[1] || "";
+
+// The manifest entry of the 3D analysis / table shown for option `o`, if the export described it.
+function viewEntry(o) {
+    const layer = layersOf()[state.layer[state.mode]];
+    if (!layer?.col || (state.mode !== "analysis" && state.mode !== "table")) return null;
+    return entryForView(o.study, layer.col);
+}
+
+// Top right of the 3D analysis: its score for this option ("Average 41.2 dB(A)") and "About".
+function renderViewInfo(o) {
+    const entry = viewEntry(o);
+    $("aboutView").hidden = !entry?.description?.length;
+    const m = state.mode === "analysis" && entry?.value_column ? outputByCol(entry.value_column) : null;
+    const v = m ? o.values[m.col] : NaN;
+    const score = $("viewScore");
+    score.hidden = !Number.isFinite(v);
+    if (score.hidden) return;
+    const unit = unitOf(m);
+    score.innerHTML = `<span>${esc(entry.score_label || "Score")}</span> <strong>${fmt(v)}${unit ? " " + esc(unit) : ""}</strong>`;
+    score.title = `${m.label} · ${directionText(m)}`;
+}
+
+let aboutReturn = null; // focused before the card opened, focused again on close
+
+// items: [{ study, entry }] from described(). One card; closes with ✕ or a click outside it.
+function openAbout(items) {
+    if (!items.length) return;
+    const e = items[0].entry;
+    const m = e.value_column ? outputByCol(e.value_column) : null;
+    $("aboutTitle").textContent = e.label || m?.label || e.key;
+    $("aboutSub").textContent = m ? `${m.label} · ${directionText(m)}` : "";
+    $("aboutBody").innerHTML = aboutHtml(items);
+    aboutReturn = document.activeElement;
+    $("aboutOverlay").hidden = false;
+    $("aboutBody").scrollTop = 0;
+    $("aboutClose").focus();
+}
+
+function closeAbout() {
+    if ($("aboutOverlay").hidden) return;
+    $("aboutOverlay").hidden = true;
+    if (aboutReturn?.focus) aboutReturn.focus();
 }
 
 function showMedia(o) {
@@ -1070,7 +1133,14 @@ function bindEvents() {
     });
     $("resetView").addEventListener("click", () => viewer && viewer.resetView());
     $("shareBtn").addEventListener("click", copyLink);
+    $("aboutView").addEventListener("click", () => {
+        const o = state.sel != null ? data.options[state.sel] : null;
+        if (o) openAbout(described([o.study], () => viewEntry(o)));
+    });
+    $("aboutClose").addEventListener("click", closeAbout);
+    $("aboutOverlay").addEventListener("click", (e) => e.target === e.currentTarget && closeAbout());
     document.addEventListener("keydown", (e) => {
+        if (!$("aboutOverlay").hidden) return; // keys don't act on the page behind the card
         if (state.sel == null || e.target.closest?.("input, textarea, select, [contenteditable]")) return;
         if (e.key === "ArrowLeft") step(-1);
         if (e.key === "ArrowRight") step(1);
@@ -1093,7 +1163,7 @@ async function init() {
     }
 
     studies.forEach((st, i) => (st.color = STUDY_COLORS[i % STUDY_COLORS.length]));
-    const loaded = await Promise.allSettled(studies.map(loadStudy));
+    const [loaded] = await Promise.all([Promise.allSettled(studies.map(loadStudy)), Promise.all(studies.map(loadManifest))]);
     const failed = studies.filter((s, i) => loaded[i].status === "rejected");
     if (failed.length) {
         loaded.forEach((l) => l.status === "rejected" && console.error(l.reason));
