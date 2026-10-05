@@ -7,10 +7,11 @@ const HEIGHT = 280;
 const MARGIN = { top: 48, right: 80, bottom: 22, left: 80 };
 
 export class ParallelChart {
-    constructor(el, { onBrush, onSelect }) {
+    constructor(el, { onBrush, onSelect, onInfo }) {
         this.el = el;
         this.onBrush = onBrush;
         this.onSelect = onSelect;
+        this.onInfo = onInfo; // axis title clicked (axes with `info` only)
         this.ranges = new Map(); // column -> [low, high], in data units
         this.svg = d3.select(el).append("svg").attr("class", "pc").attr("height", HEIGHT);
         this.linesLayer = this.svg.append("g").attr("class", "pc-lines");
@@ -21,7 +22,7 @@ export class ParallelChart {
         }).observe(el);
     }
 
-    // model: { scope, options, axes: [{ col, label, dir, value(o) }], selected, matches(o), colorOf(o), shortlist }
+    // model: { scope, options, axes: [{ col, label, dir, value(o), info }], selected, matches(o), colorOf(o), shortlist }
     // `scope` names the option set (for example the method shown): a new scope redraws the axes.
     update(model) {
         const rebuild =
@@ -87,7 +88,9 @@ export class ParallelChart {
             g.selectChildren().remove();
             g.append("g").call(d3.axisLeft(this.y.get(a.col)).ticks(5).tickSizeOuter(0));
             const label = g.append("text").attr("class", "pc-label").attr("y", 12).attr("text-anchor", "middle");
-            wrap(label, a.label, spacing - 12);
+            wrap(label, a.label, spacing - 12, a.info ? " ⓘ" : "");
+            // A described axis: its title opens "About" (pointer + ⓘ so it can be found).
+            if (a.info) label.classed("has-info", true).on("click", () => this.onInfo?.(a.col));
             g.append("text")
                 .attr("class", "pc-hint")
                 .attr("y", MARGIN.top - 8)
@@ -167,7 +170,8 @@ export class ParallelChart {
 }
 
 // Splits an axis label over at most two lines so neighbours don't overlap.
-function wrap(text, label, width) {
+// `suffix` (e.g. the ⓘ of a described axis) follows the last line.
+function wrap(text, label, width, suffix = "") {
     const words = label.split(/\s+/);
     const lines = [""];
     for (const w of words) {
@@ -175,6 +179,6 @@ function wrap(text, label, width) {
         if (next.length * 6.5 > width && lines[lines.length - 1] && lines.length < 2) lines.push(w);
         else lines[lines.length - 1] = next;
     }
-    lines.forEach((l, i) => text.append("tspan").attr("x", 0).attr("dy", i ? 14 : 0).text(l));
-    text.append("title").text(label);
+    lines.forEach((l, i) => text.append("tspan").attr("x", 0).attr("dy", i ? 14 : 0).text(l + (i === lines.length - 1 ? suffix : "")));
+    text.append("title").text(suffix ? label + " · click for a description" : label);
 }

@@ -67,14 +67,33 @@ Views (`GENERAL_ONLY`, `ANALYSIS_ONLY`, `OVER_GENERAL` in `app.js`):
   replace (pool / deck sun hours replace `pools` + `decks`).
 - The analysis material has a depth offset, so it draws in front of layers sharing its surfaces.
 
+### `layers.json` (optional): descriptions and scores
+
+Read from the study folder next to `data.csv`; a study without it works as before (no "About",
+no score). Fields used:
+
+| Field | Use |
+|---|---|
+| `layers[]` / `tables[]` `.key` | the `an_*` / `table_*` column it describes |
+| `.value_column` | the `out:` column that is its score (links a chart axis to the description) |
+| `.label` | title of the "About" card |
+| `.score_label` | name of the score shown on the 3D analysis, e.g. `Average`, `Floor Efficiency` (default `Score`) |
+| `.description` | `[{heading, text}]`; lines starting with `- ` are bullets |
+| `about` | `[{heading, text}]` common to all analyses, folded at the bottom of every card |
+
+Same text in every open study: shown once. Different texts (e.g. one batch computed with noise
+reflections, one without): one block per group of studies, with their colour dots.
+
 ## Page, top to bottom
 
 1. **Method tick boxes** ("All methods", or tick 2+ to compare those) and the
-   **parallel-coordinates chart** (goals drawn with "better" at the top; drag on an axis to filter).
+   **parallel-coordinates chart** (goals drawn with "better" at the top; drag on an axis to filter;
+   a title with ⓘ opens its "About" card, closed with ✕ or a click outside it).
 2. **Measurements** sidebar: min/max per result and "Better than average" (average of the
    methods shown). Sidebar and chart share one range state.
 3. **Preview**, hidden until an option is clicked: Image / 3D model / 3D analysis, previous/next,
-   expand, ← → and Escape. "Where this option stands" shows actual value positions among the
+   expand, ← → and Escape. A 3D analysis shows its score for the option top right (`score_label`
+   + value + unit) and, like the Table view, an "ⓘ About" button. "Where this option stands" shows actual value positions among the
    matching options.
 4. **Gallery** of matching options ("Order by" one result); "Compare" builds a shortlist of up to 4.
 5. **Compare methods** (2+ methods shown): matching count, best and median per method.
@@ -93,6 +112,7 @@ so "Copy link" shares the current view.
 |---|---|
 | `index.html` | markup and import map. After edits bump every `?v=` (here and on the imports at the top of `app.js`): the server caches `.js` for 30 days |
 | `app.js` | loading, state, filters, rendering, URL state, events |
+| `about.js` | "About" card content from `layers.json` (one block per study when texts differ) |
 | `compare.js` | "about the same" and win rules |
 | `comparison.js` | the Compare options section (radar, strengths, values table) |
 | `parallel.js` | parallel-coordinates chart (d3) |
