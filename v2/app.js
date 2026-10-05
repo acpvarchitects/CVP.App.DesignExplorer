@@ -26,7 +26,7 @@ import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=29";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml } from "./comparison.js?v=37";
-import { ParallelChart } from "./parallel.js?v=28";
+import { ParallelChart } from "./parallel.js?v=29";
 import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=1";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
@@ -376,19 +376,23 @@ function renderChart(view, syncChart) {
                 if (lastView.visibleSet.has(data.options[index])) openOption(index, true);
             },
             onInfo: (col) => openAbout(described(shownStudies(), (st) => entryForResult(st, col))),
-            // Index bar of a batch: each click adds or removes that batch from the filter (the others
-            // stay pale). No bar left, or every batch shown: no filter.
+            // Index bar of a batch: every click switches that batch off or on, like the method ticks
+            // (no filter = every bar on). Switched-off batches stay as pale lines; the last bar on
+            // stays on, and every bar on again means no filter.
             onGroup: (name) => {
-                const next = state.batches;
+                const shown = data.studies.filter((st) => inMethod({ study: st })).map((st) => st.name);
+                const next = new Set(state.batches.size ? state.batches : shown);
                 next.has(name) ? next.delete(name) : next.add(name);
-                if (next.size === data.studies.filter((st) => inMethod({ study: st })).length) next.clear();
+                if (!next.size) return;
+                state.batches = next.size === shown.length ? new Set() : next;
                 render();
             },
         });
     }
     const inputAxes = inputAxesFor(view.scope);
-    $("inputsToggle").hidden = !inputAxes.length;
-    $("inputsLabel").textContent = inputAxes.length === 1 ? `Show ${inputAxes[0].label.toLowerCase()}` : "Show inputs";
+    // One input (e.g. Index): always on the chart, no toggle. Several: "Show inputs" toggles them.
+    const showInputs = inputAxes.length === 1 || state.showInputs;
+    $("inputsToggle").hidden = inputAxes.length < 2;
     // Several batches: an input axis is split per batch (gap + coloured bar), so their
     // index ranges don't overlap; the bars filter, so these axes keep no drag range.
     const grouped = data.studies.length > 1;
@@ -403,7 +407,7 @@ function renderChart(view, syncChart) {
             })
             .filter((g) => g.count);
     const axes = [
-        ...(state.showInputs
+        ...(showInputs
             ? inputAxes.map((m) => ({
                   col: m.col,
                   label: m.label,
@@ -426,7 +430,7 @@ function renderChart(view, syncChart) {
         }),
     ];
     const model = {
-        scope: `${[...state.methods].sort()}|${state.showInputs}|${[...state.batches].sort()}`,
+        scope: `${[...state.methods].sort()}|${showInputs}|${[...state.batches].sort()}`,
         options: view.scope,
         axes,
         selected: state.sel != null ? data.options[state.sel] : null,
