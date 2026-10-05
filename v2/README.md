@@ -125,7 +125,8 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 | `comparison.js` | the Compare options section (radar, strengths, values table) |
 | `parallel.js` | parallel-coordinates chart (d3) |
 | `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera |
-| `style.css` | all styles |
+| `style.css` | all styles; its colour/radius/font names are aliases of the `@acpvarchitects/ui` tokens |
+| `theme/` | vendored `@acpvarchitects/ui` 0.16.0 tokens (`base.css`, `tertiary/coral.css`, `tokens/`) + local Inter font; see `theme/README.md`. `<html class="light-medium-contrast">` picks the contrast mode |
 
 ## Deploy (dev)
 

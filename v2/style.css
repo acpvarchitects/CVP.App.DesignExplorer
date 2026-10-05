@@ -1,24 +1,27 @@
 /* Design Explorer v2 — layout A (filters left, combined gallery right). */
 
 :root {
-    --bg: #f5f5f2;
-    --card: #ffffff;
-    --soft: #f0f2ed;
-    --text: #252b29;
-    --muted: #69726d;
-    --faint: #a3aba4;
-    --line: #e0e4dd;
-    --line-strong: #cdd5ca;
-    --accent: #2f5a45;
-    --accent-dark: #263e34;
-    --accent-soft: #e8f0ea;
+    /* Colours come from @acpvarchitects/ui (theme/base.css + tertiary/coral.css, class on <html>);
+       the names below are this app's own, kept as aliases of the library roles. */
+    --bg: var(--md-sys-color-surface);
+    --card: var(--md-sys-color-surface-container-lowest);
+    --soft: var(--md-sys-color-surface-container-low);
+    --text: var(--md-sys-color-on-surface);
+    --muted: var(--md-sys-color-on-surface-variant);
+    --faint: var(--md-sys-color-outline-variant);
+    --line: var(--md-sys-color-surface-container-high);
+    --line-strong: var(--md-sys-color-surface-container-highest);
+    --accent: var(--md-sys-color-primary);
+    --accent-dark: var(--md-sys-color-primary-container);
+    --accent-soft: var(--md-sys-color-surface-container);
+    --on-accent: var(--md-sys-color-on-primary);
     --good: #3b6d11;
     --good-soft: #eaf3de;
     --warn: #854f0b;
-    --inspect: #a43138;
-    --radius: 7px;
-    --radius-lg: 10px;
-    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    --inspect: var(--md-sys-color-tertiary);
+    --radius: var(--acpv-sys-radius-sm);
+    --radius-lg: var(--acpv-sys-radius-md);
+    font-family: var(--acpv-sys-font-family-primary);
     color: var(--text);
 }
 
@@ -130,7 +133,7 @@ input[type="number"] {
     letter-spacing: 1.5px;
     text-transform: uppercase;
     font-weight: 700;
-    color: #577066;
+    color: var(--muted);
 }
 
 .seg {
@@ -265,7 +268,7 @@ main {
 
 .method-tabs button[aria-pressed="true"] {
     background: var(--accent-dark);
-    color: #fff;
+    color: var(--on-accent);
     border-color: var(--accent-dark);
 }
 
@@ -290,7 +293,7 @@ main {
     font-size: 11px;
     font-weight: 700;
     line-height: 1;
-    color: #fff;
+    color: var(--on-accent);
 }
 
 .method-tick.on {
@@ -375,7 +378,7 @@ main {
 }
 
 .pc-l0 {
-    stroke: #d3d1c7;
+    stroke: var(--md-sys-color-outline-variant);
     stroke-opacity: 0.45;
     pointer-events: none; /* filtered out: not clickable, so no hand and no hover */
 }
@@ -418,7 +421,7 @@ main {
 }
 
 .pc-target circle {
-    fill: #c62828;
+    fill: var(--inspect);
     stroke: var(--card);
     stroke-width: 1.5;
 }
@@ -426,7 +429,7 @@ main {
 .pc-axis .pc-target text {
     font-size: 10px;
     font-weight: 600;
-    fill: #c62828;
+    fill: var(--inspect);
     paint-order: stroke;
     stroke: var(--card);
     stroke-width: 3px;
@@ -610,7 +613,7 @@ main {
 
 .media-table tr.total td {
     font-weight: 700;
-    border-top: 2px solid var(--ink, #1f2a24);
+    border-top: 2px solid var(--text);
     border-bottom: none;
 }
 
@@ -878,7 +881,7 @@ main {
 .target-dot {
     width: 9px;
     height: 9px;
-    background: #c62828;
+    background: var(--inspect);
     border: 1.5px solid var(--card);
     z-index: 2;
 }
@@ -889,7 +892,7 @@ main {
     transform: translateX(-50%);
     font-size: 10px;
     line-height: 1;
-    color: #c62828;
+    color: var(--inspect);
     white-space: nowrap;
 }
 
@@ -970,9 +973,9 @@ main {
 }
 
 .option-card:hover {
-    box-shadow: 0 4px 15px #243f3020;
+    box-shadow: var(--acpv-sys-shadow-2);
     transform: translateY(-2px);
-    border-color: #91a48e;
+    border-color: var(--md-sys-color-outline);
 }
 
 .option-card.selected {
@@ -1152,8 +1155,8 @@ main {
 @keyframes arrived {
     0%,
     30% {
-        box-shadow: 0 0 0 3px #629d79;
-        background: #f0f7ee;
+        box-shadow: 0 0 0 3px var(--md-sys-color-outline-variant);
+        background: var(--accent-soft);
     }
     100% {
         box-shadow: 0 0 0 0 transparent;
@@ -1166,13 +1169,13 @@ main {
     align-self: flex-start;
     padding: 6px 14px;
     background: var(--accent-dark);
-    color: #fff;
+    color: var(--on-accent);
     border: 1px solid var(--accent-dark);
     font-weight: 600;
 }
 
 button.cp-primary:hover:not(:disabled) {
-    background: #1b2e26;
+    background: var(--md-sys-color-inverse-surface);
 }
 
 .cp-head {
@@ -1337,11 +1340,11 @@ button.cp-primary:hover:not(:disabled) {
 }
 
 .cp-leading {
-    background: #edf5e8;
+    background: var(--good-soft);
 }
 
 .cp-reference {
-    background: #f2f4f0;
+    background: var(--soft);
     color: var(--muted);
 }
 
@@ -1358,7 +1361,7 @@ button.cp-primary:hover:not(:disabled) {
     max-width: 95vw;
     padding: 12px 18px;
     background: var(--accent-dark);
-    color: #fff;
+    color: var(--on-accent);
     border-radius: 12px;
     box-shadow: 0 4px 18px #0003;
     white-space: nowrap;
@@ -1382,26 +1385,26 @@ button.cp-primary:hover:not(:disabled) {
 
 .shortlist-popup span {
     font-size: 12px;
-    color: #d1ddd4;
+    color: var(--md-sys-color-inverse-on-surface);
 }
 
 .shortlist-popup button {
     font-size: 12px;
-    background: #fff;
+    background: var(--card);
     color: var(--accent-dark);
     border: 0;
 }
 
 .shortlist-popup button.ghost {
     background: transparent;
-    color: #fff;
-    border: 1px solid #ffffff50;
+    color: var(--on-accent);
+    border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
     .comparison.arrived {
         animation: none;
-        outline: 2px solid #629d79;
+        outline: 2px solid var(--md-sys-color-outline-variant);
     }
 
     .shortlist-popup {
