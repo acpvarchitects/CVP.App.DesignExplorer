@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Design Explorer</title>
     <link rel="icon" href="../favicon.png" />
-    <link rel="stylesheet" href="style.css?v=43" />
+    <link rel="stylesheet" href="style.css?v=49" />
     <script type="importmap">
         {
             "imports": {
@@ -53,14 +53,28 @@
         </section>
 
         <div class="workspace">
-            <!-- Left: measurement filters, shared by every method -->
-            <aside class="filters card" aria-label="Measurement filters">
-                <div class="filters-head">
-                    <h2>Measurements</h2>
-                    <button id="resetFilters" type="button" class="link">Reset</button>
-                </div>
-                <p class="muted small">Keep options within these ranges. Leave a box empty for no limit.</p>
-                <div id="rangeFilters"></div>
+            <!-- Left: filters, shared by every method; one expandable section per way of filtering -->
+            <aside class="filters card" aria-label="Filters">
+                <details class="filter-section" id="measurementsSection" open>
+                    <summary><span class="filter-title">Measurements</span><span id="measurementsBadge" class="filter-badge"></span><button id="measurementsClear" type="button" class="filter-clear" data-clear="measurements" hidden>×</button></summary>
+                    <div class="filter-body">
+                        <div class="filters-head">
+                            <p class="muted small">Min – max per result; empty = no limit.</p>
+                            <button id="resetFilters" type="button" class="link">Reset</button>
+                        </div>
+                        <div id="rangeFilters"></div>
+                    </div>
+                </details>
+                <details class="filter-section" id="paretoSection">
+                    <summary><span class="filter-title">Pareto front</span><span id="paretoBadge" class="filter-badge"></span><button id="paretoClear" type="button" class="filter-clear" data-clear="pareto" hidden>×</button></summary>
+                    <div class="filter-body">
+                        <label class="pareto-on"><input id="paretoOn" type="checkbox" /> Only options on the front</label>
+                        <p id="paretoCount" class="muted small"></p>
+                        <p class="muted small">Goals that count:</p>
+                        <div id="paretoGoals" class="pareto-goals"></div>
+                        <p class="muted small pareto-help">An option is on the front when no other option is at least as good on every goal ticked here and better on one. With many goals almost every option is on it: 2 or 3 goals show the real trade-offs.</p>
+                    </div>
+                </details>
             </aside>
 
             <section class="results">
@@ -143,6 +157,6 @@
         </section>
     </div>
 
-    <script type="module" src="app.js?v=50"></script>
+    <script type="module" src="app.js?v=54"></script>
 </body>
 </html>
