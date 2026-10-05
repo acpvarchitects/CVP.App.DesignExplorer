@@ -494,15 +494,19 @@ function renderFilters(view) {
     if (!box.children.length) {
         box.innerHTML = data.schema.outputs
             .map(
-                // Compact: name + arrow (direction in the tooltip), then min – max and "avg" on one row.
+                // Same three rows for every result, so they all have the same height: name + arrow
+                // (two-line box, direction in the tooltip), min – max, "Better than average" + the
+                // average (an empty row for a result with no direction).
                 (m) => `<fieldset data-col="${esc(m.col)}">
                     <legend title="${esc(m.label)} · ${directionText(m)}">${esc(m.label)}<span class="dir">${arrow(m)}</span></legend>
                     <div class="range-inputs">
                         <input type="number" step="any" data-bound="0" aria-label="${esc(m.label)} minimum" title="Minimum" />
                         <span>–</span>
                         <input type="number" step="any" data-bound="1" aria-label="${esc(m.label)} maximum" title="Maximum" />
-                        ${m.dir ? `<button type="button" class="quick-filter" data-better="${esc(m.col)}">${m.dir > 0 ? "≥" : "≤"} avg</button>` : `<span class="quick-spacer"></span>`}
                     </div>
+                    <div class="better-row">${
+                        m.dir ? `<button type="button" class="quick-filter" data-better="${esc(m.col)}">Better than average</button><small class="avg-note muted"></small>` : ""
+                    }</div>
                 </fieldset>`
             )
             .join("");
@@ -528,8 +532,12 @@ function renderFilters(view) {
             const v = range ? range[bound] : NaN;
             input.value = Number.isFinite(v) ? +v.toFixed(4) : "";
         });
-        const better = fs.querySelector(".quick-filter");
-        if (better) better.title = `Better than average: ${outputByCol(col).dir > 0 ? "≥" : "≤"} ${fmt(s.mean)} (average of ${scopeName})`;
+        const note = fs.querySelector(".avg-note");
+        if (note) {
+            note.textContent = `avg ${fmt(s.mean)}`;
+            note.title = `Average of ${scopeName}`;
+            fs.querySelector(".quick-filter").title = `Keep options ${outputByCol(col).dir > 0 ? "≥" : "≤"} ${fmt(s.mean)}, the average of ${scopeName}`;
+        }
     }
 }
 
