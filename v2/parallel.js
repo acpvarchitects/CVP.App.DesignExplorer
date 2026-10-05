@@ -155,7 +155,7 @@ export class ParallelChart {
                 .on("mouseenter", () => hover.attr("y", (s.y0 + s.y1) / 2 + 4).attr("fill", s.group.color).text(s.group.key))
                 .on("mouseleave", () => hover.text(""))
                 .on("click", () => this.onGroup?.(s.group.key));
-            bar.append("title").text(`${s.group.key}: click to filter to this batch, again to clear`);
+            bar.append("title").text(`${s.group.key}: click to add or remove this batch from the filter`);
         }
         hover.raise(); // the name is drawn over the ticks
     }

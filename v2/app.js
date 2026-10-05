@@ -26,7 +26,7 @@ import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=29";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml } from "./comparison.js?v=37";
-import { ParallelChart } from "./parallel.js?v=27";
+import { ParallelChart } from "./parallel.js?v=28";
 import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=1";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
@@ -54,7 +54,7 @@ const params = new URLSearchParams(location.search);
 const state = {
     methods: new Set(), // ticked study names; empty = all methods
     ranges: {}, // column -> [low, high]; either end may be ±Infinity (no limit)
-    batch: "", // study kept by a click on its Index bar (a filter: the others stay as pale lines); "" = none
+    batches: new Set(), // studies kept by their Index bars (a filter: the others stay as pale lines); empty = none
     showInputs: false, // input axes on the chart
     order: "", // result column that orders the gallery
     sel: null, // option index shown in the preview; null = preview closed
@@ -217,7 +217,7 @@ const inputAxesFor = (scope) =>
     data.schema.inputs.filter((m) => scope.length && scope.every((o) => Number.isFinite(parseFloat(o.row[m.col]))));
 
 function passes(o) {
-    if (state.batch && o.study.name !== state.batch) return false;
+    if (state.batches.size && !state.batches.has(o.study.name)) return false;
     for (const [col, [lo, hi]] of Object.entries(state.ranges)) {
         const v = valueOf(o, col);
         if (!(v >= lo && v <= hi)) return false;
@@ -376,9 +376,12 @@ function renderChart(view, syncChart) {
                 if (lastView.visibleSet.has(data.options[index])) openOption(index, true);
             },
             onInfo: (col) => openAbout(described(shownStudies(), (st) => entryForResult(st, col))),
-            // Index bar of a batch: filter to that batch (the others stay pale); the same bar again clears it.
+            // Index bar of a batch: each click adds or removes that batch from the filter (the others
+            // stay pale). No bar left, or every batch shown: no filter.
             onGroup: (name) => {
-                state.batch = state.batch === name ? "" : name;
+                const next = state.batches;
+                next.has(name) ? next.delete(name) : next.add(name);
+                if (next.size === data.studies.filter((st) => inMethod({ study: st })).length) next.clear();
                 render();
             },
         });
@@ -395,7 +398,7 @@ function renderChart(view, syncChart) {
             .filter((st) => inMethod({ study: st }))
             .map((st) => {
                 const vals = data.options.filter((o) => o.study === st).map((o) => parseFloat(o.row[m.col])).filter(Number.isFinite);
-                const on = !state.batch || state.batch === st.name;
+                const on = !state.batches.size || state.batches.has(st.name);
                 return { key: st.name, color: st.color, on, count: vals.length, domain: [Math.min(...vals), Math.max(...vals)] };
             })
             .filter((g) => g.count);
@@ -423,7 +426,7 @@ function renderChart(view, syncChart) {
         }),
     ];
     const model = {
-        scope: `${[...state.methods].sort()}|${state.showInputs}|${state.batch}`,
+        scope: `${[...state.methods].sort()}|${state.showInputs}|${[...state.batches].sort()}`,
         options: view.scope,
         axes,
         selected: state.sel != null ? data.options[state.sel] : null,
@@ -441,7 +444,7 @@ function renderChart(view, syncChart) {
 
     const labelOf = (col) => (outputByCol(col) || data.schema.inputs.find((m) => m.col === col) || { label: col }).label;
     $("activeRanges").innerHTML =
-        (state.batch ? `<span>Batch: ${esc(state.batch)}</span>` : "") +
+        (state.batches.size ? `<span>Batch: ${esc(batchNames())}</span>` : "") +
         Object.entries(state.ranges)
             .map(([col, [lo, hi]]) => {
                 const text = lo === -Infinity ? `≤ ${fmt(hi)}` : hi === Infinity ? `≥ ${fmt(lo)}` : `${fmt(lo)} – ${fmt(hi)}`;
@@ -501,7 +504,7 @@ function renderToolbar(view, notice) {
     const scope = scopeLabel().replace(/^a/, "A");
     $("scopeNote").textContent = [
         scope,
-        state.batch ? `Batch ${state.batch} only` : "",
+        state.batches.size ? `Batch ${batchNames()} only` : "",
         filters ? `${filters} measurement filter${filters > 1 ? "s" : ""}` : "No measurement filters",
         state.sel == null && !notice ? "Click an option to preview it" : "",
         notice,
@@ -976,7 +979,7 @@ function saveUrl() {
     set("layer", state.sel != null && state.layer[state.mode] ? state.layer[state.mode] + 1 : "");
     set("compare", state.shortlist.map((i) => i + 1).join(","));
     set("inputs", state.showInputs ? "1" : "");
-    set("batch", state.batch);
+    set("batch", batchNames(","));
     const ranges = Object.entries(state.ranges).map(([col, [lo, hi]]) => [col, Number.isFinite(lo) ? lo : null, Number.isFinite(hi) ? hi : null]);
     set("ranges", ranges.length ? JSON.stringify(ranges) : "");
     ["variant", "sort", "prototype"].forEach((k) => p.delete(k)); // from earlier versions
@@ -1000,8 +1003,8 @@ function loadUrlState() {
         .filter((i, k, all) => i >= 0 && i < data.options.length && all.indexOf(i) === k)
         .slice(0, MAX_SHORTLIST);
     state.showInputs = params.get("inputs") === "1";
-    const batch = params.get("batch") || "";
-    state.batch = data.studies.length > 1 && data.studies.some((s) => s.name === batch) && inMethod({ study: { name: batch } }) ? batch : "";
+    const batches = (params.get("batch") || "").split(",").filter((n) => data.studies.some((s) => s.name === n) && inMethod({ study: { name: n } }));
+    state.batches = new Set(data.studies.length > 1 ? batches : []);
     try {
         for (const [col, lo, hi] of JSON.parse(params.get("ranges") || "[]")) {
             state.ranges[col] = [lo ?? -Infinity, hi ?? Infinity];
@@ -1047,9 +1050,12 @@ function step(delta) {
 }
 
 // Tick / untick one method; unticking the last one, or ticking all, means all methods.
+// Filtered batches in study order, e.g. "ACPV + Prompt".
+const batchNames = (sep = " + ") => data.studies.filter((st) => state.batches.has(st.name)).map((st) => st.name).join(sep);
+
 function setMethods(names) {
     state.methods = new Set(names.length === data.studies.length ? [] : names);
-    if (state.batch && !inMethod({ study: { name: state.batch } })) state.batch = ""; // its method was unticked
+    for (const n of state.batches) if (!inMethod({ study: { name: n } })) state.batches.delete(n); // its method was unticked
     // Input ranges only make sense where every option has that input.
     const inputs = inputAxesFor(data.options.filter(inMethod)).map((m) => m.col);
     for (const col of Object.keys(state.ranges)) {
@@ -1106,7 +1112,7 @@ function bindEvents() {
     });
     const clearRanges = () => {
         state.ranges = {};
-        state.batch = "";
+        state.batches.clear();
         render({ syncChart: true });
     };
     $("resetFilters").addEventListener("click", clearRanges);
