@@ -454,6 +454,105 @@ main {
     margin-bottom: 4px;
 }
 
+/* One expandable section per way of filtering (Measurements, Pareto front…). */
+.filter-section + .filter-section {
+    margin-top: 10px;
+}
+
+.filter-section > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 7px 12px;
+    list-style: none;
+    cursor: pointer;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--soft);
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.filter-section > summary::-webkit-details-marker {
+    display: none;
+}
+
+.filter-section > summary::before {
+    content: "▸";
+    color: var(--muted);
+    margin-right: 2px;
+}
+
+.filter-section[open] > summary::before {
+    content: "▾";
+}
+
+.filter-section > summary .filter-title {
+    flex: 1;
+}
+
+.filter-section.active > summary,
+.filter-section > summary:has(.filter-badge:not(:empty)) {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+.filter-badge:not(:empty) {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+}
+
+.filter-body {
+    padding: 10px 2px 4px;
+}
+
+.filter-body .filters-head {
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.pareto-on {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.filter-body p.small + p.small,
+.pareto-on + p {
+    margin-top: 6px;
+}
+
+.pareto-goals {
+    display: grid;
+    gap: 4px;
+    margin: 6px 0 10px;
+}
+
+.pareto-goals label {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+    font-size: 13px;
+}
+
+.pareto-goals input,
+.pareto-on input {
+    margin-top: 2px;
+}
+
+.pareto-help {
+    font-size: 11px;
+    line-height: 1.4;
+}
+
 .filters fieldset {
     border: 0;
     border-top: 1px solid var(--line);
