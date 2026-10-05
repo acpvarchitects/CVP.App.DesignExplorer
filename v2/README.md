@@ -92,9 +92,9 @@ reflections, one without): one block per group of studies, with their colour dot
    a title with ⓘ opens its "About" card, closed with ✕ or a click outside it). "Show index"
    ("Show inputs" when there are several) adds the input axes; with several methods an input axis
    is split per method, top to bottom with a gap, each with a coloured bar: hover names the method,
-   a click filters to that method (the others stay as pale lines, like any filter), a second click
-   clears it; "Clear chart filters" clears it too (no drag filter on that axis). Pale lines are
-   not clickable.
+   each click adds that method to the filter or removes it (the others stay as pale lines, like any
+   filter), so one or several can be kept; no bar left, every bar on, or "Clear chart filters"
+   means no filter (no drag filter on that axis). Pale lines are not clickable.
 2. **Measurements** sidebar: min/max per result and "Better than average" (average of the
    methods shown). Sidebar and chart share one range state.
 3. **Preview**, hidden until an option is clicked: Image / 3D model / 3D analysis, previous/next,
