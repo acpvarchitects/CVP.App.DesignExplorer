@@ -494,15 +494,15 @@ function renderFilters(view) {
     if (!box.children.length) {
         box.innerHTML = data.schema.outputs
             .map(
+                // Compact: name + arrow (direction in the tooltip), then min – max and "avg" on one row.
                 (m) => `<fieldset data-col="${esc(m.col)}">
-                    <legend>${esc(m.label)}</legend>
-                    <small class="muted">${directionText(m)}</small>
+                    <legend title="${esc(m.label)} · ${directionText(m)}">${esc(m.label)}<span class="dir">${arrow(m)}</span></legend>
                     <div class="range-inputs">
-                        <label>Min<input type="number" step="any" data-bound="0" aria-label="${esc(m.label)} minimum" /></label>
+                        <input type="number" step="any" data-bound="0" aria-label="${esc(m.label)} minimum" title="Minimum" />
                         <span>–</span>
-                        <label>Max<input type="number" step="any" data-bound="1" aria-label="${esc(m.label)} maximum" /></label>
+                        <input type="number" step="any" data-bound="1" aria-label="${esc(m.label)} maximum" title="Maximum" />
+                        ${m.dir ? `<button type="button" class="quick-filter" data-better="${esc(m.col)}">${m.dir > 0 ? "≥" : "≤"} avg</button>` : `<span class="quick-spacer"></span>`}
                     </div>
-                    ${m.dir ? `<button type="button" class="quick-filter" data-better="${esc(m.col)}">Better than average</button><small class="avg-note muted"></small>` : ""}
                 </fieldset>`
             )
             .join("");
@@ -528,8 +528,8 @@ function renderFilters(view) {
             const v = range ? range[bound] : NaN;
             input.value = Number.isFinite(v) ? +v.toFixed(4) : "";
         });
-        const note = fs.querySelector(".avg-note");
-        if (note) note.textContent = `Average of ${scopeName}: ${fmt(s.mean)}`;
+        const better = fs.querySelector(".quick-filter");
+        if (better) better.title = `Better than average: ${outputByCol(col).dir > 0 ? "≥" : "≤"} ${fmt(s.mean)} (average of ${scopeName})`;
     }
 }
 

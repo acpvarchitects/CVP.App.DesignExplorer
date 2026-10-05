@@ -98,8 +98,8 @@ reflections, one without): one block per group of studies, with their colour dot
    are not clickable.
 2. **Filters** sidebar, one expandable section per way of filtering (badge = active):
    Header of a section: a small count when it is active and × to clear just that section.
-   - **Measurements**: min/max per result and "Better than average" (average of the methods
-     shown). Sidebar and chart share one range state. "Reset" clears these ranges only.
+   - **Measurements**: one compact row per result, min – max and "≥ avg" / "≤ avg" (better than
+     the average of the methods shown; the value is in its tooltip, the direction in the name's). Sidebar and chart share one range state. "Reset" clears these ranges only.
    - **Pareto front** (`pareto.js`): "Only options on the front" keeps the options that no other
      option beats on every ticked goal (at least as good on all, better on one); the rest stay as
      pale lines. Computed over the methods shown, on the first 3 goals by default; the other
