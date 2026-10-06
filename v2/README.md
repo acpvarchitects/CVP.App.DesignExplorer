@@ -96,13 +96,21 @@ reflections, one without): one block per group of studies, with their colour dot
    switched-off methods stay as pale lines, like any filter. The last bar on stays on; every bar
    on again, or "Clear chart filters", means no filter (no drag filter on that axis). Pale lines
    are not clickable.
-2. **Measurements** sidebar: min/max per result and "Better than average" (average of the
-   methods shown). Sidebar and chart share one range state.
+2. **Filters** sidebar, one expandable section per way of filtering (badge = active):
+   Header of a section: a small count when it is active and × to clear just that section.
+   - **Measurements**: the same three rows per result (name with arrow, min – max, "Better than
+     average" + the average of the methods shown), so every result has the same height. Sidebar and chart share one range state. "Reset" clears these ranges only.
+   - **Pareto front** (`pareto.js`): "Only options on the front" keeps the options that no other
+     option beats on every ticked goal (at least as good on all, better on one); the rest stay as
+     pale lines. Computed over the methods shown, on the first 3 goals by default; the other
+     filters don't change the front. With many goals almost every option is on it.
+   "Clear chart filters" clears every filter (ranges, batch bars, Pareto).
 3. **Preview**, hidden until an option is clicked: Image / 3D model / 3D analysis, previous/next,
    expand, ← → and Escape. A 3D analysis shows its score for the option top right (`score_label`
    + value + unit) and, like the Table view, an "ⓘ About" button. "Where this option stands" shows actual value positions among the
    matching options.
-4. **Gallery** of matching options ("Order by" one result); "Compare" builds a shortlist of up to 4.
+4. **Gallery** of matching options ("Order by" one result or Index; Index by default when the study
+   has it, each batch together); "Compare" builds a shortlist of up to 4.
 5. **Compare methods** (2+ methods shown): matching count, best and median per method.
 6. **Compare options** (2 to 4 shortlisted options): slots A–D, a radar of all goals (axes
    scaled worst→best over all loaded options), "What each option does better" and the exact
@@ -120,6 +128,7 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 |---|---|
 | `index.html` | markup and import map. After edits bump every `?v=` (here and on the imports at the top of `app.js`): the server caches `.js` for 30 days |
 | `app.js` | loading, state, filters, rendering, URL state, events |
+| `pareto.js` | Pareto front of a set of options on chosen goals |
 | `about.js` | "About" card content from `layers.json` (one block per study when texts differ) |
 | `compare.js` | "about the same" and win rules |
 | `comparison.js` | the Compare options section (radar, strengths, values table) |

@@ -27,6 +27,7 @@ import { Viewer } from "./viewer.js?v=29";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml } from "./comparison.js?v=37";
 import { ParallelChart } from "./parallel.js?v=29";
+import { paretoFront } from "./pareto.js?v=1";
 import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=1";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
@@ -55,6 +56,8 @@ const state = {
     methods: new Set(), // ticked study names; empty = all methods
     ranges: {}, // column -> [low, high]; either end may be ±Infinity (no limit)
     batches: new Set(), // studies kept by their Index bars (a filter: the others stay as pale lines); empty = none
+    pareto: false, // keep only the options on the Pareto front of `paretoGoals` (pale lines for the rest)
+    paretoGoals: null, // goal columns that count for the front; null = default (first 3 goals)
     showInputs: false, // input axes on the chart
     order: "", // result column that orders the gallery
     sel: null, // option index shown in the preview; null = preview closed
@@ -216,7 +219,27 @@ const orderBy = (col) => outputByCol(col) || (inputByCol(col) && { ...inputByCol
 const inputAxesFor = (scope) =>
     data.schema.inputs.filter((m) => scope.length && scope.every((o) => Number.isFinite(parseFloat(o.row[m.col]))));
 
+// ---- Pareto front (pareto.js): over the methods shown, on the ticked goals ----
+
+let paretoCache = { key: "", front: new Set() };
+const PARETO_DEFAULT = 3; // goals ticked at first: with all of them almost every option is on the front
+
+function paretoGoalCols() {
+    if (!state.paretoGoals) state.paretoGoals = new Set(goals().slice(0, PARETO_DEFAULT).map((m) => m.col));
+    return goals().filter((m) => state.paretoGoals.has(m.col));
+}
+
+// Recomputed only when the methods shown or the ticked goals change, never by other filters.
+function currentFront() {
+    const scope = data.options.filter(inMethod);
+    const chosen = paretoGoalCols();
+    const key = `${[...state.methods].sort()}|${chosen.map((m) => m.col)}`;
+    if (paretoCache.key !== key) paretoCache = { key, front: chosen.length ? paretoFront(scope, chosen) : new Set(scope) };
+    return paretoCache.front;
+}
+
 function passes(o) {
+    if (state.pareto && !currentFront().has(o)) return false;
     if (state.batches.size && !state.batches.has(o.study.name)) return false;
     for (const [col, [lo, hi]] of Object.entries(state.ranges)) {
         const v = valueOf(o, col);
@@ -449,6 +472,7 @@ function renderChart(view, syncChart) {
     const labelOf = (col) => (outputByCol(col) || data.schema.inputs.find((m) => m.col === col) || { label: col }).label;
     $("activeRanges").innerHTML =
         (state.batches.size ? `<span>Batch: ${esc(batchNames())}</span>` : "") +
+        (state.pareto ? `<span>Pareto front: ${paretoGoalCols().length} goals</span>` : "") +
         Object.entries(state.ranges)
             .map(([col, [lo, hi]]) => {
                 const text = lo === -Infinity ? `≤ ${fmt(hi)}` : hi === Infinity ? `≥ ${fmt(lo)}` : `${fmt(lo)} – ${fmt(hi)}`;
@@ -470,21 +494,32 @@ function renderFilters(view) {
     if (!box.children.length) {
         box.innerHTML = data.schema.outputs
             .map(
+                // Same three rows for every result, so they all have the same height: name + arrow
+                // (two-line box, direction in the tooltip), min – max, "Better than average" + the
+                // average (an empty row for a result with no direction).
                 (m) => `<fieldset data-col="${esc(m.col)}">
-                    <legend>${esc(m.label)}</legend>
-                    <small class="muted">${directionText(m)}</small>
+                    <legend title="${esc(m.label)} · ${directionText(m)}">${esc(m.label)}<span class="dir">${arrow(m)}</span></legend>
                     <div class="range-inputs">
-                        <label>Min<input type="number" step="any" data-bound="0" aria-label="${esc(m.label)} minimum" /></label>
+                        <input type="number" step="any" data-bound="0" aria-label="${esc(m.label)} minimum" title="Minimum" />
                         <span>–</span>
-                        <label>Max<input type="number" step="any" data-bound="1" aria-label="${esc(m.label)} maximum" /></label>
+                        <input type="number" step="any" data-bound="1" aria-label="${esc(m.label)} maximum" title="Maximum" />
                     </div>
-                    ${m.dir ? `<button type="button" class="quick-filter" data-better="${esc(m.col)}">Better than average</button><small class="avg-note muted"></small>` : ""}
+                    <div class="better-row">${
+                        m.dir ? `<button type="button" class="quick-filter" data-better="${esc(m.col)}">Better than average</button><small class="avg-note muted"></small>` : ""
+                    }</div>
                 </fieldset>`
             )
             .join("");
     }
+    renderPareto(view);
     const scopeStats = computeStats(view.scope, data.schema.outputs);
     const scopeName = scopeLabel();
+    const n = Object.keys(state.ranges).length;
+    // Section header: a small number when active (ranges set) and × to clear just this section.
+    $("measurementsBadge").textContent = n ? String(n) : "";
+    $("measurementsBadge").title = n ? `${n} measurement filter${n > 1 ? "s" : ""} active` : "";
+    $("measurementsClear").hidden = !n;
+    $("measurementsClear").title = "Clear the measurement filters";
     for (const fs of box.querySelectorAll("fieldset")) {
         const col = fs.dataset.col;
         const s = scopeStats[col];
@@ -498,17 +533,47 @@ function renderFilters(view) {
             input.value = Number.isFinite(v) ? +v.toFixed(4) : "";
         });
         const note = fs.querySelector(".avg-note");
-        if (note) note.textContent = `Average of ${scopeName}: ${fmt(s.mean)}`;
+        if (note) {
+            note.textContent = `avg ${fmt(s.mean)}`;
+            note.title = `Average of ${scopeName}`;
+            fs.querySelector(".quick-filter").title = `Keep options ${outputByCol(col).dir > 0 ? "≥" : "≤"} ${fmt(s.mean)}, the average of ${scopeName}`;
+        }
     }
+}
+
+// The Pareto section: on/off, how many options are on the front, and which goals count.
+function renderPareto(view) {
+    const box = $("paretoGoals");
+    if (!box.children.length) {
+        box.innerHTML = goals()
+            .map((m) => `<label><input type="checkbox" data-pareto-goal="${esc(m.col)}" /> ${esc(m.label)}${arrow(m)}</label>`)
+            .join("");
+        if (state.pareto) $("paretoSection").open = true; // opened from a link with the filter on
+    }
+    const chosen = paretoGoalCols();
+    for (const input of box.querySelectorAll("input")) input.checked = state.paretoGoals.has(input.dataset.paretoGoal);
+    $("paretoOn").checked = state.pareto;
+    $("paretoOn").disabled = !chosen.length;
+    const front = currentFront();
+    $("paretoCount").textContent = chosen.length
+        ? `${front.size} of ${view.scope.length} options are on the front of ${chosen.length} goal${chosen.length === 1 ? "" : "s"}.`
+        : "Tick at least one goal.";
+    $("paretoBadge").textContent = state.pareto ? String(front.size) : "";
+    $("paretoBadge").title = state.pareto ? `${front.size} options on the front` : "";
+    $("paretoClear").hidden = !state.pareto;
+    $("paretoClear").title = "Turn the Pareto filter off";
+    $("paretoSection").classList.toggle("active", state.pareto);
 }
 
 function renderToolbar(view, notice) {
     const filters = Object.keys(state.ranges).length;
+    const pareto = state.pareto ? `Pareto front of ${paretoGoalCols().length} goal${paretoGoalCols().length === 1 ? "" : "s"}` : "";
     $("resultCount").textContent = `${view.visible.length} of ${view.scope.length} options`;
     const scope = scopeLabel().replace(/^a/, "A");
     $("scopeNote").textContent = [
         scope,
         state.batches.size ? `Batch ${batchNames()} only` : "",
+        pareto,
         filters ? `${filters} measurement filter${filters > 1 ? "s" : ""}` : "No measurement filters",
         state.sel == null && !notice ? "Click an option to preview it" : "",
         notice,
@@ -984,6 +1049,11 @@ function saveUrl() {
     set("compare", state.shortlist.map((i) => i + 1).join(","));
     set("inputs", state.showInputs ? "1" : "");
     set("batch", batchNames(","));
+    set("pareto", state.pareto ? "1" : "");
+    // goal positions among the goals (1-based), only when they differ from the default
+    const pg = goals().map((m, i) => (state.paretoGoals?.has(m.col) ? i + 1 : 0)).filter(Boolean);
+    const isDefault = pg.join() === goals().slice(0, PARETO_DEFAULT).map((m, i) => i + 1).join();
+    set("pgoals", state.paretoGoals && !isDefault ? pg.join(",") : "");
     const ranges = Object.entries(state.ranges).map(([col, [lo, hi]]) => [col, Number.isFinite(lo) ? lo : null, Number.isFinite(hi) ? hi : null]);
     set("ranges", ranges.length ? JSON.stringify(ranges) : "");
     ["variant", "sort", "prototype"].forEach((k) => p.delete(k)); // from earlier versions
@@ -994,7 +1064,10 @@ function loadUrlState() {
     const picked = (params.get("methods") || params.get("method") || "").split(",").filter((n) => data.studies.some((s) => s.name === n));
     state.methods = new Set(picked.length === data.studies.length ? [] : picked);
     const order = params.get("order") || params.get("sort");
-    state.order = orderBy(order) ? order : data.schema.outputs[0]?.col || "";
+    // Default order: the Index input when there is one (each batch together, in index order),
+    // otherwise the first result.
+    const index = data.schema.inputs.find((m) => /^index$/i.test(m.label));
+    state.order = orderBy(order) ? order : index?.col || data.schema.outputs[0]?.col || "";
     const option = parseInt(params.get("option"), 10);
     if (option >= 1 && option <= data.options.length) state.sel = option - 1;
     const mode = modeInfo(params.get("mode") || "");
@@ -1009,6 +1082,9 @@ function loadUrlState() {
     state.showInputs = params.get("inputs") === "1";
     const batches = (params.get("batch") || "").split(",").filter((n) => data.studies.some((s) => s.name === n) && inMethod({ study: { name: n } }));
     state.batches = new Set(data.studies.length > 1 ? batches : []);
+    const pg = (params.get("pgoals") || "").split(",").map((n) => goals()[parseInt(n, 10) - 1]).filter(Boolean);
+    if (pg.length) state.paretoGoals = new Set(pg.map((m) => m.col));
+    state.pareto = params.get("pareto") === "1" && paretoGoalCols().length > 0;
     try {
         for (const [col, lo, hi] of JSON.parse(params.get("ranges") || "[]")) {
             state.ranges[col] = [lo ?? -Infinity, hi ?? Infinity];
@@ -1119,13 +1195,38 @@ function bindEvents() {
         const b = e.target.closest("[data-better]");
         if (b) betterThanAverage(b.dataset.better);
     });
-    const clearRanges = () => {
+    // "Clear chart filters": every filter. Measurements "Reset": only the measurement ranges.
+    $("clearChart").addEventListener("click", () => {
         state.ranges = {};
         state.batches.clear();
+        state.pareto = false;
         render({ syncChart: true });
-    };
-    $("resetFilters").addEventListener("click", clearRanges);
-    $("clearChart").addEventListener("click", clearRanges);
+    });
+    // × in a section header: clear that section only, without opening/closing it.
+    document.querySelector(".filters").addEventListener("click", (e) => {
+        const b = e.target.closest("[data-clear]");
+        if (!b) return;
+        e.preventDefault();
+        if (b.dataset.clear === "measurements") state.ranges = {};
+        if (b.dataset.clear === "pareto") state.pareto = false;
+        render({ syncChart: true });
+    });
+    $("resetFilters").addEventListener("click", () => {
+        state.ranges = {};
+        render({ syncChart: true });
+    });
+    $("paretoOn").addEventListener("change", (e) => {
+        state.pareto = e.target.checked;
+        render();
+    });
+    $("paretoGoals").addEventListener("change", (e) => {
+        const col = e.target.dataset.paretoGoal;
+        if (!col) return;
+        paretoGoalCols(); // fills the default set on first use
+        e.target.checked ? state.paretoGoals.add(col) : state.paretoGoals.delete(col);
+        if (!state.paretoGoals.size) state.pareto = false;
+        render();
+    });
     $("showInputs").addEventListener("change", (e) => {
         state.showInputs = e.target.checked;
         if (!state.showInputs) for (const m of data.schema.inputs) delete state.ranges[m.col];
