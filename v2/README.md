@@ -108,7 +108,8 @@ reflections, one without): one block per group of studies, with their colour dot
 3. **Preview**, hidden until an option is clicked: Image / 3D model / 3D analysis, previous/next,
    expand, ← → and Escape. A 3D analysis made of whole floors (the unit mix: one mesh per apartment per floor) gets a
    level picker on the right: "All" or one level at a time (L00 = lowest), every other surface of
-   the option is hidden and the other levels stay as halftone outlines; the chosen level stays from option to option.
+   the option is hidden and the other levels stay as the halftone outer outline of their masses (the `masses`
+   layer, loaded as outlines in analysis views); the chosen level stays from option to option.
    A 3D analysis shows its score for the option top right (`score_label`
    + value + unit) and, like the Table view, an "ⓘ About" button. "Where this option stands" shows actual value positions among the
    matching options.

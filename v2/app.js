@@ -23,7 +23,7 @@
 // Page sections, top to bottom: method tabs + chart, measurement filters,
 // preview (only after clicking an option), gallery, Compare methods, Compare options.
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
-import { Viewer } from "./viewer.js?v=32";
+import { Viewer } from "./viewer.js?v=33";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml } from "./comparison.js?v=37";
 import { ParallelChart } from "./parallel.js?v=29";
@@ -869,6 +869,10 @@ function partsFor(o, layer) {
             const url = file(layer.col);
             if (!url) return null; // the analysis itself is missing
             own.push({ url, kind: "analysis" });
+            // The masses (one volume per floor) as outer outlines: shown only for the other
+            // levels while one level of the analysis is isolated.
+            const masses = !replaced && data.schema.layers.some((g) => g.col === "masses") && file("masses");
+            if (masses) own.push({ url: masses, kind: "outline" });
         }
     }
     if (!own.length) return null;

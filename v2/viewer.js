@@ -2,6 +2,7 @@
 //   "context"  shared by every option, loaded once, faded in analysis views
 //   "geometry" the option's own layers (masses, floors, pools…), lit
 //   "analysis" a colored analysis mesh, unlit so its vertex colors match the legend
+//   "outline"  outer edges of a layer's volumes (the masses), shown only while a level is isolated
 // All files of a study share one origin, so they are overlaid as they are. The whole
 // scene sits in one parent group shifted by the centre of the first bounding box,
 // because the coordinates are hundreds of metres from the origin.
@@ -13,7 +14,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 const CACHE_SIZE = 60; // loaded files kept in memory (an option can have ~10 layers)
 const CONTEXT_FADE = 0.45; // context opacity in analysis views
 const LEVEL_EPS = 0.05; // m: two bases closer than this are the same level
-// Outlines of the other levels while one is isolated: mid grey ("halftone"), no surfaces.
+// Outer outlines of the other levels while one is isolated: mid grey ("halftone"), no surfaces.
+const OUTLINE_ANGLE = 25; // degrees: edges between faces closer than this are not drawn
 const HALFTONE = new THREE.LineBasicMaterial({ color: 0x8c8c8c, transparent: true, opacity: 0.6, depthWrite: false });
 
 export class Viewer {
@@ -121,15 +123,14 @@ export class Viewer {
         for (const o of this.shown) {
             if (o.userData.kind === "context") continue;
             o.traverse((node) => {
-                if (node.userData.halftone) return; // set with its own outline below
-                if (node.isMesh) {
+                if (o.userData.kind === "outline") {
+                    // outer edges of the other levels' volumes; nothing when no level is isolated
+                    if (node.isLine) node.visible = level != null && levelIndex(this.levels, node.userData.baseY) !== level;
+                } else if (node.isMesh) {
                     node.visible = level == null || (o.userData.kind === "analysis" && node.userData.level === level);
                 } else if (node.isLine && node.userData.levelGeometries) {
                     node.userData.baseGeometry ||= node.geometry;
                     node.geometry = level == null ? node.userData.baseGeometry : node.userData.levelGeometries[level];
-                    const others = node.userData.halftoneLines;
-                    others.visible = level != null;
-                    if (level != null) others.geometry = node.userData.otherGeometries[level];
                 } else if (node.isLine) {
                     node.visible = level == null; // outlines of another layer: hidden while isolating
                 }
@@ -221,29 +222,30 @@ function findLevels(root) {
         for (const line of lines) {
             const pos = line.geometry.getAttribute("position");
             const per = bases.map(() => []);
-            const rest = bases.map(() => []); // segments of every other level, drawn halftone
             for (let k = 0; k + 1 < pos.count; k += 2) {
                 const lo = Math.min(pos.getY(k), pos.getY(k + 1));
                 const hi = Math.max(pos.getY(k), pos.getY(k + 1));
-                bases.forEach((b, i) => (lo >= b - LEVEL_EPS && hi <= tops[i] + LEVEL_EPS ? per[i] : rest[i]).push(k, k + 1));
+                bases.forEach((b, i) => lo >= b - LEVEL_EPS && hi <= tops[i] + LEVEL_EPS && per[i].push(k, k + 1));
             }
-            const subset = (index) => {
+            line.userData.levelGeometries = per.map((index) => {
                 const g = new THREE.BufferGeometry();
                 for (const [name, attr] of Object.entries(line.geometry.attributes)) g.setAttribute(name, attr);
                 g.setIndex(index);
                 return g;
-            };
-            line.userData.levelGeometries = per.map(subset);
-            line.userData.otherGeometries = rest.map(subset);
-            const halftone = new THREE.LineSegments(new THREE.BufferGeometry(), HALFTONE);
-            halftone.userData.halftone = true;
-            halftone.visible = false;
-            line.add(halftone);
-            line.userData.halftoneLines = halftone;
+            });
         }
     }
     root.userData.levels = ok ? bases : [];
     return root.userData.levels;
+}
+
+// The level a volume belongs to: the nearest base height (masses may sit a centimetre off).
+function levelIndex(bases, y) {
+    let best = -1;
+    bases.forEach((b, i) => {
+        if (best < 0 || Math.abs(b - y) < Math.abs(bases[best] - y)) best = i;
+    });
+    return best >= 0 && Math.abs(bases[best] - y) <= 0.5 ? best : -1;
 }
 
 // ---- Materials and colors ----
@@ -253,6 +255,7 @@ function findLevels(root) {
 // material is replaced. Analysis layers are unlit so the colors match the legend.
 function prepare(root, kind) {
     root.userData.kind = kind;
+    if (kind === "outline") return toOutlines(root);
     // The analysis sits exactly on surfaces of other layers (floors, masses): the depth
     // offset draws it in front of them there, instead of flickering white patches.
     const make = (vertexColors) =>
@@ -269,6 +272,24 @@ function prepare(root, kind) {
         const colored = toLinearColors(node.geometry);
         if (colored || kind !== "geometry") node.material = materials[colored] ||= make(colored);
     });
+    return root;
+}
+
+// Every mesh becomes its outer edges only (no diagonals of flat faces), hidden until a level
+// is isolated; each keeps the height of its base to be matched to a level.
+function toOutlines(root) {
+    const meshes = [];
+    root.traverse((n) => n.isMesh && meshes.push(n));
+    for (const mesh of meshes) {
+        mesh.geometry.computeBoundingBox();
+        const line = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry, OUTLINE_ANGLE), HALFTONE);
+        line.userData.baseY = mesh.geometry.boundingBox.min.y;
+        line.visible = false;
+        line.matrix.copy(mesh.matrix);
+        line.matrix.decompose(line.position, line.quaternion, line.scale);
+        mesh.parent.add(line);
+        mesh.parent.remove(mesh);
+    }
     return root;
 }
 
