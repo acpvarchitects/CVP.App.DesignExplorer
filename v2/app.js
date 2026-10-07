@@ -223,17 +223,21 @@ function setHidden(col, hide) {
     render({ syncChart: true });
 }
 
-// "Hidden: A ⊕ · B ⊕ · Show all" above the chart, only while something is hidden.
+// "2 hidden ▾" in the chart toolbar, only while something is hidden: a small list to bring
+// one back, or all of them.
 function renderHidden() {
     const box = $("hiddenAxes");
     const all = [...data.schema.inputs, ...data.schema.allOutputs];
     const hidden = all.filter((m) => state.hidden.has(m.col));
     box.hidden = !hidden.length;
-    box.innerHTML = hidden.length
-        ? `<span class="muted">Hidden:</span>${hidden
-              .map((m) => `<button type="button" class="hidden-chip" data-unhide="${esc(m.col)}" title="Show ${esc(m.label)} again">${esc(m.label)} <span aria-hidden="true">⊕</span></button>`)
-              .join("")}<button type="button" class="link" data-unhide-all>Show all</button>`
-        : "";
+    if (!hidden.length) {
+        box.open = false;
+        return;
+    }
+    $("hiddenCount").textContent = `${hidden.length} hidden`;
+    $("hiddenList").innerHTML =
+        hidden.map((m) => `<button type="button" data-unhide="${esc(m.col)}" title="Show it again">${esc(m.label)}</button>`).join("") +
+        (hidden.length > 1 ? `<button type="button" class="show-all" data-unhide-all>Show all</button>` : "");
 }
 const inMethod = (o) => !state.methods.size || state.methods.has(o.study.name);
 
@@ -1262,6 +1266,10 @@ function bindEvents() {
         if (b) betterThanAverage(b.dataset.better);
     });
     // "Clear chart filters": every filter. Measurements "Reset": only the measurement ranges.
+    // the "N hidden" list closes on a click anywhere else
+    document.addEventListener("click", (e) => {
+        if ($("hiddenAxes").open && !e.target.closest("#hiddenAxes")) $("hiddenAxes").open = false;
+    });
     $("hiddenAxes").addEventListener("click", (e) => {
         const one = e.target.closest("[data-unhide]");
         if (one) setHidden(one.dataset.unhide, false);
