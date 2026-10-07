@@ -12,11 +12,19 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 const CACHE_SIZE = 60; // loaded files kept in memory (an option can have ~10 layers)
 const CONTEXT_FADE = 0.45; // context opacity in analysis views
+const LEVEL_EPS = 0.05; // m: two bases closer than this are the same level
+// Everything outside the isolated level: a light, uncoloured ghost.
+const GHOST = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
 
 export class Viewer {
-    constructor(container, onStatus) {
+    // onLevels(levels, level): after every composition, the levels of the shown analysis
+    // (base heights, lowest first; empty when it is not made of whole floors) and the isolated one.
+    constructor(container, onStatus, { onLevels } = {}) {
         this.container = container;
         this.onStatus = onStatus || (() => {});
+        this.onLevels = onLevels || (() => {});
+        this.level = null; // isolated level index, kept from option to option; null = all
+        this.levels = [];
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         container.appendChild(this.renderer.domElement);
@@ -81,6 +89,10 @@ export class Viewer {
         }
         if (objects.length && !this.centred) this.centre(objects);
         if (objects.length && !this.framed) this.resetView();
+        this.levels = findLevels(objects.find((o) => o.userData.kind === "analysis"));
+        // an analysis without levels keeps the choice for the next one that has them
+        if (this.levels.length && this.level != null && this.level >= this.levels.length) this.level = null;
+        this.applyLevel();
 
         const failed = parts.length - objects.length;
         this.onStatus(!objects.length ? "Couldn't load this 3D file." : failed ? `${failed} of ${parts.length} layers couldn't load.` : "");
@@ -90,7 +102,37 @@ export class Viewer {
         this.request++;
         for (const o of this.shown) this.root.remove(o);
         this.shown.clear();
+        this.levels = [];
+        this.onLevels([], this.level);
         this.onStatus("");
+    }
+
+    // Isolate one level of the analysis (index into this.levels), or null for all.
+    setLevel(level) {
+        this.level = level != null && level >= 0 && level < this.levels.length ? level : null;
+        this.applyLevel();
+    }
+
+    // The isolated level keeps its colours and outlines; every other part of the option
+    // (other levels, floors, pools…) turns into the ghost. The context is left as it is.
+    applyLevel() {
+        const level = this.levels.length ? this.level : null;
+        for (const o of this.shown) {
+            if (o.userData.kind === "context") continue;
+            o.traverse((node) => {
+                if (node.isMesh) {
+                    if (node.material !== GHOST) node.userData.baseMaterial = node.material;
+                    const keep = level == null || (o.userData.kind === "analysis" && node.userData.level === level);
+                    node.material = keep ? node.userData.baseMaterial : GHOST;
+                } else if (node.isLine && node.userData.levelGeometries) {
+                    node.userData.baseGeometry ||= node.geometry;
+                    node.geometry = level == null ? node.userData.baseGeometry : node.userData.levelGeometries[level];
+                } else if (node.isLine) {
+                    node.visible = level == null; // outlines of another layer: hidden while isolating
+                }
+            });
+        }
+        this.onLevels(this.levels, level);
     }
 
     // Shift everything by the centre of the context (or of the first layer), once.
@@ -142,6 +184,55 @@ export class Viewer {
         }
         return this.cache.get(key);
     }
+}
+
+// ---- Levels ----
+
+// The base heights of an analysis made of whole floors (each mesh sits between one base and
+// the next, like the unit mix: one mesh per apartment per floor), lowest first; [] otherwise.
+// Marks every mesh with its level and splits outline lines into one geometry per level (a line
+// on the floor between two levels belongs to both). Computed once per loaded file.
+function findLevels(root) {
+    if (!root) return [];
+    if (root.userData.levels) return root.userData.levels;
+    const meshes = [];
+    const lines = [];
+    root.traverse((n) => (n.isMesh ? meshes.push(n) : n.isLineSegments && lines.push(n)));
+    const spans = meshes.map((m) => {
+        m.geometry.computeBoundingBox();
+        return [m.geometry.boundingBox.min.y, m.geometry.boundingBox.max.y];
+    });
+    const bases = [];
+    for (const y of spans.map((s) => s[0]).sort((a, b) => a - b)) if (!bases.length || y - bases[bases.length - 1] > LEVEL_EPS) bases.push(y);
+    const top = Math.max(...spans.map((s) => s[1]));
+    const tops = bases.map((b, i) => (i + 1 < bases.length ? bases[i + 1] : top));
+    const levelOf = (lo, hi) => {
+        let i = bases.length - 1;
+        while (i > 0 && bases[i] > lo + LEVEL_EPS) i--;
+        return hi <= tops[i] + LEVEL_EPS ? i : -1;
+    };
+    const levels = spans.map(([lo, hi]) => levelOf(lo, hi));
+    const ok = bases.length >= 2 && levels.every((i) => i >= 0);
+    if (ok) {
+        meshes.forEach((m, k) => (m.userData.level = levels[k]));
+        for (const line of lines) {
+            const pos = line.geometry.getAttribute("position");
+            const per = bases.map(() => []);
+            for (let k = 0; k + 1 < pos.count; k += 2) {
+                const lo = Math.min(pos.getY(k), pos.getY(k + 1));
+                const hi = Math.max(pos.getY(k), pos.getY(k + 1));
+                bases.forEach((b, i) => lo >= b - LEVEL_EPS && hi <= tops[i] + LEVEL_EPS && per[i].push(k, k + 1));
+            }
+            line.userData.levelGeometries = per.map((index) => {
+                const g = new THREE.BufferGeometry();
+                for (const [name, attr] of Object.entries(line.geometry.attributes)) g.setAttribute(name, attr);
+                g.setIndex(index);
+                return g;
+            });
+        }
+    }
+    root.userData.levels = ok ? bases : [];
+    return root.userData.levels;
 }
 
 // ---- Materials and colors ----

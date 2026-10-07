@@ -23,7 +23,7 @@
 // Page sections, top to bottom: method tabs + chart, measurement filters,
 // preview (only after clicking an option), gallery, Compare methods, Compare options.
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
-import { Viewer } from "./viewer.js?v=29";
+import { Viewer } from "./viewer.js?v=31";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml } from "./comparison.js?v=37";
 import { ParallelChart } from "./parallel.js?v=29";
@@ -763,6 +763,7 @@ function showMedia(o) {
     const parts = is3d && layer ? partsFor(o, layer) : null;
     const src = is3d ? parts : layer ? assetUrl(o, (o.row[layer.col] || "").trim()) : null;
     $("previewImage").hidden = is3d || isTable;
+    if (!is3d) $("levelPicker").hidden = true;
     $("preview3d").hidden = !is3d;
     $("previewTable").hidden = !isTable;
     $("resetView").hidden = !is3d;
@@ -792,9 +793,27 @@ function showMedia(o) {
         else $("previewImage").removeAttribute("src");
         return;
     }
-    if (!viewer) viewer = new Viewer($("preview3d"), (text) => ($("mediaStatus").textContent = text));
+    if (!viewer) viewer = new Viewer($("preview3d"), (text) => ($("mediaStatus").textContent = text), { onLevels: renderLevels });
     if (parts) viewer.compose(parts, { fadeContext: state.mode === "analysis" && !OVER_GENERAL[layer.col] });
     else viewer.clear();
+}
+
+// Right side of a 3D analysis made of whole floors (the unit mix): one button per level, top
+// floor first, plus "All". The chosen level stays while stepping through options.
+function renderLevels(levels, level) {
+    const box = $("levelPicker");
+    box.hidden = !levels.length || state.mode !== "analysis";
+    if (box.hidden) return;
+    const label = (i) => "L" + String(i).padStart(2, "0");
+    const button = (i, text, title) =>
+        `<button type="button" data-level="${i}" class="${(i === "" ? level == null : level === i) ? "on" : ""}" title="${title}">${text}</button>`;
+    box.innerHTML =
+        button("", "All", "Show every level") +
+        levels
+            .map((y, i) => i)
+            .reverse()
+            .map((i) => button(i, label(i), `Isolate level ${label(i)}; the rest turns transparent`))
+            .join("");
 }
 
 // Table view: a small CSV per option (first row = header). Numeric cells are formatted like
@@ -1292,6 +1311,10 @@ function bindEvents() {
         if (o) openAbout(described([o.study], () => viewEntry(o)));
     });
     $("aboutClose").addEventListener("click", closeAbout);
+    $("levelPicker").addEventListener("click", (e) => {
+        const b = e.target.closest("[data-level]");
+        if (b && viewer) viewer.setLevel(b.dataset.level === "" ? null : +b.dataset.level);
+    });
     $("aboutOverlay").addEventListener("click", (e) => e.target === e.currentTarget && closeAbout());
     document.addEventListener("keydown", (e) => {
         if (!$("aboutOverlay").hidden) return; // keys don't act on the page behind the card

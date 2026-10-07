@@ -106,7 +106,10 @@ reflections, one without): one block per group of studies, with their colour dot
      filters don't change the front. With many goals almost every option is on it.
    "Clear chart filters" clears every filter (ranges, batch bars, Pareto).
 3. **Preview**, hidden until an option is clicked: Image / 3D model / 3D analysis, previous/next,
-   expand, ← → and Escape. A 3D analysis shows its score for the option top right (`score_label`
+   expand, ← → and Escape. A 3D analysis made of whole floors (the unit mix: one mesh per apartment per floor) gets a
+   level picker on the right: "All" or one level at a time (L00 = lowest), the rest of the option
+   turns into a light uncoloured ghost; the chosen level stays from option to option.
+   A 3D analysis shows its score for the option top right (`score_label`
    + value + unit) and, like the Table view, an "ⓘ About" button. "Where this option stands" shows actual value positions among the
    matching options.
 4. **Gallery** of matching options ("Order by" one result or Index; Index by default when the study
