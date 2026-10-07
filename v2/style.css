@@ -402,6 +402,99 @@ main {
     fill: var(--text);
 }
 
+/* Axis header: on hover, "↑ better" gives way to "✕ hide". */
+.pc-axis .pc-hide {
+    font-size: 10px;
+    fill: var(--accent);
+    cursor: pointer;
+    visibility: hidden;
+}
+
+.pc-axis .pc-head:hover .pc-hide {
+    visibility: visible;
+}
+
+.pc-axis .pc-head:hover .pc-hint {
+    visibility: hidden;
+}
+
+.pc-axis .pc-hide:hover {
+    text-decoration: underline;
+}
+
+/* "2 hidden ▾" beside Clear chart filters, with a small list of hidden results to show again */
+.hidden-axes {
+    position: relative;
+    margin-left: auto; /* sits right next to Clear chart filters */
+    font-size: 12px;
+}
+
+.hidden-axes[hidden] {
+    display: none;
+}
+
+.hidden-axes > summary {
+    list-style: none;
+    cursor: pointer;
+    color: var(--muted);
+    padding: 4px 6px;
+    border-radius: var(--radius);
+    white-space: nowrap;
+}
+
+.hidden-axes > summary::-webkit-details-marker {
+    display: none;
+}
+
+.hidden-axes > summary::after {
+    content: " ▾";
+}
+
+.hidden-axes > summary:hover,
+.hidden-axes[open] > summary {
+    color: var(--accent);
+    background: var(--soft);
+}
+
+.hidden-list {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    min-width: 200px;
+    padding: 4px;
+    background: var(--card);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.hidden-list button {
+    border: 0;
+    background: none;
+    text-align: left;
+    padding: 5px 8px;
+    font-size: 12px;
+    white-space: normal;
+}
+
+.hidden-list button::before {
+    content: "+ ";
+    color: var(--accent);
+}
+
+.hidden-list button.show-all {
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    color: var(--accent);
+}
+
+.hidden-list button.show-all::before {
+    content: "";
+}
+
 .pc-axis .pc-hint {
     font-size: 10px;
 }

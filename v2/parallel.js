@@ -8,12 +8,13 @@ const MARGIN = { top: 48, right: 80, bottom: 22, left: 80 };
 const GROUP_GAP = 10; // px between the batches of a grouped axis
 
 export class ParallelChart {
-    constructor(el, { onBrush, onSelect, onInfo, onGroup }) {
+    constructor(el, { onBrush, onSelect, onInfo, onGroup, onHide }) {
         this.el = el;
         this.onBrush = onBrush;
         this.onSelect = onSelect;
         this.onInfo = onInfo; // axis title clicked (axes with `info` only)
         this.onGroup = onGroup; // coloured bar of a grouped axis clicked: its group key
+        this.onHide = onHide; // "✕ hide" under an axis title clicked: its column
         this.ranges = new Map(); // column -> [low, high], in data units
         this.svg = d3.select(el).append("svg").attr("class", "pc").attr("height", HEIGHT);
         this.linesLayer = this.svg.append("g").attr("class", "pc-lines");
@@ -94,15 +95,28 @@ export class ParallelChart {
             g.selectChildren().remove();
             if (a.groups) this.drawGroups(g, a);
             else g.append("g").call(d3.axisLeft(this.y.get(a.col)).ticks(5).tickSizeOuter(0));
-            const label = g.append("text").attr("class", "pc-label").attr("y", 12).attr("text-anchor", "middle");
+            // Header: title, then "↑ better"; on hover that line becomes "✕ hide" (removes the axis).
+            const head = g.append("g").attr("class", "pc-head");
+            head.append("rect").attr("x", -(spacing - 12) / 2).attr("y", 0).attr("width", spacing - 12).attr("height", MARGIN.top).attr("fill", "transparent");
+            const label = head.append("text").attr("class", "pc-label").attr("y", 12).attr("text-anchor", "middle");
             wrap(label, a.label, spacing - 12, a.info ? " ⓘ" : "");
             // A described axis: its title opens "About" (pointer + ⓘ so it can be found).
             if (a.info) label.classed("has-info", true).on("click", () => this.onInfo?.(a.col));
-            g.append("text")
+            head.append("text")
                 .attr("class", "pc-hint")
                 .attr("y", MARGIN.top - 8)
                 .attr("text-anchor", "middle")
                 .text(a.dir > 0 ? "↑ better" : a.dir < 0 ? "↓ better (flipped)" : "");
+            if (this.onHide && axes.length > 1) {
+                head.append("text")
+                    .attr("class", "pc-hide")
+                    .attr("y", MARGIN.top - 8)
+                    .attr("text-anchor", "middle")
+                    .text("✕ hide")
+                    .on("click", () => this.onHide(a.col))
+                    .append("title")
+                    .text(`Hide ${a.label} everywhere (chart, filters, Pareto, standings)`);
+            }
             if (a.groups) return; // no drag filter on a grouped axis
             const brush = d3
                 .brushY()

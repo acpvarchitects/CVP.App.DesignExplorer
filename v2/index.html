@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Design Explorer</title>
     <link rel="icon" href="../favicon.png" />
-    <link rel="stylesheet" href="style.css?v=50" />
+    <link rel="stylesheet" href="style.css?v=52" />
     <script type="importmap">
         {
             "imports": {
@@ -44,6 +44,10 @@
                 <div class="chart-tools">
                     <span class="muted">Drag a range on any axis. Click a line to inspect an option.</span>
                     <label id="inputsToggle"><input id="showInputs" type="checkbox" /> Show inputs</label>
+                    <details id="hiddenAxes" class="hidden-axes" hidden>
+                        <summary id="hiddenCount"></summary>
+                        <div id="hiddenList" class="hidden-list"></div>
+                    </details>
                     <button id="clearChart" type="button">Clear chart filters</button>
                 </div>
                 <div id="activeRanges" class="active-ranges"></div>
@@ -158,6 +162,6 @@
         </section>
     </div>
 
-    <script type="module" src="app.js?v=60"></script>
+    <script type="module" src="app.js?v=62"></script>
 </body>
 </html>
