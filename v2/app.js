@@ -23,7 +23,7 @@
 // Page sections, top to bottom: method tabs + chart, measurement filters,
 // preview (only after clicking an option), gallery, Compare methods, Compare options.
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
-import { Viewer } from "./viewer.js?v=31";
+import { Viewer } from "./viewer.js?v=32";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml } from "./comparison.js?v=37";
 import { ParallelChart } from "./parallel.js?v=29";
@@ -812,7 +812,7 @@ function renderLevels(levels, level) {
         levels
             .map((y, i) => i)
             .reverse()
-            .map((i) => button(i, label(i), `Isolate level ${label(i)}; the rest turns transparent`))
+            .map((i) => button(i, label(i), `Isolate level ${label(i)}; the other levels stay as outlines`))
             .join("");
 }
 

@@ -13,8 +13,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 const CACHE_SIZE = 60; // loaded files kept in memory (an option can have ~10 layers)
 const CONTEXT_FADE = 0.45; // context opacity in analysis views
 const LEVEL_EPS = 0.05; // m: two bases closer than this are the same level
-// Everything outside the isolated level: a light, uncoloured ghost.
-const GHOST = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
+// Outlines of the other levels while one is isolated: mid grey ("halftone"), no surfaces.
+const HALFTONE = new THREE.LineBasicMaterial({ color: 0x8c8c8c, transparent: true, opacity: 0.6, depthWrite: false });
 
 export class Viewer {
     // onLevels(levels, level): after every composition, the levels of the shown analysis
@@ -113,20 +113,23 @@ export class Viewer {
         this.applyLevel();
     }
 
-    // The isolated level keeps its colours and outlines; every other part of the option
-    // (other levels, floors, pools…) turns into the ghost. The context is left as it is.
+    // The isolated level keeps its colours and outlines; every other surface of the option
+    // (other levels, floors, pools…) is hidden, and the other levels stay as halftone
+    // outlines only. The context is left as it is.
     applyLevel() {
         const level = this.levels.length ? this.level : null;
         for (const o of this.shown) {
             if (o.userData.kind === "context") continue;
             o.traverse((node) => {
+                if (node.userData.halftone) return; // set with its own outline below
                 if (node.isMesh) {
-                    if (node.material !== GHOST) node.userData.baseMaterial = node.material;
-                    const keep = level == null || (o.userData.kind === "analysis" && node.userData.level === level);
-                    node.material = keep ? node.userData.baseMaterial : GHOST;
+                    node.visible = level == null || (o.userData.kind === "analysis" && node.userData.level === level);
                 } else if (node.isLine && node.userData.levelGeometries) {
                     node.userData.baseGeometry ||= node.geometry;
                     node.geometry = level == null ? node.userData.baseGeometry : node.userData.levelGeometries[level];
+                    const others = node.userData.halftoneLines;
+                    others.visible = level != null;
+                    if (level != null) others.geometry = node.userData.otherGeometries[level];
                 } else if (node.isLine) {
                     node.visible = level == null; // outlines of another layer: hidden while isolating
                 }
@@ -218,17 +221,25 @@ function findLevels(root) {
         for (const line of lines) {
             const pos = line.geometry.getAttribute("position");
             const per = bases.map(() => []);
+            const rest = bases.map(() => []); // segments of every other level, drawn halftone
             for (let k = 0; k + 1 < pos.count; k += 2) {
                 const lo = Math.min(pos.getY(k), pos.getY(k + 1));
                 const hi = Math.max(pos.getY(k), pos.getY(k + 1));
-                bases.forEach((b, i) => lo >= b - LEVEL_EPS && hi <= tops[i] + LEVEL_EPS && per[i].push(k, k + 1));
+                bases.forEach((b, i) => (lo >= b - LEVEL_EPS && hi <= tops[i] + LEVEL_EPS ? per[i] : rest[i]).push(k, k + 1));
             }
-            line.userData.levelGeometries = per.map((index) => {
+            const subset = (index) => {
                 const g = new THREE.BufferGeometry();
                 for (const [name, attr] of Object.entries(line.geometry.attributes)) g.setAttribute(name, attr);
                 g.setIndex(index);
                 return g;
-            });
+            };
+            line.userData.levelGeometries = per.map(subset);
+            line.userData.otherGeometries = rest.map(subset);
+            const halftone = new THREE.LineSegments(new THREE.BufferGeometry(), HALFTONE);
+            halftone.userData.halftone = true;
+            halftone.visible = false;
+            line.add(halftone);
+            line.userData.halftoneLines = halftone;
         }
     }
     root.userData.levels = ok ? bases : [];
