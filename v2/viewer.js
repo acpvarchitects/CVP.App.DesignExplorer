@@ -2,7 +2,6 @@
 //   "context"  shared by every option, loaded once, faded in analysis views
 //   "geometry" the option's own layers (masses, floors, pools…), lit
 //   "analysis" a colored analysis mesh, unlit so its vertex colors match the legend
-//   "outline"  outer edges of a layer's volumes (the masses), shown only while a level is isolated
 // All files of a study share one origin, so they are overlaid as they are. The whole
 // scene sits in one parent group shifted by the centre of the first bounding box,
 // because the coordinates are hundreds of metres from the origin.
@@ -15,7 +14,7 @@ const CACHE_SIZE = 60; // loaded files kept in memory (an option can have ~10 la
 const CONTEXT_FADE = 0.45; // context opacity in analysis views
 const LEVEL_EPS = 0.05; // m: two bases closer than this are the same level
 // Outer outlines of the other levels while one is isolated: mid grey ("halftone"), no surfaces.
-const OUTLINE_ANGLE = 25; // degrees: edges between faces closer than this are not drawn
+const CORNER_ANGLE = 25; // degrees: an outline turning less than this gets no vertical edge
 const HALFTONE = new THREE.LineBasicMaterial({ color: 0x8c8c8c, transparent: true, opacity: 0.6, depthWrite: false });
 
 export class Viewer {
@@ -123,9 +122,9 @@ export class Viewer {
         for (const o of this.shown) {
             if (o.userData.kind === "context") continue;
             o.traverse((node) => {
-                if (o.userData.kind === "outline") {
-                    // outer edges of the other levels' volumes; nothing when no level is isolated
-                    if (node.isLine) node.visible = level != null && levelIndex(this.levels, node.userData.baseY) !== level;
+                if (node.userData.outlineLevel != null) {
+                    // outer outline of every other level; nothing when no level is isolated
+                    node.visible = level != null && node.userData.outlineLevel !== level;
                 } else if (node.isMesh) {
                     node.visible = level == null || (o.userData.kind === "analysis" && node.userData.level === level);
                 } else if (node.isLine && node.userData.levelGeometries) {
@@ -219,6 +218,13 @@ function findLevels(root) {
     const ok = bases.length >= 2 && levels.every((i) => i >= 0);
     if (ok) {
         meshes.forEach((m, k) => (m.userData.level = levels[k]));
+        // one outer outline per level, from all its pieces (apartments, cores, corridors)
+        bases.forEach((b, i) => {
+            const outline = new THREE.LineSegments(levelOutline(meshes.filter((m) => m.userData.level === i), b, tops[i]), HALFTONE);
+            outline.userData.outlineLevel = i;
+            outline.visible = false;
+            root.add(outline);
+        });
         for (const line of lines) {
             const pos = line.geometry.getAttribute("position");
             const per = bases.map(() => []);
@@ -239,13 +245,107 @@ function findLevels(root) {
     return root.userData.levels;
 }
 
-// The level a volume belongs to: the nearest base height (masses may sit a centimetre off).
-function levelIndex(bases, y) {
-    let best = -1;
-    bases.forEach((b, i) => {
-        if (best < 0 || Math.abs(b - y) < Math.abs(bases[best] - y)) best = i;
-    });
-    return best >= 0 && Math.abs(bases[best] - y) <= 0.5 ? best : -1;
+// The outer outline of one level: the boundary of the union of its pieces' top faces, drawn
+// at the bottom and top of the level, with vertical edges where the outline turns.
+//  1. each piece's top-face boundary (edges used by one top triangle of that piece)
+//  2. all of them split wherever another endpoint lies on them (a corridor's long side
+//     against several apartments), so shared stretches match exactly
+//  3. a stretch found twice is a wall between two pieces: dropped; once is outside: kept
+function levelOutline(meshes, y0, y1) {
+    const Q = 100; // 1 cm
+    const k2 = (x, z) => Math.round(x * Q) + "," + Math.round(z * Q);
+    const pairKey = (ka, kb) => (ka < kb ? ka + "|" + kb : kb + "|" + ka);
+    const segs = [];
+    for (const mesh of meshes) {
+        const g = mesh.geometry;
+        const pos = g.getAttribute("position");
+        const top = g.boundingBox.max.y;
+        const at = (i) => (g.index ? g.index.getX(i) : i);
+        const n = g.index ? g.index.count : pos.count;
+        const edges = new Map();
+        for (let t = 0; t + 2 < n; t += 3) {
+            const v = [at(t), at(t + 1), at(t + 2)];
+            if (!v.every((i) => Math.abs(pos.getY(i) - top) < 0.01)) continue;
+            for (let e = 0; e < 3; e++) {
+                const a = v[e];
+                const b = v[(e + 1) % 3];
+                const ka = k2(pos.getX(a), pos.getZ(a));
+                const kb = k2(pos.getX(b), pos.getZ(b));
+                if (ka === kb) continue;
+                const key = pairKey(ka, kb);
+                const hit = edges.get(key);
+                if (hit) hit.n++;
+                else edges.set(key, { n: 1, s: [pos.getX(a), pos.getZ(a), pos.getX(b), pos.getZ(b)] });
+            }
+        }
+        for (const e of edges.values()) if (e.n === 1) segs.push(e.s);
+    }
+    // endpoints on a 1 m grid, to find the ones lying on each segment
+    const grid = new Map();
+    const seen = new Set();
+    for (const s of segs) {
+        for (const p of [[s[0], s[1]], [s[2], s[3]]]) {
+            const k = k2(p[0], p[1]);
+            if (seen.has(k)) continue;
+            seen.add(k);
+            const c = Math.floor(p[0]) + "," + Math.floor(p[1]);
+            if (!grid.has(c)) grid.set(c, []);
+            grid.get(c).push(p);
+        }
+    }
+    const count = new Map();
+    for (const [x1, z1, x2, z2] of segs) {
+        const dx = x2 - x1;
+        const dz = z2 - z1;
+        const len2 = dx * dx + dz * dz;
+        const cuts = [0, 1];
+        for (let gx = Math.floor(Math.min(x1, x2)); gx <= Math.floor(Math.max(x1, x2)); gx++) {
+            for (let gz = Math.floor(Math.min(z1, z2)); gz <= Math.floor(Math.max(z1, z2)); gz++) {
+                for (const [px, pz] of grid.get(gx + "," + gz) || []) {
+                    const t = ((px - x1) * dx + (pz - z1) * dz) / len2;
+                    if (t <= 1e-6 || t >= 1 - 1e-6) continue;
+                    const ex = x1 + t * dx - px;
+                    const ez = z1 + t * dz - pz;
+                    if (ex * ex + ez * ez < 1e-4) cuts.push(t);
+                }
+            }
+        }
+        cuts.sort((a, b) => a - b);
+        for (let c = 0; c + 1 < cuts.length; c++) {
+            const a = [x1 + cuts[c] * dx, z1 + cuts[c] * dz];
+            const b = [x1 + cuts[c + 1] * dx, z1 + cuts[c + 1] * dz];
+            const ka = k2(a[0], a[1]);
+            const kb = k2(b[0], b[1]);
+            if (ka === kb) continue;
+            const key = pairKey(ka, kb);
+            const hit = count.get(key);
+            if (hit) hit.n++;
+            else count.set(key, { n: 1, a, b, ka, kb });
+        }
+    }
+    const out = [];
+    const ends = new Map(); // point key -> directions of the kept stretches leaving it
+    const dirFrom = (p, q) => {
+        const l = Math.hypot(q[0] - p[0], q[1] - p[1]);
+        return [(q[0] - p[0]) / l, (q[1] - p[1]) / l];
+    };
+    for (const { n, a, b, ka, kb } of count.values()) {
+        if (n !== 1) continue;
+        out.push(a[0], y0, a[1], b[0], y0, b[1], a[0], y1, a[1], b[0], y1, b[1]);
+        for (const [k, p, q] of [[ka, a, b], [kb, b, a]]) {
+            if (!ends.has(k)) ends.set(k, { p, dirs: [] });
+            ends.get(k).dirs.push(dirFrom(p, q));
+        }
+    }
+    // a straight continuation has opposite directions (dot close to -1)
+    const straight = -Math.cos(THREE.MathUtils.degToRad(CORNER_ANGLE));
+    for (const { p, dirs } of ends.values()) {
+        const turns = dirs.length !== 2 || dirs[0][0] * dirs[1][0] + dirs[0][1] * dirs[1][1] > straight;
+        if (turns) out.push(p[0], y0, p[1], p[0], y1, p[1]);
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(out, 3));
+    return geometry;
 }
 
 // ---- Materials and colors ----
@@ -255,7 +355,6 @@ function levelIndex(bases, y) {
 // material is replaced. Analysis layers are unlit so the colors match the legend.
 function prepare(root, kind) {
     root.userData.kind = kind;
-    if (kind === "outline") return toOutlines(root);
     // The analysis sits exactly on surfaces of other layers (floors, masses): the depth
     // offset draws it in front of them there, instead of flickering white patches.
     const make = (vertexColors) =>
@@ -272,24 +371,6 @@ function prepare(root, kind) {
         const colored = toLinearColors(node.geometry);
         if (colored || kind !== "geometry") node.material = materials[colored] ||= make(colored);
     });
-    return root;
-}
-
-// Every mesh becomes its outer edges only (no diagonals of flat faces), hidden until a level
-// is isolated; each keeps the height of its base to be matched to a level.
-function toOutlines(root) {
-    const meshes = [];
-    root.traverse((n) => n.isMesh && meshes.push(n));
-    for (const mesh of meshes) {
-        mesh.geometry.computeBoundingBox();
-        const line = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry, OUTLINE_ANGLE), HALFTONE);
-        line.userData.baseY = mesh.geometry.boundingBox.min.y;
-        line.visible = false;
-        line.matrix.copy(mesh.matrix);
-        line.matrix.decompose(line.position, line.quaternion, line.scale);
-        mesh.parent.add(line);
-        mesh.parent.remove(mesh);
-    }
     return root;
 }
 
