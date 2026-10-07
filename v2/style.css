@@ -402,6 +402,46 @@ main {
     fill: var(--text);
 }
 
+/* Axis header: on hover, "↑ better" gives way to "✕ hide". */
+.pc-axis .pc-hide {
+    font-size: 10px;
+    fill: var(--accent);
+    cursor: pointer;
+    visibility: hidden;
+}
+
+.pc-axis .pc-head:hover .pc-hide {
+    visibility: visible;
+}
+
+.pc-axis .pc-head:hover .pc-hint {
+    visibility: hidden;
+}
+
+.pc-axis .pc-hide:hover {
+    text-decoration: underline;
+}
+
+.hidden-axes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 4px 0 2px;
+    font-size: 12px;
+}
+
+.hidden-axes[hidden] {
+    display: none;
+}
+
+.hidden-chip {
+    padding: 2px 9px;
+    font-size: 12px;
+    border-radius: 999px;
+    background: var(--soft);
+}
+
 .pc-axis .pc-hint {
     font-size: 10px;
 }

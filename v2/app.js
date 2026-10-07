@@ -26,7 +26,7 @@ import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=34";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml } from "./comparison.js?v=37";
-import { ParallelChart } from "./parallel.js?v=29";
+import { ParallelChart } from "./parallel.js?v=30";
 import { paretoFront } from "./pareto.js?v=1";
 import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=1";
 
@@ -58,6 +58,7 @@ const state = {
     batches: new Set(), // studies kept by their Index bars (a filter: the others stay as pale lines); empty = none
     pareto: false, // keep only the options on the Pareto front of `paretoGoals` (pale lines for the rest)
     paretoGoals: null, // goal columns that count for the front; null = default (first 3 goals)
+    hidden: new Set(), // columns hidden everywhere (chart, filters, Pareto, standings, comparison)
     showInputs: false, // input axes on the chart
     order: "", // result column that orders the gallery
     sel: null, // option index shown in the preview; null = preview closed
@@ -201,6 +202,39 @@ async function loadManifest(study) {
 // ---- Scope, filters and order ----
 
 const goals = () => data.schema.outputs.filter((m) => m.dir);
+
+// ---- Hidden results ----
+// A hidden result disappears everywhere: data.schema.outputs is the visible list (every view
+// reads it), data.schema.allOutputs the full one. Its filter and Pareto goal are dropped.
+function applyHidden() {
+    data.schema.outputs = data.schema.allOutputs.filter((m) => !state.hidden.has(m.col));
+    for (const col of state.hidden) delete state.ranges[col];
+    if (state.paretoGoals) for (const col of state.hidden) state.paretoGoals.delete(col);
+    if (state.hidden.has(state.order)) state.order = defaultOrder();
+    // the sidebar lists and the order menu are built once: rebuild them
+    $("rangeFilters").replaceChildren();
+    $("paretoGoals").replaceChildren();
+    $("orderSelect").replaceChildren();
+}
+
+function setHidden(col, hide) {
+    hide ? state.hidden.add(col) : state.hidden.delete(col);
+    applyHidden();
+    render({ syncChart: true });
+}
+
+// "Hidden: A ⊕ · B ⊕ · Show all" above the chart, only while something is hidden.
+function renderHidden() {
+    const box = $("hiddenAxes");
+    const all = [...data.schema.inputs, ...data.schema.allOutputs];
+    const hidden = all.filter((m) => state.hidden.has(m.col));
+    box.hidden = !hidden.length;
+    box.innerHTML = hidden.length
+        ? `<span class="muted">Hidden:</span>${hidden
+              .map((m) => `<button type="button" class="hidden-chip" data-unhide="${esc(m.col)}" title="Show ${esc(m.label)} again">${esc(m.label)} <span aria-hidden="true">⊕</span></button>`)
+              .join("")}<button type="button" class="link" data-unhide-all>Show all</button>`
+        : "";
+}
 const inMethod = (o) => !state.methods.size || state.methods.has(o.study.name);
 
 // How the current method choice reads in sentences: "all methods", "A", "A + B".
@@ -362,6 +396,7 @@ function render({ syncChart = false } = {}) {
     const notice = state.notice; // shown once, until the next change
     state.notice = "";
     renderMethodTabs();
+    renderHidden();
     renderChart(view, syncChart);
     renderFilters(view);
     renderPreview(view);
@@ -402,6 +437,7 @@ function renderChart(view, syncChart) {
             // Index bar of a batch: every click switches that batch off or on, like the method ticks
             // (no filter = every bar on). Switched-off batches stay as pale lines; the last bar on
             // stays on, and every bar on again means no filter.
+            onHide: (col) => setHidden(col, true),
             onGroup: (name) => {
                 const shown = data.studies.filter((st) => inMethod({ study: st })).map((st) => st.name);
                 const next = new Set(state.batches.size ? state.batches : shown);
@@ -431,7 +467,7 @@ function renderChart(view, syncChart) {
             .filter((g) => g.count);
     const axes = [
         ...(showInputs
-            ? inputAxes.map((m) => ({
+            ? inputAxes.filter((m) => !state.hidden.has(m.col)).map((m) => ({
                   col: m.col,
                   label: m.label,
                   dir: 0,
@@ -1068,6 +1104,9 @@ function saveUrl() {
     set("compare", state.shortlist.map((i) => i + 1).join(","));
     set("inputs", state.showInputs ? "1" : "");
     set("batch", batchNames(","));
+    // hidden columns by position among inputs + results (1-based)
+    const cols = [...data.schema.inputs, ...data.schema.allOutputs].map((m) => m.col);
+    set("hide", cols.map((c, i) => (state.hidden.has(c) ? i + 1 : 0)).filter(Boolean).join(","));
     set("pareto", state.pareto ? "1" : "");
     // goal positions among the goals (1-based), only when they differ from the default
     const pg = goals().map((m, i) => (state.paretoGoals?.has(m.col) ? i + 1 : 0)).filter(Boolean);
@@ -1083,10 +1122,10 @@ function loadUrlState() {
     const picked = (params.get("methods") || params.get("method") || "").split(",").filter((n) => data.studies.some((s) => s.name === n));
     state.methods = new Set(picked.length === data.studies.length ? [] : picked);
     const order = params.get("order") || params.get("sort");
-    // Default order: the Index input when there is one (each batch together, in index order),
-    // otherwise the first result.
-    const index = data.schema.inputs.find((m) => /^index$/i.test(m.label));
-    state.order = orderBy(order) ? order : index?.col || data.schema.outputs[0]?.col || "";
+    const cols = [...data.schema.inputs, ...data.schema.allOutputs].map((m) => m.col);
+    state.hidden = new Set((params.get("hide") || "").split(",").map((n) => cols[parseInt(n, 10) - 1]).filter(Boolean));
+    if (state.hidden.size) applyHidden();
+    state.order = orderBy(order) && !state.hidden.has(order) ? order : defaultOrder();
     const option = parseInt(params.get("option"), 10);
     if (option >= 1 && option <= data.options.length) state.sel = option - 1;
     const mode = modeInfo(params.get("mode") || "");
@@ -1106,6 +1145,7 @@ function loadUrlState() {
     state.pareto = params.get("pareto") === "1" && paretoGoalCols().length > 0;
     try {
         for (const [col, lo, hi] of JSON.parse(params.get("ranges") || "[]")) {
+            if (state.hidden.has(col)) continue; // a hidden result keeps no filter
             state.ranges[col] = [lo ?? -Infinity, hi ?? Infinity];
         }
     } catch {
@@ -1156,6 +1196,13 @@ function step(delta) {
 // Tick / untick one method; unticking the last one, or ticking all, means all methods.
 // Filtered batches in study order, e.g. "ACPV + Prompt".
 const batchNames = (sep = " + ") => data.studies.filter((st) => state.batches.has(st.name)).map((st) => st.name).join(sep);
+
+// Default order: the Index input when there is one (each batch together, in index order),
+// otherwise the first visible result.
+function defaultOrder() {
+    const index = data.schema.inputs.find((m) => /^index$/i.test(m.label));
+    return index?.col || data.schema.outputs[0]?.col || "";
+}
 
 function setMethods(names) {
     state.methods = new Set(names.length === data.studies.length ? [] : names);
@@ -1215,6 +1262,15 @@ function bindEvents() {
         if (b) betterThanAverage(b.dataset.better);
     });
     // "Clear chart filters": every filter. Measurements "Reset": only the measurement ranges.
+    $("hiddenAxes").addEventListener("click", (e) => {
+        const one = e.target.closest("[data-unhide]");
+        if (one) setHidden(one.dataset.unhide, false);
+        if (e.target.closest("[data-unhide-all]")) {
+            state.hidden.clear();
+            applyHidden();
+            render({ syncChart: true });
+        }
+    });
     $("clearChart").addEventListener("click", () => {
         state.ranges = {};
         state.batches.clear();
@@ -1359,6 +1415,7 @@ async function init() {
         showMessage(`<h2>Empty project</h2><p><code>data.csv</code> for <strong>${studies.map((s) => esc(s.name)).join(", ")}</strong> has no rows.</p>`);
         return;
     }
+    schema.allOutputs = schema.outputs;
     data = { studies, schema, options, stats: computeStats(options, schema.outputs) };
     state.mode = (MODES.find((m) => layersOf(m.key).length) || MODES[0]).key;
     loadUrlState();

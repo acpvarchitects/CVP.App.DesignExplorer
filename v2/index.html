@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Design Explorer</title>
     <link rel="icon" href="../favicon.png" />
-    <link rel="stylesheet" href="style.css?v=50" />
+    <link rel="stylesheet" href="style.css?v=51" />
     <script type="importmap">
         {
             "imports": {
@@ -46,6 +46,7 @@
                     <label id="inputsToggle"><input id="showInputs" type="checkbox" /> Show inputs</label>
                     <button id="clearChart" type="button">Clear chart filters</button>
                 </div>
+                <div id="hiddenAxes" class="hidden-axes" hidden></div>
                 <div id="activeRanges" class="active-ranges"></div>
                 <div class="chart-scroll"><div id="pcChart"></div></div>
                 <p id="chartLegend" class="chart-legend muted"></p>
@@ -158,6 +159,6 @@
         </section>
     </div>
 
-    <script type="module" src="app.js?v=60"></script>
+    <script type="module" src="app.js?v=61"></script>
 </body>
 </html>

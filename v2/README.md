@@ -105,6 +105,11 @@ reflections, one without): one block per group of studies, with their colour dot
      pale lines. Computed over the methods shown, on the first 3 goals by default; the other
      filters don't change the front. With many goals almost every option is on it.
    "Clear chart filters" clears every filter (ranges, batch bars, Pareto).
+   **Hiding a result**: on hover, an axis's "↑ better" line becomes "✕ hide". A hidden result
+   disappears everywhere (chart, Measurements, Pareto goals, Where this option stands, Compare,
+   Order by) and its filter is dropped; "Hidden: … ⊕ · Show all" above the chart brings it back.
+   Kept in the URL (`?hide=`, positions among inputs + results). Index can be hidden from the
+   chart too.
 3. **Preview**, hidden until an option is clicked: Image / 3D model / 3D analysis, previous/next,
    expand, ← → and Escape. A 3D analysis made of whole floors (the unit mix: one mesh per apartment per floor) gets a
    level picker on the right: "All" or one level at a time (L00 = lowest), every other surface of
