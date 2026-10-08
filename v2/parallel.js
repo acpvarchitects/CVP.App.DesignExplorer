@@ -287,7 +287,16 @@ function titleLines(svg, label, width, suffix = "") {
     const probe = holder.append("text").attr("class", "pc-label");
     const fits = (t) => probe.text(t).node().getComputedTextLength() <= width;
     const lines = [];
-    const words = label.split(/\s+/);
+    // "A & B" is one unit: if the title has to wrap there, the word before the "&" and the one
+    // after it go to the next line together ("Pool & Deck", never "Pool &" / "Deck")
+    const words = [];
+    let joinNext = false;
+    for (const w of label.split(/\s+/)) {
+        if (joinNext) words[words.length - 1] += " " + w;
+        else if (w === "&" && words.length) words[words.length - 1] += " &";
+        else words.push(w);
+        joinNext = w === "&" && words.length > 0;
+    }
     words[words.length - 1] += suffix; // the ⓘ stays glued to the last word, never alone on a line
     for (const w of words) {
         const cur = lines[lines.length - 1];
