@@ -1423,9 +1423,9 @@ main {
 
 .gallery {
     display: grid;
-    /* at most 5 cards per row on a wide window (more air), fewer when it is narrow */
+    /* at most 6 cards per row on a wide window (more air), fewer when it is narrow */
     --gallery-gap: 16px;
-    grid-template-columns: repeat(auto-fill, minmax(max(190px, calc((100% - 4 * var(--gallery-gap)) / 5)), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(max(190px, calc((100% - 5 * var(--gallery-gap)) / 6)), 1fr));
     gap: var(--gallery-gap);
 }
 
