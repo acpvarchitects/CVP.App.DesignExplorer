@@ -73,9 +73,14 @@ export class ParallelChart {
         const spacing = axes.length > 1 ? this.x.step() : this.width;
         // Titles wrap to as many lines as their axis is wide; the header grows to fit the longest
         // one (two lines is the minimum, as before), the plot area keeps its height.
-        const titles = new Map(axes.map((a) => [a.col, titleLines(this.svg, a.label, spacing - 12, a.info ? " ⓘ" : "")]));
-        const lines = Math.max(2, ...[...titles.values()].map((l) => l.length));
-        MARGIN.top = 48 + (lines - 2) * TITLE_LINE;
+        // The unit ("[kWh/m²]") is not part of the title: it sits on its own line under it, so the
+        // names wrap less.
+        const parts = new Map(axes.map((a) => [a.col, splitUnit(a.label)]));
+        const titles = new Map(axes.map((a) => [a.col, titleLines(this.svg, parts.get(a.col).name, spacing - 12, a.info ? " ⓘ" : "")]));
+        const lines = Math.max(1, ...[...titles.values()].map((l) => l.length));
+        const hasUnits = [...parts.values()].some((p) => p.unit);
+        // rows under the title: [unit] + "↑ better"; 48 is the least (one title line + both rows)
+        MARGIN.top = Math.max(48, 20 + (lines - 1) * TITLE_LINE + (hasUnits ? 2 : 1) * TITLE_LINE);
         HEIGHT = PLOT_HEIGHT + (MARGIN.top - 48);
         this.svg.attr("width", this.width).attr("height", HEIGHT).attr("viewBox", `0 0 ${this.width} ${HEIGHT}`);
         this.segments = new Map(axes.filter((a) => a.groups).map((a) => [a.col, segmentsOf(a)]));
@@ -107,9 +112,16 @@ export class ParallelChart {
             const head = g.append("g").attr("class", "pc-head");
             head.append("rect").attr("x", -(spacing - 12) / 2).attr("y", 0).attr("width", spacing - 12).attr("height", MARGIN.top).attr("fill", "transparent");
             const label = head.append("text").attr("class", "pc-label").attr("y", 12).attr("text-anchor", "middle");
-            wrap(label, a.label, titles.get(a.col), a.info ? " ⓘ" : "");
+            wrap(label, a.label, titles.get(a.col), !!a.info);
             // A described axis: its title opens "About" (pointer + ⓘ so it can be found).
             if (a.info) label.classed("has-info", true).on("click", () => this.onInfo?.(a.col));
+            if (parts.get(a.col).unit) {
+                head.append("text")
+                    .attr("class", "pc-unit")
+                    .attr("y", MARGIN.top - 8 - TITLE_LINE)
+                    .attr("text-anchor", "middle")
+                    .text(parts.get(a.col).unit);
+            }
             head.append("text")
                 .attr("class", "pc-hint")
                 .attr("y", MARGIN.top - 8)
@@ -256,23 +268,29 @@ function segmentsOf(a) {
 // Splits an axis title into lines no wider than `width`, measured with the real font (the
 // text is drawn in a hidden .pc-label), so neighbouring titles never overlap. A single word wider
 // than the axis stays whole. `suffix` (the ⓘ of a described axis) follows the last line.
+// "Summer Solar Radiation [kWh/m²]" -> { name: "Summer Solar Radiation", unit: "kWh/m²" }
+function splitUnit(label) {
+    const m = label.match(/^(.*\S)\s*\[(.+)\]$/);
+    return m ? { name: m[1], unit: m[2] } : { name: label, unit: "" };
+}
+
 function titleLines(svg, label, width, suffix = "") {
     const holder = svg.append("g").attr("class", "pc-axis").attr("visibility", "hidden");
     const probe = holder.append("text").attr("class", "pc-label");
     const fits = (t) => probe.text(t).node().getComputedTextLength() <= width;
     const lines = [];
-    for (const w of label.split(/\s+/)) {
+    const words = label.split(/\s+/);
+    words[words.length - 1] += suffix; // the ⓘ stays glued to the last word, never alone on a line
+    for (const w of words) {
         const cur = lines[lines.length - 1];
         if (cur !== undefined && fits(cur + " " + w)) lines[lines.length - 1] = cur + " " + w;
         else lines.push(w);
     }
-    // the suffix must fit too: if not, it takes a line of its own
-    if (suffix && lines.length && !fits(lines[lines.length - 1] + suffix)) lines.push("");
     holder.remove();
     return lines;
 }
 
-function wrap(text, label, lines, suffix = "") {
-    lines.forEach((l, i) => text.append("tspan").attr("x", 0).attr("dy", i ? TITLE_LINE : 0).text(l + (i === lines.length - 1 ? suffix : "")));
-    text.append("title").text(suffix ? label + " · click for a description" : label);
+function wrap(text, label, lines, described = false) {
+    lines.forEach((l, i) => text.append("tspan").attr("x", 0).attr("dy", i ? TITLE_LINE : 0).text(l));
+    text.append("title").text(described ? label + " · click for a description" : label);
 }
