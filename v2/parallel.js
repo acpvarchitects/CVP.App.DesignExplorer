@@ -8,6 +8,8 @@ let HEIGHT = 280;
 // top = axis header (title, unit): grows with the longest title; bottom = foot ("↑ better" / "✕ hide")
 const MARGIN = { top: 48, right: 72, bottom: 38, left: 56 };
 const TITLE_LINE = 14; // px between the lines of an axis title
+const UNIT_GAP = 20; // px from the last title line to the unit line
+const PLOT_GAP = 16; // px from the unit line to the top of the axis
 const GROUP_GAP = 10; // px between the batches of a grouped axis
 
 export class ParallelChart {
@@ -80,8 +82,10 @@ export class ParallelChart {
         const titles = new Map(axes.map((a) => [a.col, titleLines(this.svg, parts.get(a.col).name, spacing - 12, a.info ? " ⓘ" : "")]));
         const lines = Math.max(1, ...[...titles.values()].map((l) => l.length));
         const hasUnits = [...parts.values()].some((p) => p.unit);
-        // first baseline at 12, the unit one line under the last title line, 8px before the plot
-        MARGIN.top = 20 + (lines - 1) * TITLE_LINE + (hasUnits ? TITLE_LINE : 0);
+        // first baseline at 12; the unit sits UNIT_GAP under the last title line and leaves
+        // PLOT_GAP before the plot (room for the top tick value); no unit: 8px under the title
+        const lastTitle = 12 + (lines - 1) * TITLE_LINE;
+        MARGIN.top = lastTitle + (hasUnits ? UNIT_GAP + PLOT_GAP : 8);
         HEIGHT = MARGIN.top + PLOT_INNER + MARGIN.bottom;
         this.svg.attr("width", this.width).attr("height", HEIGHT).attr("viewBox", `0 0 ${this.width} ${HEIGHT}`);
         this.segments = new Map(axes.filter((a) => a.groups).map((a) => [a.col, segmentsOf(a)]));
@@ -122,7 +126,7 @@ export class ParallelChart {
             if (parts.get(a.col).unit) {
                 head.append("text")
                     .attr("class", "pc-unit")
-                    .attr("y", MARGIN.top - 8)
+                    .attr("y", MARGIN.top - PLOT_GAP)
                     .attr("text-anchor", "middle")
                     .text(parts.get(a.col).unit);
             }
