@@ -1465,10 +1465,6 @@ async function init() {
     $("projectName").textContent = name;
     $("optionCount").textContent = `${options.length} options`;
     document.title = `${name} · Design Explorer`;
-    $("introText").textContent =
-        studies.length > 1
-            ? `Explore ${studies.length === 2 ? "both" : "all"} methods together, or focus on one. Filters apply across methods.`
-            : "Filter by measurements, order the gallery, and click an option to look closer.";
     $("showInputs").checked = state.showInputs;
     $("app").hidden = false;
     bindEvents();

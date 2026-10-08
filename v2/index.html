@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="theme/tertiary/coral.css?v=1" />
     <link rel="stylesheet" href="theme/tokens/acpv-sys.css?v=1" />
     <link rel="stylesheet" href="theme/fonts.css?v=1" />
-    <link rel="stylesheet" href="style.css?v=73" />
+    <link rel="stylesheet" href="style.css?v=74" />
     <script type="importmap">
         {
             "imports": {
@@ -46,17 +46,9 @@
 
     <main id="app" hidden>
         <!-- App frame (as in @acpvarchitects/ui main-shell): left panel fused with the shell
-             (introduction, method choice, filters) + ONE center card (chart and results) -->
+             (filters) + ONE center card (methods, chart and results) -->
         <div class="app-frame">
             <div class="left-panel">
-                <div class="intro">
-                    <span class="eyebrow">Explore the study</span>
-                    <h1>Find the options worth a closer look</h1>
-                    <p id="introText" class="muted"></p>
-                    <nav id="methodTabs" class="method-tabs" aria-label="Methods"></nav>
-                    <p id="methodHint" class="muted small method-hint">Tick two or more methods to compare them side by side.</p>
-                </div>
-
                 <aside class="filters" aria-label="Filters">
                     <details class="filter-section" id="measurementsSection" open>
                         <summary><span class="filter-title">Measurements</span><span id="measurementsBadge" class="filter-badge"></span><button id="measurementsClear" type="button" class="filter-clear" data-clear="measurements" hidden>×</button></summary>
@@ -83,6 +75,11 @@
 
             <div class="center card">
               <div class="center-scroll">
+                <!-- Which studies are compared: stays visible whatever the sidebar does -->
+                <div class="methods-bar">
+                    <nav id="methodTabs" class="method-tabs" aria-label="Methods"></nav>
+                    <p id="methodHint" class="muted small method-hint">Tick two or more methods to compare them side by side.</p>
+                </div>
                 <div class="chart-panel">
                     <div class="chart-tools">
                         <span class="muted">Drag a range on any axis. Click a line to inspect an option.</span>
@@ -186,6 +183,6 @@
         </section>
     </div>
 
-    <script type="module" src="app.js?v=74"></script>
+    <script type="module" src="app.js?v=75"></script>
 </body>
 </html>

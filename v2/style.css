@@ -429,30 +429,23 @@ main {
     border-radius: var(--acpv-sys-radius-md);
 }
 
-.intro h1 {
-    font-size: 19px;
-    line-height: 1.25;
-    letter-spacing: -0.3px;
-    margin: 6px 0 8px;
+.methods-bar {
+    margin-bottom: 12px;
 }
 
-.intro > p {
-    font-size: 13px;
-}
-
-.intro .method-tabs button {
-    padding: 7px 12px;
+/* nothing to show with one study: no empty band */
+.methods-bar:not(:has(> :not([hidden]))) {
+    display: none;
 }
 
 .method-tabs {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-top: 20px;
 }
 
 .method-tabs button {
-    padding: 9px 16px;
+    padding: 7px 12px;
 }
 
 .method-tabs button[aria-pressed="true"] {
@@ -720,9 +713,9 @@ main {
 
 /* ---- Workspace: filters | results ---- */
 
-/* The left panel scrolls as a whole (introduction + filters). */
+/* The left panel scrolls as a whole. */
 .filters {
-    margin-top: 18px;
+    margin-top: 8px;
 }
 
 .filters-head {
@@ -1950,11 +1943,7 @@ code {
 
 /* ---- Narrower screens ---- */
 @media (max-width: 1100px) {
-    .intro h1 {
-        max-width: none;
-    }
-
-    /* Single column, the page scrolls (below this width three panes do not fit) */
+        /* Single column, the page scrolls (below this width three panes do not fit) */
     html,
     body {
         height: auto;
