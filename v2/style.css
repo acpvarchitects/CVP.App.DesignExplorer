@@ -398,6 +398,7 @@ main {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+    margin-bottom: 14px; /* room between the buttons and the axis titles under them */
     font-size: 11px;
 }
 
