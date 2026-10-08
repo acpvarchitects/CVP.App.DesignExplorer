@@ -8,7 +8,13 @@ to update, re-copy the same files from a newer library release and bump `?v=` in
 `fonts.css` is local: Inter Variable (latin + latin-ext) from `@fontsource-variable/inter`.
 
 `style.css` maps its own names (`--bg`, `--card`, `--accent`…) onto `--md-sys-*` / `--acpv-sys-*`.
-`<html class="light-medium-contrast">` selects the contrast mode the ACPV apps run in.
+**Contrast mode: `light-medium-contrast`, the default of every ACPV app.** In the Angular apps the
+library's `ThemeService` (started by `acpv-appbar`) adds that class to `<body>` at boot, so an app
+built on the library gets it without declaring anything. This page has no Angular, so it does the
+same by hand: `<body class="light-medium-contrast">`. The density class (`acpv-density--2`) stays on
+`<html>`, as in the apps. The colour roles (`--md-sys-color-*`) only exist from `<body>` down, so
+the aliases in `style.css` are declared on `body`, not on `:root`: read from `<html>` you would see
+the plain light values (shell 238) instead of the real ones (shell 232).
 
 Shape/frame follow the library: shell = `surface-container`, cards flat on `surface-container-lowest`
 (tone + radius only, no border), buttons pill (`corner-full`), fields `radius-xs`.

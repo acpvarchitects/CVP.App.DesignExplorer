@@ -1,7 +1,11 @@
 /* Design Explorer v2 — layout A (filters left, combined gallery right). */
 
-:root {
-    /* Colours come from @acpvarchitects/ui (theme/base.css + tertiary/coral.css, class on <html>);
+/* On <body>, not :root: the theme class (light-medium-contrast) sits on <body>, as the library's
+   ThemeService puts it in the Angular apps, and the colour roles only exist from there down. An
+   alias declared on :root would be resolved before the class applies (light values, shell 238
+   instead of 232). */
+body {
+    /* Colours come from @acpvarchitects/ui (theme/base.css + tertiary/coral.css, class on <body>);
        the names below are this app's own, kept as aliases of the library roles. */
     --bg: var(--md-sys-color-surface-container); /* app-frame shell tone (library: main-shell) */
     --card: var(--md-sys-color-surface-container-lowest);

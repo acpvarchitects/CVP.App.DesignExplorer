@@ -145,7 +145,7 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 | `parallel.js` | parallel-coordinates chart (d3) |
 | `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera |
 | `style.css` | all styles; its colour/radius/font names are aliases of the `@acpvarchitects/ui` tokens |
-| `theme/` | vendored `@acpvarchitects/ui` 0.17.1 tokens (`base.css`, `tertiary/coral.css`, `tokens/`) + local Inter font; see `theme/README.md`. `<html class="light-medium-contrast">` picks the contrast mode |
+| `theme/` | vendored `@acpvarchitects/ui` 0.17.1 tokens (`base.css`, `tertiary/coral.css`, `tokens/`) + local Inter font; see `theme/README.md`. `<body class="light-medium-contrast">` picks the contrast mode (as the library ThemeService does in the Angular apps); `<html class="acpv-density--2">` the density |
 
 ## Deploy (dev)
 
