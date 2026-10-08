@@ -4,12 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Design Explorer</title>
-    <link rel="icon" href="../favicon.png" />
+    <link rel="icon" href="favicon.png" />
     <link rel="stylesheet" href="theme/base.css?v=1" />
     <link rel="stylesheet" href="theme/tertiary/coral.css?v=1" />
     <link rel="stylesheet" href="theme/tokens/acpv-sys.css?v=1" />
     <link rel="stylesheet" href="theme/fonts.css?v=1" />
-    <link rel="stylesheet" href="style.css?v=69" />
+    <link rel="stylesheet" href="style.css?v=71" />
     <script type="importmap">
         {
             "imports": {
@@ -24,8 +24,11 @@
          centre-side slot, icon actions on the right. No menu button: there is no rail to toggle. -->
     <header class="topbar acpv-appbar">
         <div class="acpv-appbar-left">
+            <!-- The library's menu-button cell, empty: there is no rail to toggle, but the icon and
+                 the title stay where they are in every other app (page-chrome §2: corner cell) -->
+            <span class="acpv-appbar-menu-cell" aria-hidden="true"></span>
             <div class="acpv-app-logo">
-                <img src="../favicon.png" alt="" class="acpv-app-icon" />
+                <img src="favicon.png" alt="" class="acpv-app-icon" />
                 <p class="acpv-app-title">Design Explorer</p>
             </div>
         </div>

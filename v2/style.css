@@ -245,6 +245,18 @@ input[type="number"] {
     min-width: 0;
 }
 
+/* Corner cell (appbar band x rail column): as many pixels as the side-nav icon column
+   (rail 80px - 2 x 8px padding = 64px), shifted from the appbar padding onto the nav column
+   origin, so the icon and the title sit at x=84 as in the library's apps (hamburger centre = rail
+   icon axis). Same formula as appbar.component.css, with the nav origin at the window edge. */
+.acpv-appbar-menu-cell {
+    display: inline-flex;
+    flex-shrink: 0;
+    justify-content: center;
+    width: calc(var(--acpv-sys-sidenav-rail-width, 80px) - 2 * var(--acpv-sys-space-2, 8px));
+    margin-left: calc(var(--acpv-sys-space-2, 8px) - var(--_appbar-pad-x));
+}
+
 .acpv-app-logo {
     display: flex;
     align-items: center;
