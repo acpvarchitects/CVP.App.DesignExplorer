@@ -11,7 +11,7 @@ const slotName = (i) => String.fromCharCode(65 + i); // A, B, C, D
 // ctx: { data, chosen: [option], esc, fmt, thumbUrl }. Returns the section's HTML.
 export function comparisonHtml({ data, chosen, esc, fmt, thumbUrl, maxOptions }) {
     const all = data.options;
-    const goals = data.schema.outputs.filter((m) => m.dir);
+    const goals = data.schema.outputs.filter((m) => m.dir); // visible results only (hidden ones are left out)
     const rows = data.schema.outputs.map((m) => resultRow(m, chosen, all));
     const label = (o) => o.name;
 

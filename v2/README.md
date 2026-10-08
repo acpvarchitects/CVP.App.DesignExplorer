@@ -105,8 +105,18 @@ reflections, one without): one block per group of studies, with their colour dot
      pale lines. Computed over the methods shown, on the first 3 goals by default; the other
      filters don't change the front. With many goals almost every option is on it.
    "Clear chart filters" clears every filter (ranges, batch bars, Pareto).
+   **Hiding a result**: on hover, an axis's "↑ better" line becomes "✕ hide". A hidden result
+   disappears everywhere (chart, Measurements, Pareto goals, Where this option stands, Compare,
+   Order by) and its filter is dropped; "2 hidden ▾" beside Clear chart filters lists them to
+   bring one back, or all.
+   Kept in the URL (`?hide=`, positions among inputs + results). Index can be hidden from the
+   chart too.
 3. **Preview**, hidden until an option is clicked: Image / 3D model / 3D analysis, previous/next,
-   expand, ← → and Escape. A 3D analysis shows its score for the option top right (`score_label`
+   expand, ← → and Escape. A 3D analysis made of whole floors (the unit mix: one mesh per apartment per floor) gets a
+   level picker on the right: "All" or one level at a time (L00 = lowest), every other surface of
+   the option is hidden and the other levels stay as one halftone outer outline each (the boundary of all their
+   pieces together: apartments, cores and corridors); the chosen level stays from option to option.
+   A 3D analysis shows its score for the option top right (`score_label`
    + value + unit) and, like the Table view, an "ⓘ About" button. "Where this option stands" shows actual value positions among the
    matching options.
 4. **Gallery** of matching options ("Order by" one result or Index; Index by default when the study
@@ -135,7 +145,7 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 | `parallel.js` | parallel-coordinates chart (d3) |
 | `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera |
 | `style.css` | all styles; its colour/radius/font names are aliases of the `@acpvarchitects/ui` tokens |
-| `theme/` | vendored `@acpvarchitects/ui` 0.16.0 tokens (`base.css`, `tertiary/coral.css`, `tokens/`) + local Inter font; see `theme/README.md`. `<html class="light-medium-contrast">` picks the contrast mode |
+| `theme/` | vendored `@acpvarchitects/ui` 0.17.1 tokens (`base.css`, `tertiary/coral.css`, `tokens/`) + local Inter font; see `theme/README.md`. `<html class="light-medium-contrast">` picks the contrast mode |
 
 ## Deploy (dev)
 
