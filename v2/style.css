@@ -1090,9 +1090,8 @@ main {
     width: min(680px, 100%);
     max-height: min(85vh, 900px);
     background: var(--card);
-    border: 1px solid var(--line);
     border-radius: var(--radius-lg);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+    box-shadow: var(--acpv-sys-shadow-3);
 }
 
 .about-head {
@@ -1439,9 +1438,8 @@ main {
 .empty {
     grid-column: 1 / -1;
     padding: 40px;
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-lg);
+    background: var(--soft);
+    border-radius: var(--acpv-sys-radius-md);
 }
 
 .empty p {
@@ -1454,9 +1452,9 @@ main {
     display: flex;
     flex-wrap: wrap;
     margin: 24px 0 18px;
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
+    background: var(--soft);
+    border-radius: var(--acpv-sys-radius-md);
+    overflow: hidden;
 }
 
 .method-summary-label {
@@ -1825,7 +1823,6 @@ button.cp-primary:hover:not(:disabled) {
     margin: 80px auto;
     padding: 20px 24px;
     background: var(--card);
-    border: 1px solid var(--line);
     border-radius: var(--radius-lg);
 }
 
