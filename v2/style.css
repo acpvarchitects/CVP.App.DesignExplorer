@@ -1318,24 +1318,38 @@ main {
     gap: 14px;
 }
 
+/* Option cards follow Pantheon's acpv-media-card: surface-container-low, media on
+   surface-container, radius-lg, elevated card (shadow-1 at rest, shadow-3 on hover), selected =
+   a 3px inner outline in the primary colour (drawn on a pseudo-element: selecting never changes
+   the card's size), the picture zooms a little on hover. */
 .option-card {
+    position: relative;
     display: flex;
     flex-direction: column;
-    background: var(--card);
-    border-radius: var(--acpv-sys-radius-md);
+    background: var(--md-sys-color-surface-container-low);
+    border-radius: var(--acpv-sys-radius-lg);
     overflow: hidden;
-    transition: box-shadow 0.15s, transform 0.15s;
+    box-shadow: var(--acpv-sys-shadow-1);
+    transition: box-shadow var(--acpv-sys-motion-duration-short4, 200ms) ease;
 }
 
 .option-card:hover {
-    box-shadow: var(--acpv-sys-shadow-2);
-    transform: translateY(-2px);
-    border-color: var(--md-sys-color-outline);
+    box-shadow: var(--acpv-sys-shadow-3);
 }
 
-.option-card.selected {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
+.option-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 3px var(--accent);
+    pointer-events: none;
+    opacity: 0;
+}
+
+.option-card.selected::after {
+    opacity: 1;
 }
 
 .card-main {
@@ -1355,8 +1369,7 @@ main {
 
 .option-image {
     aspect-ratio: 1.45;
-    background: var(--soft);
-    border-bottom: 1px solid var(--line);
+    background: var(--md-sys-color-surface-container);
     overflow: hidden;
 }
 
@@ -1365,6 +1378,17 @@ main {
     height: 100%;
     object-fit: contain;
     display: block;
+    transition: transform var(--acpv-sys-motion-duration-medium2, 300ms) ease;
+}
+
+.option-card:hover .option-image img {
+    transform: scale(1.05);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .option-card:hover .option-image img {
+        transform: none;
+    }
 }
 
 .option-body {
