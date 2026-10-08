@@ -393,14 +393,21 @@ main {
     padding: 0 var(--acpv-sys-space-2, 8px);
 }
 
-/* Same scroll model as the library card: scrolls inside, the gutter is reserved so the content
-   does not jump when the bar appears (main-shell.component.css, "SCROLLBAR GUTTER"). */
+/* Same model as Pantheon's frame card: the card itself does not scroll, an inner container does,
+   and the card keeps the library's 12px padding-inline-end (main-shell.component.css, "SCROLLBAR
+   GUTTER"), so the scrollbar floats clear of the card's right edge, top and bottom curves. */
 .center {
     min-width: 0;
     min-height: 0;
+    overflow: hidden;
+    padding: var(--acpv-sys-space-2, 8px) 12px var(--acpv-sys-space-2, 8px) 0;
+}
+
+.center-scroll {
+    height: 100%;
     overflow-y: auto;
-    scrollbar-gutter: stable;
-    padding: var(--acpv-sys-space-4, 16px);
+    scrollbar-gutter: stable; /* the width does not jump when the bar appears */
+    padding: var(--acpv-sys-space-2, 8px) var(--acpv-sys-space-4, 16px);
 }
 
 /* Docked right side sheet (library right-panel): a card like the center one, 256px, 16px from it.
@@ -1416,8 +1423,10 @@ main {
 
 .gallery {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-    gap: 14px;
+    /* at most 5 cards per row on a wide window (more air), fewer when it is narrow */
+    --gallery-gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(max(190px, calc((100% - 4 * var(--gallery-gap)) / 5)), 1fr));
+    gap: var(--gallery-gap);
 }
 
 /* Option cards follow Pantheon's acpv-media-card: surface-container-low, media on
@@ -1965,8 +1974,17 @@ code {
 
     .left-panel,
     .center,
+    .center-scroll,
     .sidesheet {
         overflow-y: visible;
+    }
+
+    .center {
+        padding: var(--acpv-sys-space-2, 8px) 0;
+    }
+
+    .center-scroll {
+        height: auto;
     }
 
     main {

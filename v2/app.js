@@ -1048,7 +1048,7 @@ let returnTo = null; // where "Back to options" goes after "See comparison"
 // The center card scrolls inside itself (like the library's main-shell card); on a narrow screen
 // the layout is one column and the page scrolls instead (the card then has no inner scroll).
 function scroller() {
-    const card = document.querySelector(".center");
+    const card = document.querySelector(".center-scroll");
     return card && getComputedStyle(card).overflowY === "auto" ? card : null;
 }
 const scrollNow = () => (scroller() ? scroller().scrollTop : window.scrollY);
