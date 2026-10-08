@@ -1471,4 +1471,50 @@ async function init() {
     render({ syncChart: true });
 }
 
+// ---- Sidebar: rail <-> drawer (the library's side-nav model, @acpvarchitects/ui §1-quater) ----
+// The hamburger toggles `nav-collapsed` on <html>: CSS shows the drawer (filters) or the rail (one
+// icon per section). The choice is remembered. Below 1100px the layout is one column and there is
+// no rail (see style.css).
+function initSidebar() {
+    const root = document.documentElement;
+    const toggle = $("navToggle");
+    const KEY = "design-explorer-v2:nav";
+    const set = (collapsed, save = true) => {
+        root.classList.toggle("nav-collapsed", collapsed);
+        toggle.setAttribute("aria-expanded", String(!collapsed));
+        if (save) {
+            try {
+                localStorage.setItem(KEY, collapsed ? "collapsed" : "open");
+            } catch {
+                /* private mode: the choice just is not remembered */
+            }
+        }
+    };
+    let saved = null;
+    try {
+        saved = localStorage.getItem(KEY);
+    } catch {
+        /* no storage */
+    }
+    set(saved === "collapsed", false);
+    toggle.addEventListener("click", () => set(!root.classList.contains("nav-collapsed")));
+    // a rail icon opens the drawer on its section
+    for (const btn of document.querySelectorAll(".rail-btn")) {
+        btn.addEventListener("click", () => {
+            set(false);
+            $(btn.dataset.section).open = true;
+        });
+    }
+    // the rail badges mirror the ones in the section headers
+    for (const [from, to] of [["measurementsBadge", "railMeasurementsBadge"], ["paretoBadge", "railParetoBadge"]]) {
+        const sync = () => {
+            $(to).textContent = $(from).textContent;
+            $(to).title = $(from).title;
+        };
+        new MutationObserver(sync).observe($(from), { childList: true, characterData: true, subtree: true, attributes: true });
+        sync();
+    }
+}
+
+initSidebar();
 init();

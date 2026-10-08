@@ -27,3 +27,10 @@ App bar = `acpv-appbar` (app icon 40px + title-large on the left, the open study
 32px icon button on the right, fused with the shell). Density: `<html class="acpv-density--2">`, the
 library's indication for ACPV apps (docs/reference/density.md): app bar 56px, buttons 32px. The
 `--acpv-density-*` values are copied from `theme/density.scss` (SCSS + Angular Material, not usable here).
+
+Sidebar (library side-nav model, §1-quater): the hamburger in the app bar corner cell toggles `nav-collapsed` on
+`<html>`: drawer 280px (the filters) <-> rail 80px (one icon per filter section, with the active-filter badge).
+The choice is kept in localStorage. Below 1100px: one column, filters always visible, no hamburger / rail.
+The methods (which studies are compared) live on top of the center card, so they stay visible when the
+sidebar is closed. To go back to the previous layout, revert the two commits "refactor(v2): methods on top of
+the center card" and "feat(v2): sidebar with hamburger".

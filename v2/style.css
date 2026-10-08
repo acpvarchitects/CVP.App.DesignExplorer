@@ -384,7 +384,60 @@ main {
        window edge; its content sits 8px inside, so the card starts right at 280px */
     grid-template-columns: var(--acpv-sys-sidenav-width, 280px) minmax(0, 1fr) auto;
     grid-template-rows: minmax(0, 1fr);
+    transition: grid-template-columns var(--acpv-sys-motion-duration-normal, 250ms) ease;
     height: 100%; /* no column-gap: the side sheet brings its own gap only while it is open */
+}
+
+/* Rail (sidebar closed): 80px track, icons on the same axis as the hamburger */
+html.nav-collapsed .app-frame {
+    grid-template-columns: var(--acpv-sys-sidenav-rail-width, 80px) minmax(0, 1fr) auto;
+}
+
+.rail {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 0;
+}
+
+html.nav-collapsed .rail {
+    display: flex;
+}
+
+html.nav-collapsed .left-panel .drawer {
+    display: none;
+}
+
+.rail-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 36px;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: var(--acpv-sys-radius-full, 999px);
+    background: transparent;
+}
+
+.rail-btn:hover:not(:disabled) {
+    background: var(--md-sys-color-surface-container-high);
+}
+
+.rail-btn svg {
+    width: 24px;
+    height: 24px;
+    fill: var(--md-sys-color-on-surface-variant);
+}
+
+.rail-btn .filter-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    pointer-events: none;
 }
 
 .left-panel {
@@ -1978,6 +2031,20 @@ code {
 
     main {
         padding-left: var(--shell-gap); /* one column: no drawer track at the window edge */
+    }
+
+    /* one column: the filters are always shown above the results, no rail and no hamburger */
+    #navToggle,
+    .rail {
+        display: none !important;
+    }
+
+    html.nav-collapsed .left-panel .drawer {
+        display: block;
+    }
+
+    html.nav-collapsed .app-frame {
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .sidesheet {
