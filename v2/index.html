@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="theme/tertiary/coral.css?v=1" />
     <link rel="stylesheet" href="theme/tokens/acpv-sys.css?v=1" />
     <link rel="stylesheet" href="theme/fonts.css?v=1" />
-    <link rel="stylesheet" href="style.css?v=54" />
+    <link rel="stylesheet" href="style.css?v=55" />
     <script type="importmap">
         {
             "imports": {
@@ -35,55 +35,57 @@
     </header>
 
     <main id="app" hidden>
-        <!-- Top: introduction + method choice (left), always-on chart (right) -->
-        <section class="overview-top">
-            <div class="intro">
-                <span class="eyebrow">Explore the study</span>
-                <h1>Find the options worth a closer look</h1>
-                <p id="introText" class="muted"></p>
-                <nav id="methodTabs" class="method-tabs" aria-label="Methods"></nav>
-                <p id="methodHint" class="muted small method-hint">Tick two or more methods to compare them side by side.</p>
-            </div>
-            <div class="chart-panel card">
-                <div class="chart-tools">
-                    <span class="muted">Drag a range on any axis. Click a line to inspect an option.</span>
-                    <label id="inputsToggle"><input id="showInputs" type="checkbox" /> Show inputs</label>
-                    <details id="hiddenAxes" class="hidden-axes" hidden>
-                        <summary id="hiddenCount"></summary>
-                        <div id="hiddenList" class="hidden-list"></div>
-                    </details>
-                    <button id="clearChart" type="button">Clear chart filters</button>
+        <!-- App frame (as in @acpvarchitects/ui main-shell): left panel fused with the shell
+             (introduction, method choice, filters) + ONE center card (chart and results) -->
+        <div class="app-frame">
+            <div class="left-panel">
+                <div class="intro">
+                    <span class="eyebrow">Explore the study</span>
+                    <h1>Find the options worth a closer look</h1>
+                    <p id="introText" class="muted"></p>
+                    <nav id="methodTabs" class="method-tabs" aria-label="Methods"></nav>
+                    <p id="methodHint" class="muted small method-hint">Tick two or more methods to compare them side by side.</p>
                 </div>
-                <div id="activeRanges" class="active-ranges"></div>
-                <div class="chart-scroll"><div id="pcChart"></div></div>
-                <p id="chartLegend" class="chart-legend muted"></p>
-            </div>
-        </section>
 
-        <div class="workspace">
-            <!-- Left: filters, shared by every method; one expandable section per way of filtering -->
-            <aside class="filters card" aria-label="Filters">
-                <details class="filter-section" id="measurementsSection" open>
-                    <summary><span class="filter-title">Measurements</span><span id="measurementsBadge" class="filter-badge"></span><button id="measurementsClear" type="button" class="filter-clear" data-clear="measurements" hidden>×</button></summary>
-                    <div class="filter-body">
-                        <div class="filters-head">
-                            <p class="muted small">Min – max per result; empty = no limit.</p>
-                            <button id="resetFilters" type="button" class="link">Reset</button>
+                <aside class="filters" aria-label="Filters">
+                    <details class="filter-section" id="measurementsSection" open>
+                        <summary><span class="filter-title">Measurements</span><span id="measurementsBadge" class="filter-badge"></span><button id="measurementsClear" type="button" class="filter-clear" data-clear="measurements" hidden>×</button></summary>
+                        <div class="filter-body">
+                            <div class="filters-head">
+                                <p class="muted small">Min – max per result; empty = no limit.</p>
+                                <button id="resetFilters" type="button" class="link">Reset</button>
+                            </div>
+                            <div id="rangeFilters"></div>
                         </div>
-                        <div id="rangeFilters"></div>
+                    </details>
+                    <details class="filter-section" id="paretoSection">
+                        <summary><span class="filter-title">Pareto front</span><span id="paretoBadge" class="filter-badge"></span><button id="paretoClear" type="button" class="filter-clear" data-clear="pareto" hidden>×</button></summary>
+                        <div class="filter-body">
+                            <label class="pareto-on"><input id="paretoOn" type="checkbox" /> Only options on the front</label>
+                            <p id="paretoCount" class="muted small"></p>
+                            <p class="muted small">Goals that count:</p>
+                            <div id="paretoGoals" class="pareto-goals"></div>
+                            <p class="muted small pareto-help">An option is on the front when no other option is at least as good on every goal ticked here and better on one. With many goals almost every option is on it: 2 or 3 goals show the real trade-offs.</p>
+                        </div>
+                    </details>
+                </aside>
+            </div>
+
+            <div class="center card">
+                <div class="chart-panel">
+                    <div class="chart-tools">
+                        <span class="muted">Drag a range on any axis. Click a line to inspect an option.</span>
+                        <label id="inputsToggle"><input id="showInputs" type="checkbox" /> Show inputs</label>
+                        <details id="hiddenAxes" class="hidden-axes" hidden>
+                            <summary id="hiddenCount"></summary>
+                            <div id="hiddenList" class="hidden-list"></div>
+                        </details>
+                        <button id="clearChart" type="button">Clear chart filters</button>
                     </div>
-                </details>
-                <details class="filter-section" id="paretoSection">
-                    <summary><span class="filter-title">Pareto front</span><span id="paretoBadge" class="filter-badge"></span><button id="paretoClear" type="button" class="filter-clear" data-clear="pareto" hidden>×</button></summary>
-                    <div class="filter-body">
-                        <label class="pareto-on"><input id="paretoOn" type="checkbox" /> Only options on the front</label>
-                        <p id="paretoCount" class="muted small"></p>
-                        <p class="muted small">Goals that count:</p>
-                        <div id="paretoGoals" class="pareto-goals"></div>
-                        <p class="muted small pareto-help">An option is on the front when no other option is at least as good on every goal ticked here and better on one. With many goals almost every option is on it: 2 or 3 goals show the real trade-offs.</p>
-                    </div>
-                </details>
-            </aside>
+                    <div id="activeRanges" class="active-ranges"></div>
+                    <div class="chart-scroll"><div id="pcChart"></div></div>
+                    <p id="chartLegend" class="chart-legend muted"></p>
+                </div>
 
             <section class="results">
                 <!-- Preview: hidden until an option is clicked -->
@@ -144,6 +146,8 @@
                 <!-- Compare options: the shortlist side by side (2 or more), see comparison.js -->
                 <section id="comparison" class="card comparison" aria-label="Compare options" hidden></section>
             </section>
+
+            </div>
         </div>
 
         <!-- Pops up for a few seconds after Compare on a card -->

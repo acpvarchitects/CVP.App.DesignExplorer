@@ -12,3 +12,8 @@ to update, re-copy the same files from a newer library release and bump `?v=` in
 
 Shape/frame follow the library: shell = `surface-container`, cards flat on `surface-container-lowest`
 (tone + radius only, no border), buttons pill (`corner-full`), fields `radius-xs`.
+
+Layout follows `main-shell`: 8px shell gap on four sides, left panel fused with the shell (280px,
+`--acpv-left-panel-width`), ONE center card, 16px panel/card gap. Scrollbar = `theme/custom-theme.scss`
+(copied into `style.css`). One deliberate difference: the page scrolls (the app's JS uses
+`window.scrollY`), the library's card scrolls inside itself.
