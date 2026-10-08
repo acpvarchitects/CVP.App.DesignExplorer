@@ -15,5 +15,6 @@ Shape/frame follow the library: shell = `surface-container`, cards flat on `surf
 
 Layout follows `main-shell`: 8px shell gap on four sides, left panel fused with the shell (280px,
 `--acpv-left-panel-width`), ONE center card, 16px panel/card gap. Scrollbar = `theme/custom-theme.scss`
-(copied into `style.css`). One deliberate difference: the page scrolls (the app's JS uses
-`window.scrollY`), the library's card scrolls inside itself.
+(copied into `style.css`). Like the library, the window does not scroll: the left panel and the center
+card scroll inside themselves (`scrollbar-gutter: stable`). Below 900px the layout is one column and the page
+scrolls instead; `scroller()` in `app.js` picks the right one.
