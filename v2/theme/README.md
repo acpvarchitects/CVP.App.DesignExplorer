@@ -22,3 +22,8 @@ scrolls instead; `scroller()` in `app.js` picks the right one.
 Right side sheet (`acpv-right-panel`, docked): 256px (`--acpv-sys-sidesheet-width`), a card like the center one,
 16px from it, open only while an option is selected. It holds "Where this option stands". Below 1100px
 the layout is one column and that block moves under the preview image (`placeStandings` in `app.js`).
+
+App bar = `acpv-appbar` (app icon 40px + title-large on the left, the open study in the centre-side slot, a
+32px icon button on the right, fused with the shell). Density: `<html class="acpv-density--2">`, the
+library's indication for ACPV apps (docs/reference/density.md): app bar 56px, buttons 32px. The
+`--acpv-density-*` values are copied from `theme/density.scss` (SCSS + Angular Material, not usable here).

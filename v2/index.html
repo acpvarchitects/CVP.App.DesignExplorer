@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="light-medium-contrast">
+<html lang="en" class="light-medium-contrast acpv-density--2">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="theme/tertiary/coral.css?v=1" />
     <link rel="stylesheet" href="theme/tokens/acpv-sys.css?v=1" />
     <link rel="stylesheet" href="theme/fonts.css?v=1" />
-    <link rel="stylesheet" href="style.css?v=67" />
+    <link rel="stylesheet" href="style.css?v=69" />
     <script type="importmap">
         {
             "imports": {
@@ -20,17 +20,24 @@
     </script>
 </head>
 <body>
-    <header class="topbar">
-        <div class="brand">
-            <img src="../img/antonio-citterio-patricia-viel.png" alt="Antonio Citterio Patricia Viel" />
-            <span class="brand-app">Design Explorer</span>
+    <!-- App bar, as @acpvarchitects/ui acpv-appbar: app icon + title (left), the open study in the
+         centre-side slot, icon actions on the right. No menu button: there is no rail to toggle. -->
+    <header class="topbar acpv-appbar">
+        <div class="acpv-appbar-left">
+            <div class="acpv-app-logo">
+                <img src="../favicon.png" alt="" class="acpv-app-icon" />
+                <p class="acpv-app-title">Design Explorer</p>
+            </div>
         </div>
-        <div class="project">
+        <div class="acpv-appbar-center">
             <span id="projectName"></span>
             <span id="optionCount" class="muted"></span>
         </div>
-        <div class="actions">
-            <button id="shareBtn" type="button">Copy link</button>
+        <div class="toolbar-right-actions">
+            <button id="shareBtn" type="button" class="toolbar-button" aria-label="Copy link" title="Copy link">
+                <svg class="icon-link" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
+                <svg class="icon-done" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            </button>
         </div>
     </header>
 
@@ -174,6 +181,6 @@
         </section>
     </div>
 
-    <script type="module" src="app.js?v=71"></script>
+    <script type="module" src="app.js?v=72"></script>
 </body>
 </html>

@@ -1199,8 +1199,16 @@ async function copyLink() {
         document.execCommand("copy");
         t.remove();
     }
-    $("shareBtn").textContent = "Copied";
-    setTimeout(() => ($("shareBtn").textContent = "Copy link"), 1500);
+    // icon button: swap the glyph and the label for a moment
+    const share = $("shareBtn");
+    share.classList.add("copied");
+    share.title = "Copied";
+    share.setAttribute("aria-label", "Copied");
+    setTimeout(() => {
+        share.classList.remove("copied");
+        share.title = "Copy link";
+        share.setAttribute("aria-label", "Copy link");
+    }, 1500);
 }
 
 // ---- Actions ----

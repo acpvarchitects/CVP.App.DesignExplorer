@@ -32,6 +32,15 @@
     box-sizing: border-box;
 }
 
+/* Density -2 ("compact"), the library's indication for ACPV apps (docs/reference/density.md,
+   RC 2026-10-07; Pantheon ships provideAcpvDensity(-2)). Same values as theme/density.scss emits
+   for .acpv-density--2: 64 + (-2 * 4) for the app bar and the 32px Material button. */
+.acpv-density--2 {
+    --acpv-density-appbar-height: 56px;
+    --acpv-density-section-header-height: 48px;
+    --acpv-density-control-height: 32px;
+}
+
 /* Scrollbar of @acpvarchitects/ui (theme/custom-theme.scss) */
 ::-webkit-scrollbar {
     width: 12px;
@@ -107,6 +116,7 @@ button,
     background: var(--card);
     border: 1px solid var(--md-sys-color-outline);
     border-radius: var(--radius-button);
+    min-height: var(--acpv-density-control-height, 32px);
     padding: 5px 14px;
     cursor: pointer;
     text-decoration: none;
@@ -213,42 +223,120 @@ input[type="number"] {
 }
 
 /* ---- Top bar ---- */
-.topbar {
+/* ---- App bar: acpv-appbar of @acpvarchitects/ui (components/layout/appbar) ---- */
+.acpv-appbar {
+    --_appbar-pad-x: 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    min-height: var(--acpv-density-appbar-height, 64px); /* library appbar */
-    padding: 8px 24px;
-    background: var(--bg);
+    box-sizing: border-box;
+    width: 100%;
+    height: var(--acpv-density-appbar-height, 64px);
+    padding: 0 var(--_appbar-pad-x);
+    background: var(--bg); /* fused with the shell, as in the app frame */
+    color: var(--md-sys-color-on-background);
 }
 
-.brand {
+.acpv-appbar-left {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
+    min-width: 0;
 }
 
-.brand img {
-    height: 18px;
-}
-
-.brand-app {
-    font-weight: 600;
-    padding-left: 14px;
-    border-left: 1px solid var(--line-strong);
-}
-
-.project {
+.acpv-app-logo {
     display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.acpv-app-icon {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}
+
+.acpv-app-title {
+    margin: 0;
+    font-size: var(--acpv-sys-type-title-lg, 22px);
+    line-height: var(--acpv-sys-type-title-lg-line-height, 28px);
+    color: var(--md-sys-color-on-background);
+}
+
+/* centre-side slot: the open study */
+.acpv-appbar-center {
+    flex: 1;
+    min-width: 200px;
+    max-width: 640px;
+    display: flex;
+    justify-content: center;
     align-items: baseline;
     gap: 10px;
     font-weight: 600;
 }
 
-.actions {
+.toolbar-right-actions {
     display: flex;
-    gap: 8px;
+    align-items: center;
+    gap: 12px;
+    color: var(--md-sys-color-on-surface);
+}
+
+.toolbar-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 16px;
+    background: transparent;
+    transition: background-color 200ms ease;
+}
+
+@media (max-width: 1024px) {
+    .acpv-appbar {
+        --_appbar-pad-x: 16px;
+        gap: 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    .acpv-appbar {
+        height: auto;
+        min-height: var(--acpv-density-appbar-height, 64px);
+        flex-wrap: wrap;
+        padding: 8px var(--_appbar-pad-x);
+    }
+
+    .acpv-appbar-center {
+        order: 3;
+        flex: 1 1 100%; /* its own row under the title and the actions */
+        width: 100%;
+        max-width: none;
+    }
+}
+
+.toolbar-button:hover:not(:disabled) {
+    background-color: var(--md-sys-color-surface-container-high);
+}
+
+.toolbar-button svg {
+    width: 24px;
+    height: 24px;
+    fill: var(--md-sys-color-on-surface-variant);
+}
+
+.toolbar-button .icon-done,
+.toolbar-button.copied .icon-link {
+    display: none;
+}
+
+.toolbar-button.copied .icon-done {
+    display: block;
 }
 
 /* The window never scrolls (library shell): topbar on top, the frame fills the rest, the left
@@ -1904,30 +1992,6 @@ code {
 }
 
 @media (max-width: 700px) {
-    .topbar {
-        flex-wrap: wrap;
-        padding: 10px 16px;
-    }
-
-    .brand {
-        flex-wrap: wrap;
-        gap: 4px 14px;
-    }
-
-    .brand img {
-        height: auto;
-        max-width: 100%;
-    }
-
-    .brand-app {
-        padding-left: 0;
-        border-left: 0;
-    }
-
-    main {
-        padding: 16px 16px 40px;
-    }
-
     #rangeFilters {
         grid-template-columns: 1fr;
     }
