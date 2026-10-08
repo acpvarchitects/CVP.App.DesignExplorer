@@ -218,7 +218,8 @@ input[type="number"] {
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 14px 28px;
+    min-height: var(--acpv-density-appbar-height, 64px); /* library appbar */
+    padding: 8px 24px;
     background: var(--bg);
 }
 
@@ -267,7 +268,8 @@ body {
 main {
     flex: 1;
     min-height: 0;
-    padding: 0 var(--shell-gap) var(--shell-gap);
+    /* shell gap on top, right and bottom; on the left the drawer track starts at the window edge */
+    padding: var(--shell-gap) var(--shell-gap) var(--shell-gap) 0;
 }
 
 /* ---- Top: introduction + method tabs, chart ---- */
@@ -278,14 +280,15 @@ main {
     display: grid;
     --acpv-panel-gap: var(--acpv-sys-space-4, 16px);
     /* the panel's own gap is part of its track, so the panel itself is 280px wide */
-    grid-template-columns: calc(var(--acpv-left-panel-width, 280px) + var(--acpv-panel-gap)) minmax(0, 1fr) auto;
+    /* left track = the library's drawer width (280px, --acpv-sys-sidenav-width), flush with the
+       window edge; its content sits 8px inside, so the card starts right at 280px */
+    grid-template-columns: var(--acpv-sys-sidenav-width, 280px) minmax(0, 1fr) auto;
     grid-template-rows: minmax(0, 1fr);
-    height: 100%; /* no column-gap: each panel brings its own gap only while it is open */
+    height: 100%; /* no column-gap: the side sheet brings its own gap only while it is open */
 }
 
 .left-panel {
     min-height: 0;
-    margin-right: var(--acpv-panel-gap);
     overflow-y: auto;
     padding: 0 var(--acpv-sys-space-2, 8px);
 }
@@ -1866,8 +1869,8 @@ code {
         overflow-y: visible;
     }
 
-    .left-panel {
-        margin-right: 0;
+    main {
+        padding-left: var(--shell-gap); /* one column: no drawer track at the window edge */
     }
 
     .sidesheet {
