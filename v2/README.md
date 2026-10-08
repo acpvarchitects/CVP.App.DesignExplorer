@@ -118,7 +118,7 @@ reflections, one without): one block per group of studies, with their colour dot
    pieces together: apartments, cores and corridors); the chosen level stays from option to option.
    A 3D analysis shows its score for the option top right (`score_label`
    + value + unit) and, like the Table view, an "ⓘ About" button. "Where this option stands" shows actual value positions among the
-   matching options.
+   matching options, in the right side sheet (under the preview below 1100px).
 4. **Gallery** of matching options ("Order by" one result or Index; Index by default when the study
    has it, each batch together); "Compare" builds a shortlist of up to 4.
 5. **Compare methods** (2+ methods shown): matching count, best and median per method.

@@ -18,3 +18,7 @@ Layout follows `main-shell`: 8px shell gap on four sides, left panel fused with 
 (copied into `style.css`). Like the library, the window does not scroll: the left panel and the center
 card scroll inside themselves (`scrollbar-gutter: stable`). Below 900px the layout is one column and the page
 scrolls instead; `scroller()` in `app.js` picks the right one.
+
+Right side sheet (`acpv-right-panel`, docked): 256px (`--acpv-sys-sidesheet-width`), a card like the center one,
+16px from it, open only while an option is selected. It holds "Where this option stands". Below 1100px
+the layout is one column and that block moves under the preview image (`placeStandings` in `app.js`).

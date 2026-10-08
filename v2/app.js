@@ -703,9 +703,20 @@ function renderGallery(view) {
     gallery.replaceChildren(...(empty ? [empty] : view.visible.map((o) => cards.get(o.index))));
 }
 
+// "Where this option stands" lives in the right side sheet; on a narrow screen (one column, the
+// sheet would end up below the whole gallery) it goes back under the preview image.
+const narrowLayout = matchMedia("(max-width: 1100px)");
+function placeStandings() {
+    const host = narrowLayout.matches ? $("preview") : $("sidesheet");
+    if ($("standings").parentElement !== host) host.appendChild($("standings"));
+}
+narrowLayout.addEventListener("change", placeStandings);
+placeStandings();
+
 function renderPreview(view) {
     const o = state.sel != null ? data.options[state.sel] : null;
     $("preview").hidden = !o;
+    $("sidesheet").hidden = !o;
     if (!o) {
         if (viewer) viewer.clear();
         mediaKey = null;
