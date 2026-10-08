@@ -3,7 +3,7 @@
 :root {
     /* Colours come from @acpvarchitects/ui (theme/base.css + tertiary/coral.css, class on <html>);
        the names below are this app's own, kept as aliases of the library roles. */
-    --bg: var(--md-sys-color-surface);
+    --bg: var(--md-sys-color-surface-container); /* app-frame shell tone (library: main-shell) */
     --card: var(--md-sys-color-surface-container-lowest);
     --soft: var(--md-sys-color-surface-container-low);
     --text: var(--md-sys-color-on-surface);
@@ -20,7 +20,9 @@
     --warn: #854f0b;
     --inspect: var(--md-sys-color-tertiary);
     --radius: var(--acpv-sys-radius-sm);
-    --radius-lg: var(--acpv-sys-radius-md);
+    --radius-lg: var(--acpv-sys-radius-lg); /* card = pane, corner large */
+    --radius-field: var(--acpv-sys-radius-xs);
+    --radius-button: var(--acpv-sys-corner-full);
     font-family: var(--acpv-sys-font-family-primary);
     color: var(--text);
 }
@@ -77,9 +79,9 @@ button,
     font-size: 13px;
     color: var(--text);
     background: var(--card);
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius);
-    padding: 5px 12px;
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: var(--radius-button);
+    padding: 5px 14px;
     cursor: pointer;
     text-decoration: none;
     white-space: nowrap;
@@ -108,14 +110,13 @@ input[type="number"] {
     font-size: 13px;
     color: var(--text);
     background: var(--card);
-    border: 1px solid var(--line-strong);
-    border-radius: 5px;
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: var(--radius-field);
     padding: 6px 8px;
 }
 
 .card {
     background: var(--card);
-    border: 1px solid var(--line);
     border-radius: var(--radius-lg);
     padding: 16px 18px;
 }
@@ -192,8 +193,7 @@ input[type="number"] {
     justify-content: space-between;
     gap: 16px;
     padding: 14px 28px;
-    background: var(--card);
-    border-bottom: 1px solid var(--line);
+    background: var(--bg);
 }
 
 .brand {
@@ -1269,8 +1269,7 @@ main {
     display: flex;
     flex-direction: column;
     background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: var(--acpv-sys-radius-md);
     overflow: hidden;
     transition: box-shadow 0.15s, transform 0.15s;
 }

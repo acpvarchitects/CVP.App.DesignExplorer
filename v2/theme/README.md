@@ -9,3 +9,6 @@ to update, re-copy the same files from a newer library release and bump `?v=` in
 
 `style.css` maps its own names (`--bg`, `--card`, `--accent`…) onto `--md-sys-*` / `--acpv-sys-*`.
 `<html class="light-medium-contrast">` selects the contrast mode the ACPV apps run in.
+
+Shape/frame follow the library: shell = `surface-container`, cards flat on `surface-container-lowest`
+(tone + radius only, no border), buttons pill (`corner-full`), fields `radius-xs`.
