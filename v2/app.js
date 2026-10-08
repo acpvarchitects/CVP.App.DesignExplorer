@@ -26,7 +26,7 @@ import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=34";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml } from "./comparison.js?v=37";
-import { ParallelChart } from "./parallel.js?v=30";
+import { ParallelChart } from "./parallel.js?v=37";
 import { paretoFront } from "./pareto.js?v=1";
 import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=1";
 
@@ -703,9 +703,20 @@ function renderGallery(view) {
     gallery.replaceChildren(...(empty ? [empty] : view.visible.map((o) => cards.get(o.index))));
 }
 
+// "Where this option stands" lives in the right side sheet; on a narrow screen (one column, the
+// sheet would end up below the whole gallery) it goes back under the preview image.
+const narrowLayout = matchMedia("(max-width: 1100px)");
+function placeStandings() {
+    const host = narrowLayout.matches ? $("preview") : $("sidesheet");
+    if ($("standings").parentElement !== host) host.appendChild($("standings"));
+}
+narrowLayout.addEventListener("change", placeStandings);
+placeStandings();
+
 function renderPreview(view) {
     const o = state.sel != null ? data.options[state.sel] : null;
     $("preview").hidden = !o;
+    $("sidesheet").hidden = !o;
     if (!o) {
         if (viewer) viewer.clear();
         mediaKey = null;
@@ -1034,10 +1045,23 @@ function popUp(ms = POPUP_MS) {
 let cancelScroll = null;
 let returnTo = null; // where "Back to options" goes after "See comparison"
 
+// The center card scrolls inside itself (like the library's main-shell card); on a narrow screen
+// the layout is one column and the page scrolls instead (the card then has no inner scroll).
+function scroller() {
+    const card = document.querySelector(".center-scroll");
+    return card && getComputedStyle(card).overflowY === "auto" ? card : null;
+}
+const scrollNow = () => (scroller() ? scroller().scrollTop : window.scrollY);
+// scroll position that puts `el` 20px under the top of the visible area
+const scrollOf = (el) => scrollNow() + el.getBoundingClientRect().top - (scroller()?.getBoundingClientRect().top ?? 0) - 20;
+const scrollTo = (top) => (scroller() ? scroller().scrollTo({ top, behavior: "instant" }) : window.scrollTo({ top, behavior: "instant" }));
+
 function scrollPage(top, arrival) {
     cancelScroll?.();
-    const start = window.scrollY;
-    const target = Math.max(0, Math.min(top, document.documentElement.scrollHeight - window.innerHeight));
+    const start = scrollNow();
+    const card = scroller();
+    const max = card ? card.scrollHeight - card.clientHeight : document.documentElement.scrollHeight - window.innerHeight;
+    const target = Math.max(0, Math.min(top, max));
     const arrive = () => {
         if (!arrival) return;
         arrival.classList.remove("arrived");
@@ -1045,7 +1069,7 @@ function scrollPage(top, arrival) {
         arrival.classList.add("arrived");
     };
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        window.scrollTo({ top: target, behavior: "instant" });
+        scrollTo(target);
         arrive();
         return;
     }
@@ -1062,7 +1086,7 @@ function scrollPage(top, arrival) {
     const tick = (now) => {
         began ??= now;
         const t = Math.min(1, (now - began) / duration);
-        window.scrollTo({ top: start + (target - start) * (-(Math.cos(Math.PI * t) - 1) / 2), behavior: "instant" });
+        scrollTo(start + (target - start) * (-(Math.cos(Math.PI * t) - 1) / 2));
         if (t < 1) frame = requestAnimationFrame(tick);
         else {
             stop();
@@ -1074,13 +1098,13 @@ function scrollPage(top, arrival) {
 
 function seeComparison() {
     if (state.shortlist.length < 2) return;
-    returnTo = window.scrollY;
+    returnTo = scrollNow();
     $("shortlistPopup").hidden = true;
-    scrollPage(window.scrollY + $("comparison").getBoundingClientRect().top - 20, $("comparison"));
+    scrollPage(scrollOf($("comparison")), $("comparison"));
 }
 
 function backToOptions() {
-    scrollPage(returnTo ?? window.scrollY + $("gallery").getBoundingClientRect().top - 20);
+    scrollPage(returnTo ?? scrollOf($("gallery")));
     returnTo = null;
 }
 
@@ -1175,8 +1199,16 @@ async function copyLink() {
         document.execCommand("copy");
         t.remove();
     }
-    $("shareBtn").textContent = "Copied";
-    setTimeout(() => ($("shareBtn").textContent = "Copy link"), 1500);
+    // icon button: swap the glyph and the label for a moment
+    const share = $("shareBtn");
+    share.classList.add("copied");
+    share.title = "Copied";
+    share.setAttribute("aria-label", "Copied");
+    setTimeout(() => {
+        share.classList.remove("copied");
+        share.title = "Copy link";
+        share.setAttribute("aria-label", "Copy link");
+    }, 1500);
 }
 
 // ---- Actions ----
@@ -1185,7 +1217,8 @@ function openOption(index, scroll) {
     state.sel = index;
     render();
     const box = $("preview").getBoundingClientRect();
-    if (scroll && (box.top < 0 || box.top > window.innerHeight * 0.6)) {
+    const view = scroller()?.getBoundingClientRect() ?? { top: 0, height: window.innerHeight };
+    if (scroll && (box.top < view.top || box.top > view.top + view.height * 0.6)) {
         $("preview").scrollIntoView({ behavior: "smooth", block: "start" });
     }
 }
@@ -1432,14 +1465,56 @@ async function init() {
     $("projectName").textContent = name;
     $("optionCount").textContent = `${options.length} options`;
     document.title = `${name} · Design Explorer`;
-    $("introText").textContent =
-        studies.length > 1
-            ? `Explore ${studies.length === 2 ? "both" : "all"} methods together, or focus on one. Filters apply across methods.`
-            : "Filter by measurements, order the gallery, and click an option to look closer.";
     $("showInputs").checked = state.showInputs;
     $("app").hidden = false;
     bindEvents();
     render({ syncChart: true });
 }
 
+// ---- Sidebar: rail <-> drawer (the library's side-nav model, @acpvarchitects/ui §1-quater) ----
+// The hamburger toggles `nav-collapsed` on <html>: CSS shows the drawer (filters) or the rail (one
+// icon per section). The choice is remembered. Below 1100px the layout is one column and there is
+// no rail (see style.css).
+function initSidebar() {
+    const root = document.documentElement;
+    const toggle = $("navToggle");
+    const KEY = "design-explorer-v2:nav";
+    const set = (collapsed, save = true) => {
+        root.classList.toggle("nav-collapsed", collapsed);
+        toggle.setAttribute("aria-expanded", String(!collapsed));
+        if (save) {
+            try {
+                localStorage.setItem(KEY, collapsed ? "collapsed" : "open");
+            } catch {
+                /* private mode: the choice just is not remembered */
+            }
+        }
+    };
+    let saved = null;
+    try {
+        saved = localStorage.getItem(KEY);
+    } catch {
+        /* no storage */
+    }
+    set(saved === "collapsed", false);
+    toggle.addEventListener("click", () => set(!root.classList.contains("nav-collapsed")));
+    // a rail icon opens the drawer on its section
+    for (const btn of document.querySelectorAll(".rail-btn")) {
+        btn.addEventListener("click", () => {
+            set(false);
+            $(btn.dataset.section).open = true;
+        });
+    }
+    // the rail badges mirror the ones in the section headers
+    for (const [from, to] of [["measurementsBadge", "railMeasurementsBadge"], ["paretoBadge", "railParetoBadge"]]) {
+        const sync = () => {
+            $(to).textContent = $(from).textContent;
+            $(to).title = $(from).title;
+        };
+        new MutationObserver(sync).observe($(from), { childList: true, characterData: true, subtree: true, attributes: true });
+        sync();
+    }
+}
+
+initSidebar();
 init();

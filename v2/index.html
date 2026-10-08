@@ -1,11 +1,15 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="acpv-density--2">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Design Explorer</title>
-    <link rel="icon" href="../favicon.png" />
-    <link rel="stylesheet" href="style.css?v=52" />
+    <link rel="icon" href="favicon.png" />
+    <link rel="stylesheet" href="theme/base.css?v=1" />
+    <link rel="stylesheet" href="theme/tertiary/coral.css?v=1" />
+    <link rel="stylesheet" href="theme/tokens/acpv-sys.css?v=1" />
+    <link rel="stylesheet" href="theme/fonts.css?v=1" />
+    <link rel="stylesheet" href="style.css?v=77" />
     <script type="importmap">
         {
             "imports": {
@@ -15,71 +19,98 @@
         }
     </script>
 </head>
-<body>
-    <header class="topbar">
-        <div class="brand">
-            <img src="../img/antonio-citterio-patricia-viel.png" alt="Antonio Citterio Patricia Viel" />
-            <span class="brand-app">Design Explorer</span>
+<body class="light-medium-contrast">
+    <!-- App bar, as @acpvarchitects/ui acpv-appbar: app icon + title (left), the open study in the
+         centre-side slot, icon actions on the right. No menu button: there is no rail to toggle. -->
+    <header class="topbar acpv-appbar">
+        <div class="acpv-appbar-left">
+            <!-- The library's menu-button cell (page-chrome §2: corner cell): the hamburger sits on
+                 the rail icon axis and runs the rail <-> drawer morph -->
+            <span class="acpv-appbar-menu-cell">
+                <button id="navToggle" type="button" class="toolbar-button" aria-label="Toggle sidebar" aria-expanded="true" aria-controls="leftPanel">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+                </button>
+            </span>
+            <div class="acpv-app-logo">
+                <img src="favicon.png" alt="" class="acpv-app-icon" />
+                <p class="acpv-app-title">Design Explorer</p>
+            </div>
         </div>
-        <div class="project">
+        <div class="acpv-appbar-center">
             <span id="projectName"></span>
             <span id="optionCount" class="muted"></span>
         </div>
-        <div class="actions">
-            <button id="shareBtn" type="button">Copy link</button>
+        <div class="toolbar-right-actions">
+            <button id="shareBtn" type="button" class="toolbar-button" aria-label="Copy link" title="Copy link">
+                <svg class="icon-link" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
+                <svg class="icon-done" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            </button>
         </div>
     </header>
 
     <main id="app" hidden>
-        <!-- Top: introduction + method choice (left), always-on chart (right) -->
-        <section class="overview-top">
-            <div class="intro">
-                <span class="eyebrow">Explore the study</span>
-                <h1>Find the options worth a closer look</h1>
-                <p id="introText" class="muted"></p>
-                <nav id="methodTabs" class="method-tabs" aria-label="Methods"></nav>
-                <p id="methodHint" class="muted small method-hint">Tick two or more methods to compare them side by side.</p>
-            </div>
-            <div class="chart-panel card">
-                <div class="chart-tools">
-                    <span class="muted">Drag a range on any axis. Click a line to inspect an option.</span>
-                    <label id="inputsToggle"><input id="showInputs" type="checkbox" /> Show inputs</label>
-                    <details id="hiddenAxes" class="hidden-axes" hidden>
-                        <summary id="hiddenCount"></summary>
-                        <div id="hiddenList" class="hidden-list"></div>
-                    </details>
-                    <button id="clearChart" type="button">Clear chart filters</button>
+        <!-- App frame (as in @acpvarchitects/ui main-shell): left panel fused with the shell
+             (filters) + ONE center card (methods, chart and results) -->
+        <div class="app-frame">
+            <div class="left-panel" id="leftPanel">
+                <!-- Rail (sidebar closed): one icon per filter section, with its active-filter badge; a
+                     click opens the drawer on that section -->
+                <div class="rail" role="toolbar" aria-orientation="vertical" aria-label="Filters">
+                    <button type="button" class="rail-btn" data-section="measurementsSection" aria-label="Measurements" title="Measurements">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></svg>
+                        <span id="railMeasurementsBadge" class="filter-badge"></span>
+                    </button>
+                    <button type="button" class="rail-btn" data-section="paretoSection" aria-label="Pareto front" title="Pareto front">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.25 5.61C6.27 8.2 10 13 10 13v6c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-6s3.72-4.8 5.74-7.39c.51-.66.04-1.61-.79-1.61H5.04c-.83 0-1.3.95-.79 1.61z"/></svg>
+                        <span id="railParetoBadge" class="filter-badge"></span>
+                    </button>
                 </div>
-                <div id="activeRanges" class="active-ranges"></div>
-                <div class="chart-scroll"><div id="pcChart"></div></div>
-                <p id="chartLegend" class="chart-legend muted"></p>
-            </div>
-        </section>
-
-        <div class="workspace">
-            <!-- Left: filters, shared by every method; one expandable section per way of filtering -->
-            <aside class="filters card" aria-label="Filters">
-                <details class="filter-section" id="measurementsSection" open>
-                    <summary><span class="filter-title">Measurements</span><span id="measurementsBadge" class="filter-badge"></span><button id="measurementsClear" type="button" class="filter-clear" data-clear="measurements" hidden>×</button></summary>
-                    <div class="filter-body">
-                        <div class="filters-head">
-                            <p class="muted small">Min – max per result; empty = no limit.</p>
-                            <button id="resetFilters" type="button" class="link">Reset</button>
+                <!-- Drawer (sidebar open): the filters -->
+                <aside class="filters drawer" aria-label="Filters">
+                    <details class="filter-section" id="measurementsSection" open>
+                        <summary><span class="filter-title">Measurements</span><span id="measurementsBadge" class="filter-badge"></span><button id="measurementsClear" type="button" class="filter-clear" data-clear="measurements" hidden>×</button></summary>
+                        <div class="filter-body">
+                            <div class="filters-head">
+                                <p class="muted small">Min – max per result; empty = no limit.</p>
+                                <button id="resetFilters" type="button" class="link">Reset</button>
+                            </div>
+                            <div id="rangeFilters"></div>
                         </div>
-                        <div id="rangeFilters"></div>
+                    </details>
+                    <details class="filter-section" id="paretoSection">
+                        <summary><span class="filter-title">Pareto front</span><span id="paretoBadge" class="filter-badge"></span><button id="paretoClear" type="button" class="filter-clear" data-clear="pareto" hidden>×</button></summary>
+                        <div class="filter-body">
+                            <label class="pareto-on"><input id="paretoOn" type="checkbox" /> Only options on the front</label>
+                            <p id="paretoCount" class="muted small"></p>
+                            <p class="muted small">Goals that count:</p>
+                            <div id="paretoGoals" class="pareto-goals"></div>
+                            <p class="muted small pareto-help">An option is on the front when no other option is at least as good on every goal ticked here and better on one. With many goals almost every option is on it: 2 or 3 goals show the real trade-offs.</p>
+                        </div>
+                    </details>
+                </aside>
+            </div>
+
+            <div class="center card">
+              <div class="center-scroll">
+                <!-- Which studies are compared: stays visible whatever the sidebar does -->
+                <div class="methods-bar">
+                    <nav id="methodTabs" class="method-tabs" aria-label="Methods"></nav>
+                    <p id="methodHint" class="muted small method-hint">Tick two or more methods to compare them side by side.</p>
+                </div>
+                <div class="chart-panel">
+                    <div class="chart-tools">
+                        <span class="muted">Drag a range on any axis. Click a line to inspect an option.</span>
+                        <label id="inputsToggle"><input id="showInputs" type="checkbox" /> Show inputs</label>
+                        <details id="hiddenAxes" class="hidden-axes" hidden>
+                            <summary id="hiddenCount"></summary>
+                            <div id="hiddenList" class="hidden-list"></div>
+                        </details>
+                        <button id="clearChart" type="button">Clear chart filters</button>
                     </div>
-                </details>
-                <details class="filter-section" id="paretoSection">
-                    <summary><span class="filter-title">Pareto front</span><span id="paretoBadge" class="filter-badge"></span><button id="paretoClear" type="button" class="filter-clear" data-clear="pareto" hidden>×</button></summary>
-                    <div class="filter-body">
-                        <label class="pareto-on"><input id="paretoOn" type="checkbox" /> Only options on the front</label>
-                        <p id="paretoCount" class="muted small"></p>
-                        <p class="muted small">Goals that count:</p>
-                        <div id="paretoGoals" class="pareto-goals"></div>
-                        <p class="muted small pareto-help">An option is on the front when no other option is at least as good on every goal ticked here and better on one. With many goals almost every option is on it: 2 or 3 goals show the real trade-offs.</p>
-                    </div>
-                </details>
-            </aside>
+                    <div id="activeRanges" class="active-ranges"></div>
+                    <div class="chart-scroll"><div id="pcChart"></div></div>
+                    <p id="chartLegend" class="chart-legend muted"></p>
+                </div>
 
             <section class="results">
                 <!-- Preview: hidden until an option is clicked -->
@@ -118,7 +149,6 @@
                                 <button id="resetView" type="button" hidden>Reset view</button>
                             </div>
                         </div>
-                        <div id="standings" class="standings"></div>
                     </div>
                 </section>
 
@@ -140,6 +170,14 @@
                 <!-- Compare options: the shortlist side by side (2 or more), see comparison.js -->
                 <section id="comparison" class="card comparison" aria-label="Compare options" hidden></section>
             </section>
+              </div>
+
+            </div>
+
+            <!-- Right side sheet (library: acpv-right-panel, docked): open while an option is selected -->
+            <aside id="sidesheet" class="sidesheet" hidden aria-label="Where this option stands">
+                <div id="standings" class="standings"></div>
+            </aside>
         </div>
 
         <!-- Pops up for a few seconds after Compare on a card -->
@@ -162,6 +200,6 @@
         </section>
     </div>
 
-    <script type="module" src="app.js?v=62"></script>
+    <script type="module" src="app.js?v=77"></script>
 </body>
 </html>

@@ -118,7 +118,7 @@ reflections, one without): one block per group of studies, with their colour dot
    pieces together: apartments, cores and corridors); the chosen level stays from option to option.
    A 3D analysis shows its score for the option top right (`score_label`
    + value + unit) and, like the Table view, an "ⓘ About" button. "Where this option stands" shows actual value positions among the
-   matching options.
+   matching options, in the right side sheet (under the preview below 1100px).
 4. **Gallery** of matching options ("Order by" one result or Index; Index by default when the study
    has it, each batch together); "Compare" builds a shortlist of up to 4.
 5. **Compare methods** (2+ methods shown): matching count, best and median per method.
@@ -144,7 +144,8 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 | `comparison.js` | the Compare options section (radar, strengths, values table) |
 | `parallel.js` | parallel-coordinates chart (d3) |
 | `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera |
-| `style.css` | all styles |
+| `style.css` | all styles; its colour/radius/font names are aliases of the `@acpvarchitects/ui` tokens |
+| `theme/` | vendored `@acpvarchitects/ui` 0.17.1 tokens (`base.css`, `tertiary/coral.css`, `tokens/`) + local Inter font; see `theme/README.md`. `<body class="light-medium-contrast">` picks the contrast mode (as the library ThemeService does in the Angular apps); `<html class="acpv-density--2">` the density |
 
 ## Deploy (dev)
 

@@ -1,29 +1,73 @@
 /* Design Explorer v2 — layout A (filters left, combined gallery right). */
 
-:root {
-    --bg: #f5f5f2;
-    --card: #ffffff;
-    --soft: #f0f2ed;
-    --text: #252b29;
-    --muted: #69726d;
-    --faint: #a3aba4;
-    --line: #e0e4dd;
-    --line-strong: #cdd5ca;
-    --accent: #2f5a45;
-    --accent-dark: #263e34;
-    --accent-soft: #e8f0ea;
+/* On <body>, not :root: the theme class (light-medium-contrast) sits on <body>, as the library's
+   ThemeService puts it in the Angular apps, and the colour roles only exist from there down. An
+   alias declared on :root would be resolved before the class applies (light values, shell 238
+   instead of 232). */
+body {
+    /* Colours come from @acpvarchitects/ui (theme/base.css + tertiary/coral.css, class on <body>);
+       the names below are this app's own, kept as aliases of the library roles. */
+    --bg: var(--md-sys-color-surface-container); /* app-frame shell tone (library: main-shell) */
+    --card: var(--md-sys-color-surface-container-lowest);
+    --soft: var(--md-sys-color-surface-container-low);
+    --text: var(--md-sys-color-on-surface);
+    --muted: var(--md-sys-color-on-surface-variant);
+    --faint: var(--md-sys-color-outline-variant);
+    --line: var(--md-sys-color-surface-container-high);
+    --line-strong: var(--md-sys-color-surface-container-highest);
+    --accent: var(--md-sys-color-primary);
+    --accent-dark: var(--md-sys-color-primary-container);
+    --accent-soft: var(--md-sys-color-surface-container);
+    --on-accent: var(--md-sys-color-on-primary);
     --good: #3b6d11;
     --good-soft: #eaf3de;
     --warn: #854f0b;
-    --inspect: #a43138;
-    --radius: 7px;
-    --radius-lg: 10px;
-    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    --inspect: var(--md-sys-color-tertiary);
+    --radius: var(--acpv-sys-radius-sm);
+    --radius-lg: var(--acpv-sys-radius-lg); /* card = pane, corner large */
+    --shell-gap: var(--acpv-sys-space-2, 8px);
+    --radius-field: var(--acpv-sys-radius-xs);
+    --radius-button: var(--acpv-sys-corner-full);
+    font-family: var(--acpv-sys-font-family-primary);
     color: var(--text);
 }
 
 * {
     box-sizing: border-box;
+}
+
+/* Density -2 ("compact"), the library's indication for ACPV apps (docs/reference/density.md,
+   RC 2026-10-07; Pantheon ships provideAcpvDensity(-2)). Same values as theme/density.scss emits
+   for .acpv-density--2: 64 + (-2 * 4) for the app bar and the 32px Material button. */
+.acpv-density--2 {
+    --acpv-density-appbar-height: 56px;
+    --acpv-density-section-header-height: 48px;
+    --acpv-density-control-height: 32px;
+}
+
+/* Scrollbar of @acpvarchitects/ui (theme/custom-theme.scss) */
+::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--md-sys-color-outline-variant);
+    border: none;
+    border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--md-sys-color-outline);
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--md-sys-color-outline-variant) transparent;
 }
 
 [hidden] {
@@ -74,9 +118,10 @@ button,
     font-size: 13px;
     color: var(--text);
     background: var(--card);
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius);
-    padding: 5px 12px;
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: var(--radius-button);
+    min-height: var(--acpv-density-control-height, 32px);
+    padding: 5px 14px;
     cursor: pointer;
     text-decoration: none;
     white-space: nowrap;
@@ -105,14 +150,13 @@ input[type="number"] {
     font-size: 13px;
     color: var(--text);
     background: var(--card);
-    border: 1px solid var(--line-strong);
-    border-radius: 5px;
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: var(--radius-field);
     padding: 6px 8px;
 }
 
 .card {
     background: var(--card);
-    border: 1px solid var(--line);
     border-radius: var(--radius-lg);
     padding: 16px 18px;
 }
@@ -130,7 +174,7 @@ input[type="number"] {
     letter-spacing: 1.5px;
     text-transform: uppercase;
     font-weight: 700;
-    color: #577066;
+    color: var(--muted);
 }
 
 .seg {
@@ -183,89 +227,287 @@ input[type="number"] {
 }
 
 /* ---- Top bar ---- */
-.topbar {
+/* ---- App bar: acpv-appbar of @acpvarchitects/ui (components/layout/appbar) ---- */
+.acpv-appbar {
+    --_appbar-pad-x: 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 14px 28px;
-    background: var(--card);
-    border-bottom: 1px solid var(--line);
+    box-sizing: border-box;
+    width: 100%;
+    height: var(--acpv-density-appbar-height, 64px);
+    padding: 0 var(--_appbar-pad-x);
+    background: var(--bg); /* fused with the shell, as in the app frame */
+    color: var(--md-sys-color-on-background);
 }
 
-.brand {
+.acpv-appbar-left {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
+    min-width: 0;
 }
 
-.brand img {
-    height: 18px;
+/* Corner cell (appbar band x rail column): as many pixels as the side-nav icon column
+   (rail 80px - 2 x 8px padding = 64px), shifted from the appbar padding onto the nav column
+   origin, so the icon and the title sit at x=84 as in the library's apps (hamburger centre = rail
+   icon axis). Same formula as appbar.component.css, with the nav origin at the window edge. */
+.acpv-appbar-menu-cell {
+    display: inline-flex;
+    flex-shrink: 0;
+    justify-content: center;
+    width: calc(var(--acpv-sys-sidenav-rail-width, 80px) - 2 * var(--acpv-sys-space-2, 8px));
+    margin-left: calc(var(--acpv-sys-space-2, 8px) - var(--_appbar-pad-x));
 }
 
-.brand-app {
-    font-weight: 600;
-    padding-left: 14px;
-    border-left: 1px solid var(--line-strong);
-}
-
-.project {
+.acpv-app-logo {
     display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.acpv-app-icon {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}
+
+.acpv-app-title {
+    margin: 0;
+    font-size: var(--acpv-sys-type-title-lg, 22px);
+    line-height: var(--acpv-sys-type-title-lg-line-height, 28px);
+    color: var(--md-sys-color-on-background);
+}
+
+/* centre-side slot: the open study */
+.acpv-appbar-center {
+    flex: 1;
+    min-width: 200px;
+    max-width: 640px;
+    display: flex;
+    justify-content: center;
     align-items: baseline;
     gap: 10px;
     font-weight: 600;
 }
 
-.actions {
+.toolbar-right-actions {
     display: flex;
-    gap: 8px;
+    align-items: center;
+    gap: 12px;
+    color: var(--md-sys-color-on-surface);
+}
+
+.toolbar-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 16px;
+    background: transparent;
+    transition: background-color 200ms ease;
+}
+
+@media (max-width: 1024px) {
+    .acpv-appbar {
+        --_appbar-pad-x: 16px;
+        gap: 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    .acpv-appbar {
+        height: auto;
+        min-height: var(--acpv-density-appbar-height, 64px);
+        flex-wrap: wrap;
+        padding: 8px var(--_appbar-pad-x);
+    }
+
+    .acpv-appbar-center {
+        order: 3;
+        flex: 1 1 100%; /* its own row under the title and the actions */
+        width: 100%;
+        max-width: none;
+    }
+}
+
+.toolbar-button:hover:not(:disabled) {
+    background-color: var(--md-sys-color-surface-container-high);
+}
+
+.toolbar-button svg {
+    width: 24px;
+    height: 24px;
+    fill: var(--md-sys-color-on-surface-variant);
+}
+
+.toolbar-button .icon-done,
+.toolbar-button.copied .icon-link {
+    display: none;
+}
+
+.toolbar-button.copied .icon-done {
+    display: block;
+}
+
+/* The window never scrolls (library shell): topbar on top, the frame fills the rest, the left
+   panel and the center card scroll inside themselves. Below 900px it is one column and the page
+   scrolls (see the media query). */
+html,
+body {
+    height: 100%;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 main {
-    max-width: 1800px;
-    margin: 0 auto;
-    padding: 26px 28px 60px;
+    flex: 1;
+    min-height: 0;
+    /* shell gap on top, right and bottom; on the left the drawer track starts at the window edge */
+    padding: var(--shell-gap) var(--shell-gap) var(--shell-gap) 0;
 }
 
 /* ---- Top: introduction + method tabs, chart ---- */
-/* Same columns as .workspace, so the chart lines up with the results / preview below. */
-.overview-top {
+/* App frame, as in @acpvarchitects/ui main-shell: the left panel is fused with the shell (no
+   card of its own, library default width 280px); the center is ONE card (tone + radius, no
+   border); the shell gap is the same on the four sides, the panel/card gap is space-4. */
+.app-frame {
     display: grid;
-    grid-template-columns: 240px minmax(0, 1fr);
-    gap: 24px;
-    align-items: start;
-    margin-bottom: 18px;
+    --acpv-panel-gap: var(--acpv-sys-space-4, 16px);
+    /* the panel's own gap is part of its track, so the panel itself is 280px wide */
+    /* left track = the library's drawer width (280px, --acpv-sys-sidenav-width), flush with the
+       window edge; its content sits 8px inside, so the card starts right at 280px */
+    grid-template-columns: var(--acpv-sys-sidenav-width, 280px) minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr);
+    transition: grid-template-columns var(--acpv-sys-motion-duration-normal, 250ms) ease;
+    height: 100%; /* no column-gap: the side sheet brings its own gap only while it is open */
 }
 
-.intro h1 {
-    font-size: 19px;
-    line-height: 1.25;
-    letter-spacing: -0.3px;
-    margin: 6px 0 8px;
+/* Rail (sidebar closed): 80px track, icons on the same axis as the hamburger */
+html.nav-collapsed .app-frame {
+    grid-template-columns: var(--acpv-sys-sidenav-rail-width, 80px) minmax(0, 1fr) auto;
 }
 
-.intro > p {
-    font-size: 13px;
+.rail {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 0;
 }
 
-.intro .method-tabs button {
-    padding: 7px 12px;
+html.nav-collapsed .rail {
+    display: flex;
+}
+
+html.nav-collapsed .left-panel .drawer {
+    display: none;
+}
+
+.rail-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 36px;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: var(--acpv-sys-radius-full, 999px);
+    background: transparent;
+}
+
+.rail-btn:hover:not(:disabled) {
+    background: var(--md-sys-color-surface-container-high);
+}
+
+.rail-btn svg {
+    width: 24px;
+    height: 24px;
+    fill: var(--md-sys-color-on-surface-variant);
+}
+
+.rail-btn .filter-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    pointer-events: none;
+}
+
+.left-panel {
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0 var(--acpv-sys-space-2, 8px);
+}
+
+/* Same model as Pantheon's frame card: the card itself does not scroll, an inner container does,
+   and the card keeps the library's 12px padding-inline-end (main-shell.component.css, "SCROLLBAR
+   GUTTER"), so the scrollbar floats clear of the card's right edge, top and bottom curves. */
+.center {
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    padding: var(--acpv-sys-space-2, 8px) 12px var(--acpv-sys-space-2, 8px) 0;
+}
+
+.center-scroll {
+    height: 100%;
+    overflow-y: auto;
+    scrollbar-gutter: stable; /* the width does not jump when the bar appears */
+    padding: var(--acpv-sys-space-2, 8px) var(--acpv-sys-space-4, 16px);
+}
+
+/* Docked right side sheet (library right-panel): a card like the center one, 256px, 16px from it.
+   It is open while an option is selected and holds "Where this option stands". */
+.sidesheet {
+    width: var(--acpv-sidesheet-width, var(--acpv-sys-sidesheet-width, 256px));
+    min-height: 0;
+    margin-left: var(--acpv-panel-gap);
+    padding: var(--acpv-sys-space-4, 16px);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    background: var(--card);
+    border-radius: var(--radius-lg);
+}
+
+/* Blocks inside the center card: a tonal step (surface-container-low), still no border */
+.center .card {
+    background: var(--soft);
+    border-radius: var(--acpv-sys-radius-md);
+}
+
+.methods-bar {
+    margin-bottom: 12px;
+}
+
+/* nothing to show with one study: no empty band */
+.methods-bar:not(:has(> :not([hidden]))) {
+    display: none;
 }
 
 .method-tabs {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-top: 20px;
 }
 
 .method-tabs button {
-    padding: 9px 16px;
+    padding: 7px 12px;
 }
 
 .method-tabs button[aria-pressed="true"] {
     background: var(--accent-dark);
-    color: #fff;
+    color: var(--on-accent);
     border-color: var(--accent-dark);
 }
 
@@ -290,7 +532,7 @@ main {
     font-size: 11px;
     font-weight: 700;
     line-height: 1;
-    color: #fff;
+    color: var(--on-accent);
 }
 
 .method-tick.on {
@@ -316,6 +558,7 @@ main {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+    margin-bottom: 14px; /* room between the buttons and the axis titles under them */
     font-size: 11px;
 }
 
@@ -375,7 +618,7 @@ main {
 }
 
 .pc-l0 {
-    stroke: #d3d1c7;
+    stroke: var(--md-sys-color-outline-variant);
     stroke-opacity: 0.45;
     pointer-events: none; /* filtered out: not clickable, so no hand and no hover */
 }
@@ -511,7 +754,7 @@ main {
 }
 
 .pc-target circle {
-    fill: #c62828;
+    fill: var(--inspect);
     stroke: var(--card);
     stroke-width: 1.5;
 }
@@ -519,26 +762,17 @@ main {
 .pc-axis .pc-target text {
     font-size: 10px;
     font-weight: 600;
-    fill: #c62828;
+    fill: var(--inspect);
     paint-order: stroke;
     stroke: var(--card);
     stroke-width: 3px;
 }
 
 /* ---- Workspace: filters | results ---- */
-.workspace {
-    display: grid;
-    grid-template-columns: 240px minmax(0, 1fr);
-    gap: 24px;
-    align-items: start;
-}
 
-/* Always the full window height while the page scrolls; open sections scroll inside it. */
+/* The left panel scrolls as a whole. */
 .filters {
-    position: sticky;
-    top: 16px;
-    height: calc(100vh - 32px);
-    overflow-y: auto;
+    margin-top: 8px;
 }
 
 .filters-head {
@@ -604,7 +838,7 @@ main {
     padding: 0 5px;
     border-radius: 999px;
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     font-size: 11px;
     font-weight: 600;
     line-height: 18px;
@@ -804,24 +1038,6 @@ main {
     margin-left: auto;
 }
 
-.preview-body {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 270px;
-    gap: 22px;
-}
-
-/* "Where this option stands" is as tall as the image / 3D view and scrolls inside, so there
-   is no empty band under the view. */
-.preview-body .standings {
-    max-height: 420px;
-    overflow-y: auto;
-    padding-right: 4px;
-}
-
-.preview.expanded .preview-body .standings {
-    max-height: 620px;
-}
-
 .media {
     position: relative;
     height: 420px;
@@ -881,7 +1097,7 @@ main {
 
 .media-table tr.total td {
     font-weight: 700;
-    border-top: 2px solid var(--ink, #1f2a24);
+    border-top: 2px solid var(--text);
     border-bottom: none;
 }
 
@@ -952,7 +1168,7 @@ main {
 .level-picker button.on {
     background: var(--accent);
     border-color: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
 }
 
 /* Top right of the 3D analysis / table: the option's score and "About". */
@@ -1034,9 +1250,8 @@ main {
     width: min(680px, 100%);
     max-height: min(85vh, 900px);
     background: var(--card);
-    border: 1px solid var(--line);
     border-radius: var(--radius-lg);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+    box-shadow: var(--acpv-sys-shadow-3);
 }
 
 .about-head {
@@ -1181,7 +1396,7 @@ main {
 .target-dot {
     width: 9px;
     height: 9px;
-    background: #c62828;
+    background: var(--inspect);
     border: 1.5px solid var(--card);
     z-index: 2;
 }
@@ -1192,7 +1407,7 @@ main {
     transform: translateX(-50%);
     font-size: 10px;
     line-height: 1;
-    color: #c62828;
+    color: var(--inspect);
     white-space: nowrap;
 }
 
@@ -1258,29 +1473,44 @@ main {
 
 .gallery {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-    gap: 14px;
+    /* at most 6 cards per row on a wide window (more air), fewer when it is narrow */
+    --gallery-gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(max(190px, calc((100% - 5 * var(--gallery-gap)) / 6)), 1fr));
+    gap: var(--gallery-gap);
 }
 
+/* Option cards follow Pantheon's acpv-media-card: surface-container-low, media on
+   surface-container, radius-lg, elevated card (shadow-1 at rest, shadow-3 on hover), selected =
+   a 3px inner outline in the primary colour (drawn on a pseudo-element: selecting never changes
+   the card's size), the picture zooms a little on hover. */
 .option-card {
+    position: relative;
     display: flex;
     flex-direction: column;
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 8px;
+    background: var(--md-sys-color-surface-container-low);
+    border-radius: var(--acpv-sys-radius-lg);
     overflow: hidden;
-    transition: box-shadow 0.15s, transform 0.15s;
+    box-shadow: var(--acpv-sys-shadow-1);
+    transition: box-shadow var(--acpv-sys-motion-duration-short4, 200ms) ease;
 }
 
 .option-card:hover {
-    box-shadow: 0 4px 15px #243f3020;
-    transform: translateY(-2px);
-    border-color: #91a48e;
+    box-shadow: var(--acpv-sys-shadow-3);
 }
 
-.option-card.selected {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
+.option-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 3px var(--accent);
+    pointer-events: none;
+    opacity: 0;
+}
+
+.option-card.selected::after {
+    opacity: 1;
 }
 
 .card-main {
@@ -1300,8 +1530,7 @@ main {
 
 .option-image {
     aspect-ratio: 1.45;
-    background: var(--soft);
-    border-bottom: 1px solid var(--line);
+    background: var(--md-sys-color-surface-container);
     overflow: hidden;
 }
 
@@ -1310,6 +1539,17 @@ main {
     height: 100%;
     object-fit: contain;
     display: block;
+    transition: transform var(--acpv-sys-motion-duration-medium2, 300ms) ease;
+}
+
+.option-card:hover .option-image img {
+    transform: scale(1.05);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .option-card:hover .option-image img {
+        transform: none;
+    }
 }
 
 .option-body {
@@ -1360,9 +1600,8 @@ main {
 .empty {
     grid-column: 1 / -1;
     padding: 40px;
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-lg);
+    background: var(--soft);
+    border-radius: var(--acpv-sys-radius-md);
 }
 
 .empty p {
@@ -1375,9 +1614,9 @@ main {
     display: flex;
     flex-wrap: wrap;
     margin: 24px 0 18px;
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
+    background: var(--soft);
+    border-radius: var(--acpv-sys-radius-md);
+    overflow: hidden;
 }
 
 .method-summary-label {
@@ -1455,8 +1694,8 @@ main {
 @keyframes arrived {
     0%,
     30% {
-        box-shadow: 0 0 0 3px #629d79;
-        background: #f0f7ee;
+        box-shadow: 0 0 0 3px var(--md-sys-color-outline-variant);
+        background: var(--accent-soft);
     }
     100% {
         box-shadow: 0 0 0 0 transparent;
@@ -1469,13 +1708,13 @@ main {
     align-self: flex-start;
     padding: 6px 14px;
     background: var(--accent-dark);
-    color: #fff;
+    color: var(--on-accent);
     border: 1px solid var(--accent-dark);
     font-weight: 600;
 }
 
 button.cp-primary:hover:not(:disabled) {
-    background: #1b2e26;
+    background: var(--md-sys-color-inverse-surface);
 }
 
 .cp-head {
@@ -1640,11 +1879,11 @@ button.cp-primary:hover:not(:disabled) {
 }
 
 .cp-leading {
-    background: #edf5e8;
+    background: var(--good-soft);
 }
 
 .cp-reference {
-    background: #f2f4f0;
+    background: var(--soft);
     color: var(--muted);
 }
 
@@ -1661,7 +1900,7 @@ button.cp-primary:hover:not(:disabled) {
     max-width: 95vw;
     padding: 12px 18px;
     background: var(--accent-dark);
-    color: #fff;
+    color: var(--on-accent);
     border-radius: 12px;
     box-shadow: 0 4px 18px #0003;
     white-space: nowrap;
@@ -1685,26 +1924,26 @@ button.cp-primary:hover:not(:disabled) {
 
 .shortlist-popup span {
     font-size: 12px;
-    color: #d1ddd4;
+    color: var(--md-sys-color-inverse-on-surface);
 }
 
 .shortlist-popup button {
     font-size: 12px;
-    background: #fff;
+    background: var(--card);
     color: var(--accent-dark);
     border: 0;
 }
 
 .shortlist-popup button.ghost {
     background: transparent;
-    color: #fff;
-    border: 1px solid #ffffff50;
+    color: var(--on-accent);
+    border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
     .comparison.arrived {
         animation: none;
-        outline: 2px solid #629d79;
+        outline: 2px solid var(--md-sys-color-outline-variant);
     }
 
     .shortlist-popup {
@@ -1746,7 +1985,6 @@ button.cp-primary:hover:not(:disabled) {
     margin: 80px auto;
     padding: 20px 24px;
     background: var(--card);
-    border: 1px solid var(--line);
     border-radius: var(--radius-lg);
 }
 
@@ -1762,43 +2000,71 @@ code {
 
 /* ---- Narrower screens ---- */
 @media (max-width: 1100px) {
-    .overview-top {
+        /* Single column, the page scrolls (below this width three panes do not fit) */
+    html,
+    body {
+        height: auto;
+    }
+
+    body {
+        display: block;
+        overflow: visible;
+    }
+
+    .app-frame {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: none;
+        row-gap: var(--acpv-sys-space-4, 16px);
+        height: auto;
+    }
+
+    .left-panel,
+    .center,
+    .center-scroll,
+    .sidesheet {
+        overflow-y: visible;
+    }
+
+    .center {
+        padding: var(--acpv-sys-space-2, 8px) 0;
+    }
+
+    .center-scroll {
+        height: auto;
+    }
+
+    main {
+        padding-left: var(--shell-gap); /* one column: no drawer track at the window edge */
+    }
+
+    /* one column: the filters are always shown above the results, no rail and no hamburger */
+    #navToggle,
+    .rail {
+        display: none !important;
+    }
+
+    html.nav-collapsed .left-panel .drawer {
+        display: block;
+    }
+
+    html.nav-collapsed .app-frame {
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .intro h1 {
-        max-width: none;
+    .sidesheet {
+        display: none; /* its content moves under the preview image (placeStandings in app.js) */
     }
 
-    .preview-body {
-        grid-template-columns: minmax(0, 1fr) 230px;
+    .preview .standings {
+        margin-top: 18px;
     }
 }
 
 @media (max-width: 900px) {
-    .workspace {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    .filters {
-        position: static;
-        height: auto;
-        max-height: none;
-    }
-
-    .preview-body .standings,
-    .preview.expanded .preview-body .standings {
-        max-height: none; /* below the view on narrow screens: no inner scroll */
-    }
-
     #rangeFilters {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 0 14px;
-    }
-
-    .preview-body {
-        grid-template-columns: 1fr;
     }
 
     .media {
@@ -1816,30 +2082,6 @@ code {
 }
 
 @media (max-width: 700px) {
-    .topbar {
-        flex-wrap: wrap;
-        padding: 10px 16px;
-    }
-
-    .brand {
-        flex-wrap: wrap;
-        gap: 4px 14px;
-    }
-
-    .brand img {
-        height: auto;
-        max-width: 100%;
-    }
-
-    .brand-app {
-        padding-left: 0;
-        border-left: 0;
-    }
-
-    main {
-        padding: 16px 16px 40px;
-    }
-
     #rangeFilters {
         grid-template-columns: 1fr;
     }
