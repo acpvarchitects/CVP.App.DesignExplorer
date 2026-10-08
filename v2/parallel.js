@@ -3,9 +3,10 @@
 // stays high is good on every goal. Dragging on an axis filters the options.
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
-const PLOT_HEIGHT = 280; // chart height with a two-line axis title; longer titles make the header taller
-let HEIGHT = PLOT_HEIGHT;
-const MARGIN = { top: 48, right: 72, bottom: 22, left: 56 };
+const PLOT_INNER = 210; // height of the plot area itself (between the header and the foot)
+let HEIGHT = 280;
+// top = axis header (title, unit): grows with the longest title; bottom = foot ("↑ better" / "✕ hide")
+const MARGIN = { top: 48, right: 72, bottom: 38, left: 56 };
 const TITLE_LINE = 14; // px between the lines of an axis title
 const GROUP_GAP = 10; // px between the batches of a grouped axis
 
@@ -72,16 +73,16 @@ export class ParallelChart {
         this.x = d3.scalePoint(axes.map((a) => a.col), [MARGIN.left, this.width - MARGIN.right]);
         const spacing = axes.length > 1 ? this.x.step() : this.width;
         // Titles wrap to as many lines as their axis is wide; the header grows to fit the longest
-        // one (two lines is the minimum, as before), the plot area keeps its height.
+        // one, the plot area keeps its height.
         // The unit ("[kWh/m²]") is not part of the title: it sits on its own line under it, so the
         // names wrap less.
         const parts = new Map(axes.map((a) => [a.col, splitUnit(a.label)]));
         const titles = new Map(axes.map((a) => [a.col, titleLines(this.svg, parts.get(a.col).name, spacing - 12, a.info ? " ⓘ" : "")]));
         const lines = Math.max(1, ...[...titles.values()].map((l) => l.length));
         const hasUnits = [...parts.values()].some((p) => p.unit);
-        // rows under the title: [unit] + "↑ better"; 48 is the least (one title line + both rows)
-        MARGIN.top = Math.max(48, 20 + (lines - 1) * TITLE_LINE + (hasUnits ? 2 : 1) * TITLE_LINE);
-        HEIGHT = PLOT_HEIGHT + (MARGIN.top - 48);
+        // first baseline at 12, the unit one line under the last title line, 8px before the plot
+        MARGIN.top = 20 + (lines - 1) * TITLE_LINE + (hasUnits ? TITLE_LINE : 0);
+        HEIGHT = MARGIN.top + PLOT_INNER + MARGIN.bottom;
         this.svg.attr("width", this.width).attr("height", HEIGHT).attr("viewBox", `0 0 ${this.width} ${HEIGHT}`);
         this.segments = new Map(axes.filter((a) => a.groups).map((a) => [a.col, segmentsOf(a)]));
         this.y = new Map(
@@ -108,9 +109,12 @@ export class ParallelChart {
             g.selectChildren().remove();
             if (a.groups) this.drawGroups(g, a);
             else g.append("g").call(d3.axisLeft(this.y.get(a.col)).ticks(5).tickSizeOuter(0));
-            // Header: title, then "↑ better"; on hover that line becomes "✕ hide" (removes the axis).
+            // Header: title and unit. Foot (under the plot): "↑ better", which on hover becomes
+            // "✕ hide" (removes the axis). One group, so hovering the title shows "✕ hide" too.
             const head = g.append("g").attr("class", "pc-head");
+            const footY = HEIGHT - MARGIN.bottom;
             head.append("rect").attr("x", -(spacing - 12) / 2).attr("y", 0).attr("width", spacing - 12).attr("height", MARGIN.top).attr("fill", "transparent");
+            head.append("rect").attr("x", -(spacing - 12) / 2).attr("y", footY).attr("width", spacing - 12).attr("height", MARGIN.bottom).attr("fill", "transparent");
             const label = head.append("text").attr("class", "pc-label").attr("y", 12).attr("text-anchor", "middle");
             wrap(label, a.label, titles.get(a.col), !!a.info);
             // A described axis: its title opens "About" (pointer + ⓘ so it can be found).
@@ -118,19 +122,19 @@ export class ParallelChart {
             if (parts.get(a.col).unit) {
                 head.append("text")
                     .attr("class", "pc-unit")
-                    .attr("y", MARGIN.top - 8 - TITLE_LINE)
+                    .attr("y", MARGIN.top - 8)
                     .attr("text-anchor", "middle")
                     .text(parts.get(a.col).unit);
             }
             head.append("text")
                 .attr("class", "pc-hint")
-                .attr("y", MARGIN.top - 8)
+                .attr("y", footY + 17)
                 .attr("text-anchor", "middle")
                 .text(a.dir > 0 ? "↑ better" : a.dir < 0 ? "↓ better (flipped)" : "");
             if (this.onHide && axes.length > 1) {
                 head.append("text")
                     .attr("class", "pc-hide")
-                    .attr("y", MARGIN.top - 8)
+                    .attr("y", footY + 17)
                     .attr("text-anchor", "middle")
                     .text("✕ hide")
                     .on("click", () => this.onHide(a.col))
