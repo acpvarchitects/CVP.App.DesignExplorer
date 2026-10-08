@@ -3,8 +3,10 @@
 // stays high is good on every goal. Dragging on an axis filters the options.
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
-const HEIGHT = 280;
-const MARGIN = { top: 48, right: 80, bottom: 22, left: 80 };
+const PLOT_HEIGHT = 280; // chart height with a two-line axis title; longer titles make the header taller
+let HEIGHT = PLOT_HEIGHT;
+const MARGIN = { top: 48, right: 72, bottom: 22, left: 56 };
+const TITLE_LINE = 14; // px between the lines of an axis title
 const GROUP_GAP = 10; // px between the batches of a grouped axis
 
 export class ParallelChart {
@@ -67,8 +69,15 @@ export class ParallelChart {
         if (!this.model) return;
         const { axes, options } = this.model;
         this.width = this.el.clientWidth;
-        this.svg.attr("width", this.width).attr("viewBox", `0 0 ${this.width} ${HEIGHT}`);
         this.x = d3.scalePoint(axes.map((a) => a.col), [MARGIN.left, this.width - MARGIN.right]);
+        const spacing = axes.length > 1 ? this.x.step() : this.width;
+        // Titles wrap to as many lines as their axis is wide; the header grows to fit the longest
+        // one (two lines is the minimum, as before), the plot area keeps its height.
+        const titles = new Map(axes.map((a) => [a.col, titleLines(this.svg, a.label, spacing - 12, a.info ? " ⓘ" : "")]));
+        const lines = Math.max(2, ...[...titles.values()].map((l) => l.length));
+        MARGIN.top = 48 + (lines - 2) * TITLE_LINE;
+        HEIGHT = PLOT_HEIGHT + (MARGIN.top - 48);
+        this.svg.attr("width", this.width).attr("height", HEIGHT).attr("viewBox", `0 0 ${this.width} ${HEIGHT}`);
         this.segments = new Map(axes.filter((a) => a.groups).map((a) => [a.col, segmentsOf(a)]));
         this.y = new Map(
             axes.filter((a) => !a.groups).map((a) => {
@@ -83,7 +92,6 @@ export class ParallelChart {
         // Forget drag ranges on axes that no longer exist.
         for (const col of this.ranges.keys()) if (!this.y.has(col)) this.ranges.delete(col);
 
-        const spacing = axes.length > 1 ? this.x.step() : this.width;
         const axis = this.axesLayer
             .selectAll("g.pc-axis")
             .data(axes, (a) => a.col)
@@ -99,7 +107,7 @@ export class ParallelChart {
             const head = g.append("g").attr("class", "pc-head");
             head.append("rect").attr("x", -(spacing - 12) / 2).attr("y", 0).attr("width", spacing - 12).attr("height", MARGIN.top).attr("fill", "transparent");
             const label = head.append("text").attr("class", "pc-label").attr("y", 12).attr("text-anchor", "middle");
-            wrap(label, a.label, spacing - 12, a.info ? " ⓘ" : "");
+            wrap(label, a.label, titles.get(a.col), a.info ? " ⓘ" : "");
             // A described axis: its title opens "About" (pointer + ⓘ so it can be found).
             if (a.info) label.classed("has-info", true).on("click", () => this.onInfo?.(a.col));
             head.append("text")
@@ -245,16 +253,26 @@ function segmentsOf(a) {
     });
 }
 
-// Splits an axis label over at most two lines so neighbours don't overlap.
-// `suffix` (e.g. the ⓘ of a described axis) follows the last line.
-function wrap(text, label, width, suffix = "") {
-    const words = label.split(/\s+/);
-    const lines = [""];
-    for (const w of words) {
-        const next = lines[lines.length - 1] ? lines[lines.length - 1] + " " + w : w;
-        if (next.length * 6.5 > width && lines[lines.length - 1] && lines.length < 2) lines.push(w);
-        else lines[lines.length - 1] = next;
+// Splits an axis title into lines no wider than `width`, measured with the real font (the
+// text is drawn in a hidden .pc-label), so neighbouring titles never overlap. A single word wider
+// than the axis stays whole. `suffix` (the ⓘ of a described axis) follows the last line.
+function titleLines(svg, label, width, suffix = "") {
+    const holder = svg.append("g").attr("class", "pc-axis").attr("visibility", "hidden");
+    const probe = holder.append("text").attr("class", "pc-label");
+    const fits = (t) => probe.text(t).node().getComputedTextLength() <= width;
+    const lines = [];
+    for (const w of label.split(/\s+/)) {
+        const cur = lines[lines.length - 1];
+        if (cur !== undefined && fits(cur + " " + w)) lines[lines.length - 1] = cur + " " + w;
+        else lines.push(w);
     }
-    lines.forEach((l, i) => text.append("tspan").attr("x", 0).attr("dy", i ? 14 : 0).text(l + (i === lines.length - 1 ? suffix : "")));
+    // the suffix must fit too: if not, it takes a line of its own
+    if (suffix && lines.length && !fits(lines[lines.length - 1] + suffix)) lines.push("");
+    holder.remove();
+    return lines;
+}
+
+function wrap(text, label, lines, suffix = "") {
+    lines.forEach((l, i) => text.append("tspan").attr("x", 0).attr("dy", i ? TITLE_LINE : 0).text(l + (i === lines.length - 1 ? suffix : "")));
     text.append("title").text(suffix ? label + " · click for a description" : label);
 }
