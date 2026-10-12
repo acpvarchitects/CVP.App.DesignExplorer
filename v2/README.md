@@ -16,6 +16,7 @@ when several studies are open, each is shown as a **method**.
 | Several studies (methods) together | `/v2/?PROJECT=STUDY_A,STUDY_B` |
 | Short display names | `/v2/?PROJECT=FOLDER_A:Label A,FOLDER_B:Label B` |
 | Local folder copy (tests) | `/v2/?data=/v2/_test/STUDY/` |
+| The 2D analyses of one study (single option, level by level) | `/v2/analysis.html?PROJECT=STUDY` (optional `&an=<key>&level=<key>`) |
 
 `?PROJECT=` loads `data.csv` and its files from the design-explorer API
 (`.../v1/design-explorer/projects/<folder>/`, read only). On dev: `/dev/v2/?PROJECT=…`.
@@ -40,7 +41,7 @@ from Docker (local test data).
 | `out:<name>` | result without a better/worse direction (shown, never ranked) |
 | `img`, `img:<view>` | image, one column per view |
 | `threeD` | 3D model (`.json` legacy three.js format like the classic app, or `.glb`) |
-| `analysis:<name>` | 3D analysis mesh with vertex colors (`.glb`) |
+| `analysis:<name>` | 3D analysis mesh with vertex colors (`.glb`), or a 2D plan analysis (`.svg`, see below) |
 | `target:<result>` | optional target of the `out:` column with that name (arrow optional), e.g. `target:SUL (75% GFA) [m²]`; drawn as a red dot with its value on that result's axis in the parallel chart and on its bar in "Where this option stands", plus "% of target" |
 | `table_<name>` | small table per option (`.csv`, first row = header) shown in the **Table** view; numbers are formatted, a first cell `Total` marks the totals row |
 
@@ -83,6 +84,38 @@ no score). Fields used:
 
 Same text in every open study: shown once. Different texts (e.g. one batch computed with noise
 reflections, one without): one block per group of studies, with their colour dots.
+
+### 2D analyses (plans)
+
+An analysis is either 3D (`.glb`) or 2D (`.svg`). A 2D analysis is a vector plan: an SVG whose
+`viewBox` is in metres in the plan view's own frame (x right, y down), shown by `plan2d.js` with
+pan (drag), zoom (wheel, around the cursor; `+` / `−`) and Reset view (or double click). The view
+changes the `viewBox`, so it stays sharp at any zoom; lines use `vector-effect="non-scaling-stroke"`
+and keep their screen width. In the dashboard an `an_*` / `analysis:` cell holding an `.svg` is
+shown that way in the preview (no level picker yet: one file per cell).
+
+**Single-analysis page** (`analysis.html` + `analysis.js`): the 2D analyses of ONE study, no
+`data.csv`, only `layers.json` and the SVGs in the study folder. Left sidebar: analysis menu,
+level buttons, the level's score, a vector legend, the rooms with their averages (hover = highlight
+in the plan) and the description, always visible. Right: the plan; hovering a room shows its name
+and value. `?an=` / `?level=` keep the view in the address.
+
+Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" component):
+
+| File | Content |
+|---|---|
+| `plan_<level>.svg` | the drawing: black poche (`fill-rule` even-odd), cut lines and thin lines, shared by every analysis of that level |
+| `<key>_<level>.svg` | the analysis cells only, one `<g class="room" data-room="…" data-average="…">` per room; drawn under the plan |
+| `layers.json` | `dim: "2d"`, `levels[]` and one entry per analysis (below) |
+
+`layers.json` of a 2D study:
+
+| Field | Use |
+|---|---|
+| `title` | optional page title (default: the folder name) |
+| `levels[]` | `{ key, label, elevation_m, plan_file, viewbox }`, lowest first |
+| `layers[]` with `kind: "analysis"`, `dim: "2d"` | `key`, `label`, `unit`, `better` (`higher` / `lower`), `file_pattern` (`<key>_<level>.svg`), `levels` (keys that exist), `score_label`, `scores` `{ level: value }`, `rooms` `{ level: [{ label, average, area_m2 }] }`, `legend` `{ min, max, segments, colors[] }` (colours spread evenly from min to max), `description` `[{ heading, text }]` |
+| `about` | `[{ heading, text }]`, folded at the end of the description |
 
 ## Page, top to bottom
 
@@ -144,6 +177,8 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 | `comparison.js` | the Compare options section (radar, strengths, values table) |
 | `parallel.js` | parallel-coordinates chart (d3) |
 | `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera |
+| `plan2d.js` | 2D plan viewer (SVG layers, pan / zoom by viewBox, room hover) and `legendColor()` |
+| `analysis.html` / `analysis.js` | single-analysis page: the 2D analyses of one study, level by level |
 | `style.css` | all styles |
 
 ## Deploy (dev)
