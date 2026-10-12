@@ -1497,8 +1497,9 @@ function initSidebar() {
         root.classList.toggle("nav-open", open);
         toggle.setAttribute("aria-expanded", String(open));
         panel.inert = !open;
+        document.querySelector(".center").inert = open; // the page under the scrim is out of reach (Tab, clicks)
         if (!focus) return;
-        if (open) panel.querySelector("summary, button, input, select")?.focus();
+        if (open) panel.querySelector(".drawer summary")?.focus(); // not the rail: it is hidden here
         else toggle.focus();
     };
     // follow the breakpoint: compact = overlay (closed), desktop = rail / drawer as remembered
@@ -1508,6 +1509,7 @@ function initSidebar() {
         } else {
             root.classList.remove("nav-open");
             panel.inert = false;
+            document.querySelector(".center").inert = false;
             toggle.setAttribute("aria-expanded", String(!root.classList.contains("nav-collapsed")));
         }
     };
