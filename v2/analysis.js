@@ -77,7 +77,7 @@ function renderLegend(layer) {
         <div class="an-legend-ticks">${ticks
             .map((t, i) => `<span style="left:${(i / (n - 1)) * 100}%">${i % step ? "" : esc(+t.toFixed(2))}</span>`)
             .join("")}</div>
-        ${layer.better ? `<p class="muted small">${layer.better === "higher" ? "↑ higher is better" : "↓ lower is better"}${lg.max ? ` · values above ${esc(lg.max)} shown at the top colour` : ""}</p>` : ""}`;
+        ${layer.better ? `<p class="muted small">${layer.better === "higher" ? "↑ higher is better" : "↓ lower is better"}</p>` : ""}`;
 }
 
 function renderInfo() {

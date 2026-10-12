@@ -2027,6 +2027,11 @@ code {
     transition: opacity 0.12s;
 }
 
+/* Adjacent analysis cells: no antialiasing seams between them. */
+.plan2d-analysis path {
+    shape-rendering: crispEdges;
+}
+
 .plan2d-analysis g.room.dim {
     opacity: 0.25;
 }
