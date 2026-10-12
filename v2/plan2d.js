@@ -34,6 +34,7 @@ export class PlanViewer {
         container.append(this.svg);
         this.home = null; // [x, y, w, h] of the loaded files
         this.view = null; // current viewBox
+        this.moved = false; // the user panned or zoomed since the last reset
         this.token = 0;
         this.bindEvents();
         new ResizeObserver(() => this.apply()).observe(container);
@@ -45,7 +46,6 @@ export class PlanViewer {
         if (token !== this.token) return false; // a newer request won
         const first = docs[0].documentElement;
         const box = (first.getAttribute("viewBox") || "0 0 100 100").split(/[\s,]+/).map(Number);
-        const sameFrame = this.home && box.every((v, i) => Math.abs(v - this.home[i]) < 1e-6);
         const groups = docs.map((d, i) => {
             const g = document.createElementNS(SVG_NS, "g");
             g.setAttribute("class", "plan2d-layer " + (layers[i].className || ""));
@@ -54,7 +54,9 @@ export class PlanViewer {
         });
         this.svg.replaceChildren(...groups);
         this.home = box;
-        if (!sameFrame || !this.view) this.view = [...box]; // keep the zoom when only the analysis changes
+        // Every level of a study shares one plan frame, so a pan / zoom is kept from level to level
+        // and from analysis to analysis; until the user moves, each level opens fitted.
+        if (!this.moved || !this.view) this.view = [...box];
         this.apply();
         return true;
     }
@@ -81,6 +83,7 @@ export class PlanViewer {
 
     reset() {
         if (!this.home) return;
+        this.moved = false;
         this.view = [...this.home];
         this.apply();
     }
@@ -96,6 +99,7 @@ export class PlanViewer {
         const nw = Math.min(Math.max(w / factor, 0.5), max);
         const nh = (nw / w) * h;
         this.view = [x + (w - nw) * fx, y + (h - nh) * fy, nw, nh];
+        this.moved = true;
         this.apply();
     }
 
@@ -125,6 +129,7 @@ export class PlanViewer {
                 const rect = svg.getBoundingClientRect();
                 const [x, y, w, h] = drag.view;
                 this.view = [x - ((e.clientX - drag.x) / rect.width) * w, y - ((e.clientY - drag.y) / rect.height) * h, w, h];
+                this.moved = true;
                 this.apply();
                 return;
             }

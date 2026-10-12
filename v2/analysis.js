@@ -6,7 +6,7 @@
 //             rooms { level: [{ label, average, area_m2 }] }, levels [keys], description [{ heading, text }] }
 //   about[]   notes common to every analysis
 // URL: ?PROJECT=<folder> (or ?data=<folder url>) [&an=<layer key>] [&level=<level key>]
-import { PlanViewer, legendColor } from "./plan2d.js?v=1";
+import { PlanViewer, legendColor } from "./plan2d.js?v=2";
 import { sectionsHtml } from "./about.js?v=2";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";

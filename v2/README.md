@@ -96,9 +96,10 @@ shown that way in the preview (no level picker yet: one file per cell).
 
 **Single-analysis page** (`analysis.html` + `analysis.js`): the 2D analyses of ONE study, no
 `data.csv`, only `layers.json` and the SVGs in the study folder. Left sidebar: analysis menu,
-level buttons, the level's score, a vector legend, the rooms with their averages (hover = highlight
-in the plan) and the description, always visible. Right: the plan; hovering a room shows its name
-and value. `?an=` / `?level=` keep the view in the address.
+the level's score, a vector legend, the rooms with their averages (hover = highlight
+in the plan) and the description, always visible. Right: the plan, with the level buttons over it top right
+(highest first); hovering a room shows its name and value. Pan and zoom are kept when the level or
+the analysis changes (every level shares one plan frame); Reset view fits the level again. `?an=` / `?level=` keep the view in the address.
 
 Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" component):
 
