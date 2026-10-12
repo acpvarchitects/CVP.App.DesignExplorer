@@ -1472,14 +1472,18 @@ async function init() {
 }
 
 // ---- Sidebar: rail <-> drawer (the library's side-nav model, @acpvarchitects/ui §1-quater) ----
-// The hamburger toggles `nav-collapsed` on <html>: CSS shows the drawer (filters) or the rail (one
-// icon per section). The choice is remembered. Below 1100px the layout is one column and there is
-// no rail (see style.css).
+// Desktop: the hamburger toggles `nav-collapsed` on <html>: CSS shows the drawer (filters) or the
+// rail (one icon per section); the choice is remembered. Compact (<= 839px, the library's
+// breakpoint): the sidebar is a temporary overlay drawer: the hamburger toggles `nav-open`, a scrim
+// or Escape closes it, and while it is closed it is `inert` (out of the tab order).
 function initSidebar() {
     const root = document.documentElement;
     const toggle = $("navToggle");
+    const panel = $("leftPanel");
+    const compact = matchMedia("(max-width: 839px)");
     const KEY = "design-explorer-v2:nav";
-    const set = (collapsed, save = true) => {
+
+    const setCollapsed = (collapsed, save = true) => {
         root.classList.toggle("nav-collapsed", collapsed);
         toggle.setAttribute("aria-expanded", String(!collapsed));
         if (save) {
@@ -1490,29 +1494,59 @@ function initSidebar() {
             }
         }
     };
+    const setOverlay = (open, { focus = true } = {}) => {
+        root.classList.toggle("nav-open", open);
+        toggle.setAttribute("aria-expanded", String(open));
+        panel.inert = !open;
+        if (!focus) return;
+        if (open) panel.querySelector("summary, button, input, select")?.focus();
+        else toggle.focus();
+    };
+    // follow the breakpoint: compact = overlay (closed), desktop = rail / drawer as remembered
+    const sync = () => {
+        if (compact.matches) {
+            setOverlay(false, { focus: false });
+        } else {
+            root.classList.remove("nav-open");
+            panel.inert = false;
+            toggle.setAttribute("aria-expanded", String(!root.classList.contains("nav-collapsed")));
+        }
+    };
+
     let saved = null;
     try {
         saved = localStorage.getItem(KEY);
     } catch {
         /* no storage */
     }
-    set(saved === "collapsed", false);
-    toggle.addEventListener("click", () => set(!root.classList.contains("nav-collapsed")));
+    root.classList.toggle("nav-collapsed", saved === "collapsed");
+    sync();
+
+    toggle.addEventListener("click", () => {
+        if (compact.matches) setOverlay(!root.classList.contains("nav-open"));
+        else setCollapsed(!root.classList.contains("nav-collapsed"));
+    });
+    $("navScrim").addEventListener("click", () => setOverlay(false));
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && compact.matches && root.classList.contains("nav-open")) setOverlay(false);
+    });
+    compact.addEventListener("change", sync);
+
     // a rail icon opens the drawer on its section
     for (const btn of document.querySelectorAll(".rail-btn")) {
         btn.addEventListener("click", () => {
-            set(false);
+            setCollapsed(false);
             $(btn.dataset.section).open = true;
         });
     }
     // the rail badges mirror the ones in the section headers
     for (const [from, to] of [["measurementsBadge", "railMeasurementsBadge"], ["paretoBadge", "railParetoBadge"]]) {
-        const sync = () => {
+        const mirror = () => {
             $(to).textContent = $(from).textContent;
             $(to).title = $(from).title;
         };
-        new MutationObserver(sync).observe($(from), { childList: true, characterData: true, subtree: true, attributes: true });
-        sync();
+        new MutationObserver(mirror).observe($(from), { childList: true, characterData: true, subtree: true, attributes: true });
+        mirror();
     }
 }
 

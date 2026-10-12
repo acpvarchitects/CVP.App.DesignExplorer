@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="theme/tertiary/coral.css?v=1" />
     <link rel="stylesheet" href="theme/tokens/acpv-sys.css?v=1" />
     <link rel="stylesheet" href="theme/fonts.css?v=1" />
-    <link rel="stylesheet" href="style.css?v=77" />
+    <link rel="stylesheet" href="style.css?v=78" />
     <script type="importmap">
         {
             "imports": {
@@ -21,7 +21,7 @@
 </head>
 <body class="light-medium-contrast">
     <!-- App bar, as @acpvarchitects/ui acpv-appbar: app icon + title (left), the open study in the
-         centre-side slot, icon actions on the right. No menu button: there is no rail to toggle. -->
+         centre-side slot, icon actions on the right. The hamburger runs the sidebar (rail <-> drawer, overlay drawer when compact). -->
     <header class="topbar acpv-appbar">
         <div class="acpv-appbar-left">
             <!-- The library's menu-button cell (page-chrome §2: corner cell): the hamburger sits on
@@ -184,6 +184,9 @@
         <nav id="shortlistPopup" class="shortlist-popup" aria-label="Shortlist" hidden></nav>
     </main>
 
+    <!-- Scrim of the overlay drawer (compact screens) -->
+    <div id="navScrim" class="nav-scrim"></div>
+
     <div id="message" class="message" hidden></div>
 
     <!-- About this analysis: opened from a chart axis title or the "About" of a 3D analysis / table -->
@@ -200,6 +203,6 @@
         </section>
     </div>
 
-    <script type="module" src="app.js?v=77"></script>
+    <script type="module" src="app.js?v=78"></script>
 </body>
 </html>

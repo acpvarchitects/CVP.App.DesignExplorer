@@ -397,6 +397,10 @@ html.nav-collapsed .app-frame {
     grid-template-columns: var(--acpv-sys-sidenav-rail-width, 80px) minmax(0, 1fr) auto;
 }
 
+.nav-scrim {
+    display: none;
+}
+
 .rail {
     display: none;
     flex-direction: column;
@@ -2000,59 +2004,8 @@ code {
 
 /* ---- Narrower screens ---- */
 @media (max-width: 1100px) {
-        /* Single column, the page scrolls (below this width three panes do not fit) */
-    html,
-    body {
-        height: auto;
-    }
-
-    body {
-        display: block;
-        overflow: visible;
-    }
-
-    .app-frame {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: none;
-        row-gap: var(--acpv-sys-space-4, 16px);
-        height: auto;
-    }
-
-    .left-panel,
-    .center,
-    .center-scroll,
     .sidesheet {
-        overflow-y: visible;
-    }
-
-    .center {
-        padding: var(--acpv-sys-space-2, 8px) 0;
-    }
-
-    .center-scroll {
-        height: auto;
-    }
-
-    main {
-        padding-left: var(--shell-gap); /* one column: no drawer track at the window edge */
-    }
-
-    /* one column: the filters are always shown above the results, no rail and no hamburger */
-    #navToggle,
-    .rail {
-        display: none !important;
-    }
-
-    html.nav-collapsed .left-panel .drawer {
-        display: block;
-    }
-
-    html.nav-collapsed .app-frame {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    .sidesheet {
-        display: none; /* its content moves under the preview image (placeStandings in app.js) */
+        display: none; /* no room for it: its content moves under the preview image (placeStandings in app.js) */
     }
 
     .preview .standings {
@@ -2060,13 +2013,65 @@ code {
     }
 }
 
-@media (max-width: 900px) {
-    #rangeFilters {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0 14px;
+/* Compact (the library's 839px breakpoint): the sidebar is a temporary OVERLAY drawer, as
+   side-nav.component.css "Overlay (mobile modal drawer)": out of the flow, fixed, full height, over
+   a scrim; the card takes the whole width and keeps its inner scroll. */
+@media (max-width: 839px) {
+    html .app-frame,
+    html.nav-collapsed .app-frame {
+        grid-template-columns: minmax(0, 1fr);
     }
 
+    main {
+        padding-left: var(--shell-gap); /* no drawer track at the window edge */
+    }
+
+    .rail {
+        display: none !important;
+    }
+
+    html.nav-collapsed .left-panel .drawer {
+        display: block; /* the overlay always shows the drawer, whatever the desktop state */
+    }
+
+    .left-panel {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        z-index: calc(var(--acpv-sys-z-modal, 1001) + 1);
+        width: var(--acpv-sys-sidenav-width, 280px);
+        max-width: 85vw;
+        padding-top: var(--acpv-sys-space-2, 8px);
+        background: var(--md-sys-color-surface-container); /* opaque: the page must not bleed through */
+        box-shadow: var(--acpv-sys-shadow-3);
+        transform: translateX(-100%);
+        transition: transform var(--acpv-sys-motion-duration-normal, 250ms) ease;
+    }
+
+    html.nav-open .left-panel {
+        transform: translateX(0);
+    }
+
+    .nav-scrim {
+        position: fixed;
+        inset: 0;
+        z-index: var(--acpv-sys-z-modal, 1001);
+        background: var(--acpv-sys-shadow-overlay);
+    }
+
+    html.nav-open .nav-scrim {
+        display: block;
+    }
+}
+
+@media (max-width: 839px) and (prefers-reduced-motion: reduce) {
+    .left-panel {
+        transition: none;
+    }
+}
+
+@media (max-width: 900px) {
     .media {
         height: 300px;
     }
