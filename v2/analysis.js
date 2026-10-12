@@ -55,8 +55,9 @@ function renderControls() {
         .join("");
     const levels = levelsOf(layer);
     if (!levels.some((lv) => lv.key === state.level)) state.level = levels[0]?.key || "";
-    // Highest level on the left would read oddly: keep the export order (lowest first).
-    $("levelButtons").innerHTML = levels
+    // A vertical stack read like a section: highest level at the top.
+    $("levelButtons").innerHTML = [...levels]
+        .sort((a, b) => (b.elevation_m ?? 0) - (a.elevation_m ?? 0))
         .map((lv) => `<button type="button" data-level="${esc(lv.key)}" class="${lv.key === state.level ? "on" : ""}">${esc(lv.label || lv.key)}</button>`)
         .join("");
 }

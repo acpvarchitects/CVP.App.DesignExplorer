@@ -1898,11 +1898,18 @@ code {
 
 .an-levels {
     align-self: flex-start;
+    flex-direction: column;
 }
 
 .an-levels button {
-    padding: 4px 12px;
+    padding: 4px 16px;
     font-variant-numeric: tabular-nums;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.an-levels button:last-child {
+    border-bottom: 0;
 }
 
 .an-score strong {
