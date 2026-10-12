@@ -223,18 +223,21 @@ function setHidden(col, hide) {
     render({ syncChart: true });
 }
 
-// "2 hidden ▾" in the chart toolbar, only while something is hidden: a small list to bring
-// one back, or all of them.
+// "Hidden results" section of the sidebar, only while something is hidden: the list to bring
+// one back, or all of them (and its rail icon, with the count).
 function renderHidden() {
     const box = $("hiddenAxes");
     const all = [...data.schema.inputs, ...data.schema.allOutputs];
     const hidden = all.filter((m) => state.hidden.has(m.col));
     box.hidden = !hidden.length;
+    $("railHiddenBtn").hidden = !hidden.length;
     if (!hidden.length) {
         box.open = false;
+        $("hiddenCount").textContent = "";
         return;
     }
-    $("hiddenCount").textContent = `${hidden.length} hidden`;
+    $("hiddenCount").textContent = String(hidden.length);
+    $("hiddenCount").title = `${hidden.length} hidden result${hidden.length > 1 ? "s" : ""}`;
     $("hiddenList").innerHTML =
         hidden.map((m) => `<button type="button" data-unhide="${esc(m.col)}" title="Show it again">${esc(m.label)}</button>`).join("") +
         (hidden.length > 1 ? `<button type="button" class="show-all" data-unhide-all>Show all</button>` : "");
@@ -1299,10 +1302,6 @@ function bindEvents() {
         if (b) betterThanAverage(b.dataset.better);
     });
     // "Clear chart filters": every filter. Measurements "Reset": only the measurement ranges.
-    // the "N hidden" list closes on a click anywhere else
-    document.addEventListener("click", (e) => {
-        if ($("hiddenAxes").open && !e.target.closest("#hiddenAxes")) $("hiddenAxes").open = false;
-    });
     $("hiddenAxes").addEventListener("click", (e) => {
         const one = e.target.closest("[data-unhide]");
         if (one) setHidden(one.dataset.unhide, false);
@@ -1540,7 +1539,7 @@ function initSidebar() {
         });
     }
     // the rail badges mirror the ones in the section headers
-    for (const [from, to] of [["measurementsBadge", "railMeasurementsBadge"], ["paretoBadge", "railParetoBadge"]]) {
+    for (const [from, to] of [["measurementsBadge", "railMeasurementsBadge"], ["paretoBadge", "railParetoBadge"], ["hiddenCount", "railHiddenBadge"]]) {
         const mirror = () => {
             $(to).textContent = $(from).textContent;
             $(to).title = $(from).title;

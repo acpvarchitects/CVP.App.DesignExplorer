@@ -105,9 +105,9 @@ reflections, one without): one block per group of studies, with their colour dot
      pale lines. Computed over the methods shown, on the first 3 goals by default; the other
      filters don't change the front. With many goals almost every option is on it.
    "Clear chart filters" clears every filter (ranges, batch bars, Pareto).
-   **Hiding a result**: on hover, an axis's "↑ better" line becomes "✕ hide". A hidden result
+   **Hiding a result**: on hover, an axis's "↑ better" line under the plot becomes "✕ hide". A hidden result
    disappears everywhere (chart, Measurements, Pareto goals, Where this option stands, Compare,
-   Order by) and its filter is dropped; "2 hidden ▾" beside Clear chart filters lists them to
+   Order by) and its filter is dropped; the "Hidden results" section of the sidebar (with its rail icon) lists them to
    bring one back, or all.
    Kept in the URL (`?hide=`, positions among inputs + results). Index can be hidden from the
    chart too.
