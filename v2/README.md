@@ -116,6 +116,7 @@ Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" com
 | `title` | optional page title (default: the folder name) |
 | `levels[]` | `{ key, label, elevation_m, plan_file, viewbox }`, lowest first |
 | `layers[]` with `kind: "analysis"`, `dim: "2d"` | `key`, `label`, `unit`, `better` (`higher` / `lower`), `file_pattern` (`<key>_<level>.svg`), `levels` (keys that exist), `score_label`, `scores` `{ level: value }`, `rooms` `{ level: [{ label, average, area_m2 }] }`, `legend` `{ min, max, segments, colors[] }` (colours spread evenly from min to max), `description` `[{ heading, text }]` |
+| `parameters` | `[{ label, value }]` used by every analysis of the study (location, climate file, grid, analysis plane, glazing...); a layer's own `parameters` (method, thresholds, hours...) follow. Shown as "Parameters of this study" under the description |
 | `about` | `[{ heading, text }]`, folded at the end of the description |
 
 ## Page, top to bottom

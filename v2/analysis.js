@@ -4,6 +4,7 @@
 //   layers[]  kind "analysis", dim "2d": { key, label, unit, better, file_pattern "<key>_<level>.svg",
 //             score_label, legend { min, max, segments, colors[] }, scores { level: value },
 //             rooms { level: [{ label, average, area_m2 }] }, levels [keys], description [{ heading, text }] }
+//   parameters[] { label, value } used by every analysis of this study (layers[] may add their own)
 //   about[]   notes common to every analysis
 // URL: ?PROJECT=<folder> (or ?data=<folder url>) [&an=<layer key>] [&level=<level key>]
 import { PlanViewer, legendColor } from "./plan2d.js?v=4";
@@ -102,7 +103,14 @@ function renderInfo() {
     const about = study.manifest.about?.length
         ? `<details class="about-common"><summary>About these analyses</summary>${sectionsHtml(study.manifest.about, false)}</details>`
         : "";
-    $("description").innerHTML = `<h2>${esc(layer.label)}</h2>` + sectionsHtml(layer.description || [], true) + about;
+    // What was used in THIS study (shared rows first, then the analysis' own), apart from the generic text.
+    const rows = [...(study.manifest.parameters || []), ...(layer.parameters || [])];
+    const params = rows.length
+        ? `<section class="an-params"><h3>Parameters of this study</h3><dl>${rows
+              .map((r) => `<dt>${esc(r.label)}</dt><dd>${esc(r.value)}</dd>`)
+              .join("")}</dl></section>`
+        : "";
+    $("description").innerHTML = `<h2>${esc(layer.label)}</h2>` + sectionsHtml(layer.description || [], true) + params + about;
 }
 
 async function renderPlan() {
