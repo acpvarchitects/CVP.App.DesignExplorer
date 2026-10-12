@@ -29,7 +29,7 @@ import { comparisonHtml } from "./comparison.js?v=37";
 import { ParallelChart } from "./parallel.js?v=30";
 import { paretoFront } from "./pareto.js?v=1";
 import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=2";
-import { PlanViewer } from "./plan2d.js?v=2";
+import { PlanViewer } from "./plan2d.js?v=3";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
 const MAX_SHORTLIST = 4;

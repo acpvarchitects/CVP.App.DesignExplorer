@@ -78,7 +78,13 @@ export class PlanViewer {
             h = nh;
         }
         this.view = [x, y, w, h];
-        this.svg.setAttribute("viewBox", this.view.map((v) => v.toFixed(4)).join(" "));
+        // One viewBox write per frame: a mouse sends several wheel / move events per frame, and
+        // each write repaints every cell of the plan.
+        if (this.frame) return;
+        this.frame = requestAnimationFrame(() => {
+            this.frame = 0;
+            this.svg.setAttribute("viewBox", this.view.map((v) => v.toFixed(4)).join(" "));
+        });
     }
 
     reset() {
