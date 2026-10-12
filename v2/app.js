@@ -9,7 +9,7 @@
 //   out:<name>         result with no better/worse direction
 //   img, img:<view>    image of the option, one column per view
 //   threeD             3D model (.json like the classic app, or .glb)
-//   analysis:<name>    3D analysis mesh with vertex colors (.glb)
+//   analysis:<name>    3D analysis mesh with vertex colors (.glb), or a 2D plan analysis (.svg)
 //   target:<result>    optional target of the out: column with that name (arrow optional),
 //                      drawn as a red dot on the result's chart axis and bar
 //   table_<name>       small table per option (.csv, first row = header), "Table" view
@@ -28,7 +28,8 @@ import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml } from "./comparison.js?v=37";
 import { ParallelChart } from "./parallel.js?v=30";
 import { paretoFront } from "./pareto.js?v=1";
-import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=1";
+import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=2";
+import { PlanViewer } from "./plan2d.js?v=4";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
 const MAX_SHORTLIST = 4;
@@ -70,6 +71,7 @@ const state = {
 };
 let data; // { studies, schema, options, stats }
 let viewer;
+let plan2d; // 2D plan viewer (an analysis cell holding an .svg)
 let chart;
 let mediaKey = null; // what the preview media currently shows, to avoid reloading 3D
 let lastView = null; // the view of the latest render (for chart callbacks)
@@ -799,15 +801,19 @@ function showMedia(o) {
     mediaKey = key;
     const layer = layersOf()[state.layer[state.mode]];
     const isTable = state.mode === "table";
-    const is3d = state.mode === "model" || state.mode === "analysis";
+    // A 2D analysis: the cell holds an .svg plan (vector, pan and zoom), see plan2d.js.
+    const cell2d = state.mode === "analysis" && layer?.col ? (o.row[layer.col] || "").trim() : "";
+    const is2d = /\.svg$/i.test(cell2d);
+    const is3d = !is2d && (state.mode === "model" || state.mode === "analysis");
+    $("preview2d").hidden = !is2d;
     const parts = is3d && layer ? partsFor(o, layer) : null;
     const src = is3d ? parts : layer ? assetUrl(o, (o.row[layer.col] || "").trim()) : null;
-    $("previewImage").hidden = is3d || isTable;
+    $("previewImage").hidden = is3d || is2d || isTable;
     if (!is3d) $("levelPicker").hidden = true;
     $("preview3d").hidden = !is3d;
     $("previewTable").hidden = !isTable;
-    $("resetView").hidden = !is3d;
-    $("mediaStatus").textContent = src ? "" : "No file for this view.";
+    $("resetView").hidden = !is3d && !is2d;
+    $("mediaStatus").textContent = src || is2d ? "" : "No file for this view.";
     // Legend: the CSV cell, or (cell left empty by the export) the standard file name
     // legend_an_<name>.png in the option's own folder. If neither exists, say so.
     const noLegend = state.mode === "analysis" && layer?.composed ? "Colour legend not in this export yet" : "";
@@ -824,6 +830,15 @@ function showMedia(o) {
     if (isTable) {
         if (viewer) viewer.clear();
         showTable(src, key);
+        return;
+    }
+    if (is2d) {
+        if (viewer) viewer.clear();
+        $("levelPicker").hidden = true;
+        if (!plan2d) plan2d = new PlanViewer($("preview2d"));
+        plan2d.show([{ url: assetUrl(o, cell2d), className: "plan2d-analysis" }]).catch((e) => {
+            if (mediaKey === key) $("mediaStatus").textContent = e.message;
+        });
         return;
     }
     if (!is3d) {
@@ -1368,7 +1383,7 @@ function bindEvents() {
         state.layer[state.mode] = +e.target.value;
         render();
     });
-    $("resetView").addEventListener("click", () => viewer && viewer.resetView());
+    $("resetView").addEventListener("click", () => ($("preview2d").hidden ? viewer && viewer.resetView() : plan2d && plan2d.reset()));
     $("shareBtn").addEventListener("click", copyLink);
     $("aboutView").addEventListener("click", () => {
         const o = state.sel != null ? data.options[state.sel] : null;

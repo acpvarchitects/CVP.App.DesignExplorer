@@ -35,7 +35,7 @@ function textHtml(text) {
     return out.join("");
 }
 
-const sectionsHtml = (sections, headings) =>
+export const sectionsHtml = (sections, headings) =>
     sections.map((s) => (headings ? `<h3>${esc(s.heading)}</h3>` : "") + textHtml(s.text)).join("");
 
 // Same text in every study: shown once. Different (rare: e.g. one batch computed with
