@@ -1896,25 +1896,34 @@ code {
     width: 100%;
 }
 
-/* Level picker over the plan, top right (same look as the 3D level picker). */
-.an-levels {
+/* Level picker over the plan, top right: a small titled card, highest level first. */
+.an-levels-box {
     position: absolute;
     right: 12px;
     top: 12px;
     max-height: calc(100% - 70px);
-    overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    padding: 4px;
-    background: rgba(255, 255, 255, 0.9);
+    gap: 6px;
+    padding: 8px 10px 10px;
+    background: #fff;
+    border: 1px solid var(--line-strong);
     border-radius: var(--radius);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.an-levels {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
 }
 
 .an-levels button {
-    min-width: 44px;
-    padding: 3px 8px;
-    font-size: 12px;
+    min-width: 56px;
+    padding: 5px 12px;
+    font-size: 13px;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
 }
 
