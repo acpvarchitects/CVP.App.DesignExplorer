@@ -98,7 +98,7 @@ shown that way in the preview (no level picker yet: one file per cell).
 `data.csv`, only `layers.json` and the SVGs in the study folder. Left sidebar: analysis menu,
 the level's score, a vector legend, the rooms with their averages (hover = highlight
 in the plan) and the description, always visible. Right: the plan, with the level buttons over it top right
-(highest first); hovering a room shows its name and value. Pan and zoom are kept when the level or
+(highest first); hovering a room shows its name, the value at that point and the room average. Pan and zoom are kept when the level or
 the analysis changes (every level shares one plan frame); Reset view fits the level again. `?an=` / `?level=` keep the view in the address.
 
 Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" component):
@@ -106,7 +106,7 @@ Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" com
 | File | Content |
 |---|---|
 | `plan_<level>.svg` | the drawing: black poche (`fill-rule` even-odd), cut lines and thin lines, shared by every analysis of that level |
-| `<key>_<level>.svg` | the analysis cells only, one `<g class="room" data-room="…" data-average="…">` per room; drawn under the plan |
+| `<key>_<level>.svg` | the analysis cells only, one `<g class="room" data-room="…" data-average="…">` per room, one `<path>` per colour with `data-value` (the value of those cells, for the point readout; optional); drawn under the plan |
 | `layers.json` | `dim: "2d"`, `levels[]` and one entry per analysis (below) |
 
 `layers.json` of a 2D study:

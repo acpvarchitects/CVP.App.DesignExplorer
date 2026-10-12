@@ -6,7 +6,7 @@
 //             rooms { level: [{ label, average, area_m2 }] }, levels [keys], description [{ heading, text }] }
 //   about[]   notes common to every analysis
 // URL: ?PROJECT=<folder> (or ?data=<folder url>) [&an=<layer key>] [&level=<level key>]
-import { PlanViewer, legendColor } from "./plan2d.js?v=3";
+import { PlanViewer, legendColor } from "./plan2d.js?v=4";
 import { sectionsHtml } from "./about.js?v=2";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
@@ -172,7 +172,11 @@ function onHover(hit, e) {
         return;
     }
     const box = $("plan").getBoundingClientRect();
-    tip.innerHTML = `<strong>${esc(hit.room)}</strong><span>${fmt(hit.average, current().unit)}</span>`;
+    const unit = current().unit;
+    tip.innerHTML =
+        `<strong>${esc(hit.room)}</strong>` +
+        (hit.value != null ? `<span><span class="muted">Point</span> ${fmt(hit.value, unit)}</span>` : "") +
+        `<span><span class="muted">Room average</span> ${fmt(hit.average, unit)}</span>`;
     tip.style.left = `${e.clientX - box.left + 14}px`;
     tip.style.top = `${e.clientY - box.top + 14}px`;
     tip.hidden = false;

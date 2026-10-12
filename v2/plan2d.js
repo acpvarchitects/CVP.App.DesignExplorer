@@ -3,7 +3,8 @@
 //   const v = new PlanViewer(container, { onHover })
 //   await v.show([{ url, className }])  // bottom to top, e.g. analysis then plan
 //   v.reset(); v.zoomBy(1.5); v.highlight(roomLabel)
-// Groups with data-room / data-average in a layer report hover through onHover(room|null, event).
+// Groups with data-room / data-average in a layer report hover through onHover({ room, average, value }|null, event);
+// value is the hovered cell's own data-value, null when the file has none.
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const cache = new Map(); // url -> Promise<Document>
@@ -140,7 +141,9 @@ export class PlanViewer {
                 return;
             }
             const g = e.target.closest?.("g.room");
-            this.onHover(g ? { room: g.dataset.room, average: Number(g.dataset.average) } : null, e);
+            // data-value on a cell path = the value at that point (exports from 2026-10 on).
+            const v = e.target.closest?.("path[data-value]")?.dataset.value;
+            this.onHover(g ? { room: g.dataset.room, average: Number(g.dataset.average), value: v == null ? null : Number(v) } : null, e);
         });
         const end = (e) => {
             if (!drag) return;
