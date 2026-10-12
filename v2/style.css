@@ -1896,20 +1896,32 @@ code {
     width: 100%;
 }
 
+/* Level picker over the plan, top right (same look as the 3D level picker). */
 .an-levels {
-    align-self: flex-start;
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    max-height: calc(100% - 70px);
+    overflow-y: auto;
+    display: flex;
     flex-direction: column;
+    gap: 3px;
+    padding: 4px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: var(--radius);
 }
 
 .an-levels button {
-    padding: 4px 16px;
+    min-width: 44px;
+    padding: 3px 8px;
+    font-size: 12px;
     font-variant-numeric: tabular-nums;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
 }
 
-.an-levels button:last-child {
-    border-bottom: 0;
+.an-levels button.on {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
 }
 
 .an-score strong {

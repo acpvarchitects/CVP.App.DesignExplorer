@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Design Explorer · Analysis</title>
     <link rel="icon" href="../favicon.png" />
-    <link rel="stylesheet" href="style.css?v=55" />
+    <link rel="stylesheet" href="style.css?v=56" />
 </head>
 <body class="an-page">
     <header class="topbar">
@@ -29,10 +29,6 @@
                 <span class="eyebrow">Analysis</span>
                 <select id="analysisSelect" aria-label="Analysis"></select>
             </div>
-            <div class="an-block">
-                <span class="eyebrow">Level</span>
-                <div id="levelButtons" class="seg an-levels" aria-label="Levels"></div>
-            </div>
             <div class="an-block an-score">
                 <span id="scoreLabel" class="muted small"></span>
                 <strong id="scoreValue"></strong>
@@ -53,6 +49,8 @@
         <!-- Right: the plan, vector, pan and zoom -->
         <section class="an-view card" aria-label="Plan">
             <div id="plan" class="an-plan"></div>
+            <!-- Levels over the plan, top right: highest first, like a section -->
+            <div id="levelButtons" class="an-levels" aria-label="Levels"></div>
             <div id="tooltip" class="an-tooltip" hidden></div>
             <div class="an-tools">
                 <button id="zoomIn" type="button" aria-label="Zoom in">+</button>
