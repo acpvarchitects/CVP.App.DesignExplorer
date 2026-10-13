@@ -99,7 +99,7 @@ shown that way in the preview (no level picker yet: one file per cell).
 the level's score, a vector legend, the rooms with their averages (hover = highlight
 in the plan) and the description, always visible. Right: the plan, with the level buttons over it top right
 (highest first); hovering a room shows its name, the value at that point and the room average. Pan and zoom are kept when the level or
-the analysis changes (every level shares one plan frame); Reset view fits the level again. `?an=` / `?level=` keep the view in the address. **Show labels** puts the room numbers on the plan (they keep their screen size). **Export view** saves the current view (same zoom and pan) as a vector PDF on A3 landscape: rooms, score and legend on the left, the plan with a graphic scale on the right, and the room numbers when labels are shown.
+the analysis changes (every level shares one plan frame); Reset view fits the level again. `?an=` / `?level=` keep the view in the address. Room numbers are shown on the plan by default (**Hide labels** / **Show labels**; they keep their screen size). **Copy link** copies the main link of the analysis on screen (`PROJECT` or `data` + `an`, no level or zoom). **Export view** saves the current view (same zoom and pan) as a vector PDF on A3 landscape: rooms, score and legend on the left, the plan with a graphic scale on the right, and the room numbers when labels are shown.
 
 Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" component):
 

@@ -192,15 +192,28 @@ function bind() {
             btn.textContent = "Export view";
         }
     });
-    $("shareBtn").addEventListener("click", async () => {
-        try {
-            await navigator.clipboard.writeText(location.href);
-            $("shareBtn").textContent = "Copied";
-            setTimeout(() => ($("shareBtn").textContent = "Copy link"), 1500);
-        } catch (e) {
-            /* clipboard blocked: the address bar has the same link */
-        }
-    });
+    $("shareBtn").addEventListener("click", copyLink);
+}
+
+// "Copy link": the main link of the analysis on screen - the study (PROJECT or data) and the
+// analysis, without level or zoom, so it always opens fitted. Same fallback as the dashboard.
+async function copyLink() {
+    const enc = (v) => encodeURI(v).replace(/[&#+]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
+    const keep = ["PROJECT", "data"].filter((k) => params.has(k)).map((k) => `${k}=${enc(params.get(k))}`);
+    const url = `${location.origin}${location.pathname}?${[...keep, `an=${enc(state.an)}`].join("&")}`;
+    try {
+        await navigator.clipboard.writeText(url);
+    } catch {
+        // http pages on the LAN have no clipboard API: fall back to execCommand
+        const t = document.createElement("textarea");
+        t.value = url;
+        document.body.appendChild(t);
+        t.select();
+        document.execCommand("copy");
+        t.remove();
+    }
+    $("shareBtn").textContent = "Copied";
+    setTimeout(() => ($("shareBtn").textContent = "Copy link"), 1500);
 }
 
 function onHover(hit, e) {
@@ -244,6 +257,7 @@ async function start() {
     document.title = `${study.manifest.title || study.name} · Design Explorer`;
     $("app").hidden = false;
     viewer = new PlanViewer($("plan"), { onHover });
+    viewer.setLabels(true); // room numbers on by default
     bind();
     render();
 }
