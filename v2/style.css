@@ -2135,7 +2135,7 @@ code {
 }
 
 .an-section + .an-section {
-    margin-top: 8px;
+    margin-top: -10px; /* 6px apart: the sidebar's 16px gap minus 10 */
 }
 
 .an-section > summary {
