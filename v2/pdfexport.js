@@ -1,0 +1,199 @@
+// "Export view": the plan exactly as framed on screen, as a vector PDF (A3 landscape).
+// Left column: project, analysis, level, score, legend and the rooms with their values;
+// right: the plan (analysis cells under the drawing), a graphic scale and the scale at A3.
+// jsPDF + svg2pdf.js are loaded on the first export only.
+//   await exportViewPdf({ svg, view, project, layer, level, score, rooms, legendColor, note })
+const LIBS = [
+    "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js",
+    "https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.3/dist/svg2pdf.umd.min.js",
+];
+const SVG_NS = "http://www.w3.org/2000/svg";
+const MM_PER_PX = 25.4 / 96; // a CSS pixel on paper
+const PAGE = { w: 420, h: 297, margin: 12, side: 92, gap: 10 }; // A3 landscape, mm
+
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = () => reject(new Error(`Cannot load ${src.split("/").pop()}`));
+        document.head.append(s);
+    });
+}
+
+async function pdfLib() {
+    if (!window.jspdf) await loadScript(LIBS[0]);
+    if (!window.jspdf.jsPDF.API.svg) await loadScript(LIBS[1]);
+    return window.jspdf.jsPDF;
+}
+
+// "rgb(r,g,b)" or "#rrggbb" -> [r, g, b]
+function rgbOf(c) {
+    const m = String(c).match(/\d+(\.\d+)?/g);
+    if (String(c).startsWith("#")) return [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+    return m ? m.slice(0, 3).map(Number) : [0, 0, 0];
+}
+
+// A copy of the on-screen plan for svg2pdf: the current view, clipped to it, and the
+// on-screen line widths (non-scaling, in px) turned into plan units at the print scale.
+function planForPrint(source, view, mmPerUnit) {
+    const svg = source.cloneNode(true);
+    svg.removeAttribute("class");
+    svg.removeAttribute("style");
+    svg.setAttribute("xmlns", SVG_NS);
+    svg.setAttribute("viewBox", view.join(" "));
+    const unitsPerPx = MM_PER_PX / mmPerUnit;
+    for (const el of svg.querySelectorAll("[vector-effect]")) {
+        const w = parseFloat(el.getAttribute("stroke-width") || "1");
+        el.setAttribute("stroke-width", String(w * unitsPerPx));
+        el.removeAttribute("vector-effect");
+    }
+    for (const g of svg.querySelectorAll(".dim")) g.classList.remove("dim");
+    const defs = document.createElementNS(SVG_NS, "defs");
+    const clip = document.createElementNS(SVG_NS, "clipPath");
+    clip.id = "viewClip";
+    const rect = document.createElementNS(SVG_NS, "rect");
+    [["x", view[0]], ["y", view[1]], ["width", view[2]], ["height", view[3]]].forEach(([k, v]) => rect.setAttribute(k, v));
+    clip.append(rect);
+    defs.append(clip);
+    const body = document.createElementNS(SVG_NS, "g");
+    body.setAttribute("clip-path", "url(#viewClip)");
+    body.append(...svg.childNodes);
+    svg.append(defs, body);
+    return svg;
+}
+
+// A round length (m) whose bar is close to target mm.
+function niceLength(mmPerUnit, targetMm) {
+    const raw = targetMm / mmPerUnit;
+    const p = 10 ** Math.floor(Math.log10(raw));
+    return [1, 2, 5, 10].map((f) => f * p).reduce((a, b) => (Math.abs(b - raw) < Math.abs(a - raw) ? b : a));
+}
+
+const num = (v, unit) => (v == null || Number.isNaN(+v) ? "–" : `${(+v).toFixed(Math.abs(v) >= 100 ? 0 : 1)}${unit ? " " + unit : ""}`);
+
+export async function exportViewPdf({ svg, view, project, layer, level, score, rooms, legendColor, note }) {
+    const JsPDF = await pdfLib();
+    const doc = new JsPDF({ orientation: "landscape", unit: "mm", format: "a3" });
+    const { w: W, h: H, margin: M, side: S, gap: G } = PAGE;
+    const unit = layer.unit || "";
+
+    // Plan area and print scale (plan units are metres).
+    const area = { x: M + S + G, y: M, w: W - 2 * M - S - G, h: H - 2 * M - 14 };
+    const k = Math.min(area.w / view[2], area.h / view[3]); // mm per metre
+    const dw = view[2] * k, dh = view[3] * k;
+    const px = area.x + (area.w - dw) / 2, py = area.y + (area.h - dh) / 2;
+
+    const holder = document.createElement("div");
+    holder.style.cssText = "position:fixed;left:-10000px;top:0;width:10px;height:10px;overflow:hidden";
+    const print = planForPrint(svg, view, k);
+    holder.append(print);
+    document.body.append(holder);
+    try {
+        await doc.svg(print, { x: px, y: py, width: dw, height: dh });
+    } finally {
+        holder.remove();
+    }
+    doc.setDrawColor(200);
+    doc.setLineWidth(0.2);
+    doc.rect(area.x, area.y, area.w, area.h);
+
+    // Graphic scale, bottom left of the plan area.
+    const len = niceLength(k, Math.min(60, area.w / 4));
+    const barMm = len * k, bx = area.x, by = area.y + area.h + 6;
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.2);
+    for (let i = 0; i < 4; i++) {
+        doc.setFillColor(i % 2 ? 255 : 0);
+        doc.rect(bx + (i * barMm) / 4, by, barMm / 4, 1.6, "FD");
+    }
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(0);
+    doc.text("0", bx, by + 4.6, { align: "center" });
+    doc.text(String(+(len / 2).toPrecision(3)), bx + barMm / 2, by + 4.6, { align: "center" });
+    doc.text(`${+len.toPrecision(3)} m`, bx + barMm, by + 4.6, { align: "center" });
+    doc.text(`Scale 1:${Math.round(1000 / k)} on A3`, bx + barMm + 8, by + 1.6);
+
+    // Left column.
+    let y = M + 4;
+    const x = M;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(doc.splitTextToSize(project || "", S), x, y);
+    y += 8;
+    doc.setFontSize(11);
+    doc.text(doc.splitTextToSize(layer.label || layer.key, S), x, y);
+    y += 6;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(90);
+    doc.text(`Level ${level}`, x, y);
+    y += 9;
+
+    doc.setTextColor(90);
+    doc.setFontSize(8);
+    doc.text(`${layer.score_label || "Average"} over the analysed rooms, weighted by area`, x, y);
+    y += 8;
+    doc.setTextColor(0);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.text(num(score, unit), x, y);
+    y += 9;
+
+    // Legend: a fine strip of solid steps (vector, no gradient support needed) + ticks.
+    const lg = layer.legend;
+    if (lg) {
+        const steps = 80, lw = S;
+        for (let i = 0; i < steps; i++) {
+            const v = lg.min + ((lg.max - lg.min) * (i + 0.5)) / steps;
+            doc.setFillColor(...rgbOf(legendColor(lg, v)));
+            doc.rect(x + (i * lw) / steps, y, lw / steps + 0.05, 4, "F");
+        }
+        doc.setDrawColor(120);
+        doc.setLineWidth(0.1);
+        doc.rect(x, y, lw, 4);
+        const n = Math.max(lg.segments || 11, 2), every = n > 6 ? 2 : 1;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7);
+        for (let i = 0; i < n; i += every) {
+            const t = lg.min + ((lg.max - lg.min) * i) / (n - 1);
+            doc.text(String(+t.toFixed(2)), x + (lw * i) / (n - 1), y + 7.5, { align: i === 0 ? "left" : i === n - 1 ? "right" : "center" });
+        }
+        y += 11;
+        doc.setTextColor(90);
+        doc.text(`${layer.label}${unit ? ` [${unit}]` : ""}${layer.better ? (layer.better === "higher" ? " · higher is better" : " · lower is better") : ""}`, x, y);
+        y += 9;
+        doc.setTextColor(0);
+    }
+
+    // Rooms.
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text(`ROOMS (${rooms.length})`, x, y);
+    y += 5;
+    doc.setFont("helvetica", "normal");
+    for (const r of rooms) {
+        if (y > H - M - 10) {
+            doc.text("…", x, y);
+            break;
+        }
+        if (lg) {
+            doc.setFillColor(...rgbOf(legendColor(lg, r.average)));
+            doc.rect(x, y - 2.4, 3, 3, "F");
+        }
+        const name = doc.splitTextToSize(r.label, S - 26)[0];
+        doc.text(name, x + 5, y);
+        doc.text(num(r.average, unit), x + S, y, { align: "right" });
+        y += 5;
+    }
+
+    // Footer.
+    doc.setFontSize(7);
+    doc.setTextColor(120);
+    const stamp = new Date().toISOString().slice(0, 10);
+    doc.text(`Design Explorer · ${project} · ${layer.label} · ${level} · exported ${stamp}${note ? " · " + note : ""}`, M, H - M + 4);
+
+    const safe = (s) => String(s || "").replace(/[^\w.-]+/g, "_");
+    doc.save(`${safe(project)}_${safe(layer.key)}_${safe(level)}.pdf`);
+}

@@ -9,6 +9,7 @@
 // URL: ?PROJECT=<folder> (or ?data=<folder url>) [&an=<layer key>] [&level=<level key>]
 import { PlanViewer, legendColor } from "./plan2d.js?v=4";
 import { sectionsHtml } from "./about.js?v=2";
+import { exportViewPdf } from "./pdfexport.js?v=1";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
 const $ = (id) => document.getElementById(id);
@@ -161,6 +162,29 @@ function bind() {
     const list = $("roomList");
     list.addEventListener("pointerover", (e) => viewer.highlight(e.target.closest("li")?.dataset.room ?? null));
     list.addEventListener("pointerleave", () => viewer.highlight(null));
+    $("exportBtn").addEventListener("click", async () => {
+        const btn = $("exportBtn");
+        const layer = current();
+        btn.disabled = true;
+        btn.textContent = "Exporting…";
+        try {
+            await exportViewPdf({
+                svg: viewer.svg,
+                view: viewer.view,
+                project: study.manifest.title || study.name,
+                layer,
+                level: (study.manifest.levels || []).find((lv) => lv.key === state.level)?.label || state.level,
+                score: layer.scores?.[state.level],
+                rooms: [...(layer.rooms?.[state.level] || [])].sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true })),
+                legendColor,
+            });
+        } catch (e) {
+            $("status").textContent = `Export failed: ${e.message}`;
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "Export view";
+        }
+    });
     $("shareBtn").addEventListener("click", async () => {
         try {
             await navigator.clipboard.writeText(location.href);
