@@ -76,7 +76,7 @@ function drawRoomLabels(doc, source, view, k, px, py) {
         if (!num) continue;
         const X = px + (a.x - view[0]) * k, Y = py + (a.y - view[1]) * k;
         const bw = doc.getTextWidth(num) + 2.2, bh = 3.8;
-        doc.setGState(new doc.GState({ opacity: 0.8 }));
+        doc.setGState(new doc.GState({ opacity: 0.5 }));
         doc.setFillColor(255, 255, 255);
         doc.roundedRect(X - bw / 2, Y - bh / 2, bw, bh, 0.8, 0.8, "F");
         doc.setGState(new doc.GState({ opacity: 1 }));
