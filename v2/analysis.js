@@ -10,7 +10,7 @@
 // URL: ?PROJECT=<folder> (or ?data=<folder url>) [&an=<layer key>] [&level=<level key>]
 import { PlanViewer, legendColor } from "./plan2d.js?v=5";
 import { sectionsHtml } from "./about.js?v=2";
-import { exportViewPdf } from "./pdfexport.js?v=4";
+import { exportViewPdf } from "./pdfexport.js?v=6";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
 const $ = (id) => document.getElementById(id);
@@ -177,6 +177,7 @@ function bind() {
             await exportViewPdf({
                 svg: viewer.svg,
                 view: viewer.view,
+                home: viewer.home,
                 project: study.manifest.title || study.name,
                 layer,
                 level: (study.manifest.levels || []).find((lv) => lv.key === state.level)?.label || state.level,
