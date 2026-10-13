@@ -5,11 +5,12 @@
 //             score_label, legend { min, max, segments, colors[] }, scores { level: value },
 //             rooms { level: [{ label, average, area_m2 }] }, levels [keys], description [{ heading, text }] }
 //   parameters[] { label, value } used by every analysis of this study (layers[] may add their own)
-//   about[]   notes common to every analysis
+//   about[]   notes common to every analysis (e.g. the model, the limits)
+//   parameters rows are { label, value } or groups { label, items: [{ label, value }] }
 // URL: ?PROJECT=<folder> (or ?data=<folder url>) [&an=<layer key>] [&level=<level key>]
-import { PlanViewer, legendColor } from "./plan2d.js?v=4";
+import { PlanViewer, legendColor } from "./plan2d.js?v=5";
 import { sectionsHtml } from "./about.js?v=2";
-import { exportViewPdf } from "./pdfexport.js?v=1";
+import { exportViewPdf } from "./pdfexport.js?v=3";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
 const $ = (id) => document.getElementById(id);
@@ -101,17 +102,17 @@ function renderInfo() {
             </li>`
         )
         .join("");
-    const about = study.manifest.about?.length
-        ? `<details class="about-common"><summary>About these analyses</summary>${sectionsHtml(study.manifest.about, false)}</details>`
-        : "";
-    // What was used in THIS study (shared rows first, then the analysis' own), apart from the generic text.
+    // About this analysis: what it is (this analysis), then the notes every analysis shares
+    // (the model, the limits). Parameters of this study: the values used here, grouped.
+    $("description").innerHTML = sectionsHtml(layer.description || [], true) + sectionsHtml(study.manifest.about || [], true);
+    const row = (r) =>
+        r.items
+            ? `<dt>${esc(r.label)}</dt><dd><ul>${r.items
+                  .map((it) => `<li>${esc(it.label)}${it.value ? `: <span class="muted">${esc(it.value)}</span>` : ""}</li>`)
+                  .join("")}</ul></dd>`
+            : `<dt>${esc(r.label)}</dt><dd>${esc(r.value)}</dd>`;
     const rows = [...(study.manifest.parameters || []), ...(layer.parameters || [])];
-    const params = rows.length
-        ? `<section class="an-params"><h3>Parameters of this study</h3><dl>${rows
-              .map((r) => `<dt>${esc(r.label)}</dt><dd>${esc(r.value)}</dd>`)
-              .join("")}</dl></section>`
-        : "";
-    $("description").innerHTML = `<h2>${esc(layer.label)}</h2>` + sectionsHtml(layer.description || [], true) + params + about;
+    $("parameters").innerHTML = rows.length ? `<dl>${rows.map(row).join("")}</dl>` : `<p class="muted">Not given for this study.</p>`;
 }
 
 async function renderPlan() {
@@ -156,6 +157,11 @@ function bind() {
         state.level = b.dataset.level;
         render();
     });
+    $("labelsBtn").addEventListener("click", () => {
+        viewer.setLabels(!viewer.labelsOn);
+        $("labelsBtn").textContent = viewer.labelsOn ? "Hide labels" : "Show labels";
+        $("labelsBtn").setAttribute("aria-pressed", String(viewer.labelsOn));
+    });
     $("zoomIn").addEventListener("click", () => viewer.zoomBy(1.5));
     $("zoomOut").addEventListener("click", () => viewer.zoomBy(1 / 1.5));
     $("resetView").addEventListener("click", () => viewer.reset());
@@ -177,6 +183,7 @@ function bind() {
                 score: layer.scores?.[state.level],
                 rooms: [...(layer.rooms?.[state.level] || [])].sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true })),
                 legendColor,
+                labels: viewer.labelsOn,
             });
         } catch (e) {
             $("status").textContent = `Export failed: ${e.message}`;

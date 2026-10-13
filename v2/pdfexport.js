@@ -1,8 +1,10 @@
 // "Export view": the plan exactly as framed on screen, as a vector PDF (A3 landscape).
 // Left column: project, analysis, level, score, legend and the rooms with their values;
-// right: the plan (analysis cells under the drawing), a graphic scale and the scale at A3.
+// right: the plan (analysis cells under the drawing) with the room numbers when they are shown in the app, a graphic scale and the scale at A3.
 // jsPDF + svg2pdf.js are loaded on the first export only.
-//   await exportViewPdf({ svg, view, project, layer, level, score, rooms, legendColor, note })
+//   await exportViewPdf({ svg, view, project, layer, level, score, rooms, legendColor, labels, note })
+import { roomAnchors } from "./plan2d.js?v=5";
+
 const LIBS = [
     "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js",
     "https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.3/dist/svg2pdf.umd.min.js",
@@ -49,6 +51,7 @@ function planForPrint(source, view, mmPerUnit) {
         el.removeAttribute("vector-effect");
     }
     for (const g of svg.querySelectorAll(".dim")) g.classList.remove("dim");
+    for (const g of svg.querySelectorAll(".plan2d-labels")) g.remove(); // drawn as PDF text instead
     const defs = document.createElementNS(SVG_NS, "defs");
     const clip = document.createElementNS(SVG_NS, "clipPath");
     clip.id = "viewClip";
@@ -63,6 +66,25 @@ function planForPrint(source, view, mmPerUnit) {
     return svg;
 }
 
+// Room numbers on the plan, on a light backing (only when they are shown in the app).
+function drawRoomLabels(doc, source, view, k, px, py) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    for (const a of roomAnchors(source)) {
+        if (a.x < view[0] || a.x > view[0] + view[2] || a.y < view[1] || a.y > view[1] + view[3]) continue;
+        const num = a.number;
+        if (!num) continue;
+        const X = px + (a.x - view[0]) * k, Y = py + (a.y - view[1]) * k;
+        const bw = doc.getTextWidth(num) + 2.2, bh = 3.8;
+        doc.setGState(new doc.GState({ opacity: 0.8 }));
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(X - bw / 2, Y - bh / 2, bw, bh, 0.8, 0.8, "F");
+        doc.setGState(new doc.GState({ opacity: 1 }));
+        doc.setTextColor(0);
+        doc.text(num, X, Y + 0.9, { align: "center" });
+    }
+}
+
 // A round length (m) whose bar is close to target mm.
 function niceLength(mmPerUnit, targetMm) {
     const raw = targetMm / mmPerUnit;
@@ -72,7 +94,7 @@ function niceLength(mmPerUnit, targetMm) {
 
 const num = (v, unit) => (v == null || Number.isNaN(+v) ? "–" : `${(+v).toFixed(Math.abs(v) >= 100 ? 0 : 1)}${unit ? " " + unit : ""}`);
 
-export async function exportViewPdf({ svg, view, project, layer, level, score, rooms, legendColor, note }) {
+export async function exportViewPdf({ svg, view, project, layer, level, score, rooms, legendColor, labels, note }) {
     const JsPDF = await pdfLib();
     const doc = new JsPDF({ orientation: "landscape", unit: "mm", format: "a3" });
     const { w: W, h: H, margin: M, side: S, gap: G } = PAGE;
@@ -94,6 +116,7 @@ export async function exportViewPdf({ svg, view, project, layer, level, score, r
     } finally {
         holder.remove();
     }
+    if (labels) drawRoomLabels(doc, svg, view, k, px, py);
     doc.setDrawColor(200);
     doc.setLineWidth(0.2);
     doc.rect(area.x, area.y, area.w, area.h);

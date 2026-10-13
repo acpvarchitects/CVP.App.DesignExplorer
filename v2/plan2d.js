@@ -2,7 +2,7 @@
 // everything stays vector at any zoom. Lines in the files use non-scaling strokes.
 //   const v = new PlanViewer(container, { onHover })
 //   await v.show([{ url, className }])  // bottom to top, e.g. analysis then plan
-//   v.reset(); v.zoomBy(1.5); v.highlight(roomLabel)
+//   v.reset(); v.zoomBy(1.5); v.highlight(roomLabel); v.setLabels(true)
 // Groups with data-room / data-average in a layer report hover through onHover({ room, average, value }|null, event);
 // value is the hovered cell's own data-value, null when the file has none.
 
@@ -36,6 +36,8 @@ export class PlanViewer {
         this.home = null; // [x, y, w, h] of the loaded files
         this.view = null; // current viewBox
         this.moved = false; // the user panned or zoomed since the last reset
+        this.labelsOn = false; // room numbers over the plan
+        this.labels = null; // <g> of the labels, rebuilt with each plan
         this.token = 0;
         this.bindEvents();
         new ResizeObserver(() => this.apply()).observe(container);
@@ -53,7 +55,9 @@ export class PlanViewer {
             for (const child of d.documentElement.childNodes) g.append(document.importNode(child, true));
             return g;
         });
-        this.svg.replaceChildren(...groups);
+        this.labels = labelLayer(groups);
+        this.labels.style.display = this.labelsOn ? "" : "none";
+        this.svg.replaceChildren(...groups, this.labels);
         this.home = box;
         // Every level of a study shares one plan frame, so a pan / zoom is kept from level to level
         // and from analysis to analysis; until the user moves, each level opens fitted.
@@ -85,7 +89,21 @@ export class PlanViewer {
         this.frame = requestAnimationFrame(() => {
             this.frame = 0;
             this.svg.setAttribute("viewBox", this.view.map((v) => v.toFixed(4)).join(" "));
+            this.scaleLabels();
         });
+    }
+
+    // Labels keep their screen size: each one is scaled by plan units per screen pixel.
+    scaleLabels() {
+        if (!this.labels || !this.labelsOn || !this.view) return;
+        const s = this.view[2] / (this.container.clientWidth || 1);
+        for (const g of this.labels.children) g.setAttribute("transform", `translate(${g.dataset.x} ${g.dataset.y}) scale(${s})`);
+    }
+
+    setLabels(on) {
+        this.labelsOn = !!on;
+        if (this.labels) this.labels.style.display = this.labelsOn ? "" : "none";
+        this.scaleLabels();
     }
 
     reset() {
@@ -156,6 +174,59 @@ export class PlanViewer {
         svg.addEventListener("pointerleave", () => this.onHover(null));
         svg.addEventListener("dblclick", () => this.reset());
     }
+}
+
+// One label point per room (plan units): the analysis cell closest to the mean of the room's
+// cells, so it always falls inside the room, even an L-shaped one. Shared with the PDF export.
+export function roomAnchors(root) {
+    const out = [];
+    for (const g of root.querySelectorAll("g.room")) {
+        const cells = [];
+        for (const path of g.querySelectorAll("path")) {
+            for (const sub of (path.getAttribute("d") || "").split(/[Zz]/)) {
+                const n = sub.replace(/[MLml]/g, " ").trim().split(/[\s,]+/).map(Number).filter((v) => !Number.isNaN(v));
+                if (n.length < 6) continue;
+                let sx = 0, sy = 0;
+                for (let i = 0; i + 1 < n.length; i += 2) {
+                    sx += n[i];
+                    sy += n[i + 1];
+                }
+                cells.push([sx / (n.length / 2), sy / (n.length / 2)]);
+            }
+        }
+        if (!cells.length) continue;
+        const mx = cells.reduce((a, c) => a + c[0], 0) / cells.length;
+        const my = cells.reduce((a, c) => a + c[1], 0) / cells.length;
+        let best = cells[0], bd = Infinity;
+        for (const c of cells) {
+            const d = (c[0] - mx) ** 2 + (c[1] - my) ** 2;
+            if (d < bd) [best, bd] = [c, d];
+        }
+        out.push({ label: g.dataset.room || "", number: (g.dataset.room || "").split("|")[0].trim(), x: best[0], y: best[1] });
+    }
+    return out;
+}
+
+// Room numbers as an SVG layer drawn in screen pixels (scaled by scaleLabels()).
+function labelLayer(groups) {
+    const layer = document.createElementNS(SVG_NS, "g");
+    layer.setAttribute("class", "plan2d-labels");
+    for (const g of groups) for (const a of roomAnchors(g)) {
+        if (!a.number) continue;
+        const item = document.createElementNS(SVG_NS, "g");
+        item.setAttribute("class", "plan2d-label");
+        item.dataset.x = a.x;
+        item.dataset.y = a.y;
+        const w = 7 * a.number.length + 8;
+        const rect = document.createElementNS(SVG_NS, "rect");
+        [["x", -w / 2], ["y", -8], ["width", w], ["height", 16], ["rx", 3]].forEach(([k, v]) => rect.setAttribute(k, v));
+        const text = document.createElementNS(SVG_NS, "text");
+        text.setAttribute("y", 4);
+        text.textContent = a.number;
+        item.append(rect, text);
+        layer.append(item);
+    }
+    return layer;
 }
 
 // Colour of a value on a legend { min, max, colors } (linear interpolation, clamped).

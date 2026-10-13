@@ -2125,17 +2125,21 @@ code {
     }
 }
 
-/* "Parameters of this study": the values used here, apart from the generic description. */
-.an-params {
-    margin-top: 18px;
-    padding-top: 4px;
-    border-top: 1px solid var(--line);
+/* Two folding sections under the score: About this analysis, Parameters of this study. */
+.an-section > summary {
+    cursor: pointer;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: #577066;
+    padding: 4px 0;
 }
 
 .an-params dl {
     display: grid;
-    grid-template-columns: minmax(110px, 38%) 1fr;
-    gap: 5px 12px;
+    grid-template-columns: minmax(100px, 36%) 1fr;
+    gap: 6px 12px;
     margin: 6px 0 0;
     font-size: 13px;
 }
@@ -2146,4 +2150,31 @@ code {
 
 .an-params dd {
     margin: 0;
+}
+
+.an-params dd ul {
+    margin: 0;
+    padding-left: 16px;
+}
+
+/* Room numbers over the plan (Show labels); drawn in screen pixels. */
+.plan2d-label {
+    pointer-events: none;
+}
+
+.plan2d-label rect {
+    fill: #fff;
+    fill-opacity: 0.8;
+}
+
+.plan2d-label text {
+    font: 600 11px system-ui, sans-serif;
+    fill: #000;
+    text-anchor: middle;
+}
+
+.an-tools button[aria-pressed="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
 }
