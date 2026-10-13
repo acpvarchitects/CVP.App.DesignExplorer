@@ -11,7 +11,7 @@ const LIBS = [
 ];
 const SVG_NS = "http://www.w3.org/2000/svg";
 const MM_PER_PX = 25.4 / 96; // a CSS pixel on paper
-const PAGE = { w: 420, h: 297, margin: 12, side: 104, gap: 10 }; // A3 landscape, mm
+const PAGE = { w: 420, h: 297, margin: 12, side: 96, gap: 10 }; // A3 landscape, mm
 
 function loadScript(src) {
     return new Promise((resolve, reject) => {
@@ -69,7 +69,7 @@ function planForPrint(source, view, mmPerUnit) {
 // Room numbers on the plan, on a light backing (only when they are shown in the app).
 function drawRoomLabels(doc, source, view, k, px, py) {
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     for (const a of roomAnchors(source)) {
         if (a.x < view[0] || a.x > view[0] + view[2] || a.y < view[1] || a.y > view[1] + view[3]) continue;
         const num = a.number;
@@ -154,7 +154,7 @@ export async function exportViewPdf({ svg, view: screenView, home, project, laye
         doc.rect(bx + (i * barMm) / 4, by, barMm / 4, 2, "FD");
     }
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setTextColor(0);
     doc.text("0", bx, by + 5.6, { align: "center" });
     doc.text(String(+(len / 2).toPrecision(3)), bx + barMm / 2, by + 5.6, { align: "center" });
@@ -165,27 +165,27 @@ export async function exportViewPdf({ svg, view: screenView, home, project, laye
     let y = M + 4;
     const x = M;
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(20);
-    doc.text(doc.splitTextToSize(project || "", S), x, y);
-    y += 10;
     doc.setFontSize(15);
-    doc.text(doc.splitTextToSize(layer.label || layer.key, S), x, y);
-    y += 7.5;
-    doc.setFont("helvetica", "normal");
+    doc.text(doc.splitTextToSize(project || "", S), x, y);
+    y += 8;
     doc.setFontSize(12);
+    doc.text(doc.splitTextToSize(layer.label || layer.key, S), x, y);
+    y += 6;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
     doc.setTextColor(90);
     doc.text(`Level ${level}`, x, y);
-    y += 12;
+    y += 10;
 
     doc.setTextColor(90);
-    doc.setFontSize(10);
+    doc.setFontSize(8.5);
     doc.text(`${layer.score_label || "Average"} over the analysed rooms, weighted by area`, x, y);
-    y += 11;
+    y += 9.5;
     doc.setTextColor(0);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(30);
+    doc.setFontSize(24);
     doc.text(num(score, unit), x, y);
-    y += 10;
+    y += 8;
 
     // Legend: a fine strip of solid steps (vector, no gradient support needed) + ticks.
     const lg = layer.legend;
@@ -194,30 +194,30 @@ export async function exportViewPdf({ svg, view: screenView, home, project, laye
         for (let i = 0; i < steps; i++) {
             const v = lg.min + ((lg.max - lg.min) * (i + 0.5)) / steps;
             doc.setFillColor(...rgbOf(legendColor(lg, v)));
-            doc.rect(x + (i * lw) / steps, y, lw / steps + 0.05, 5, "F");
+            doc.rect(x + (i * lw) / steps, y, lw / steps + 0.05, 4.5, "F");
         }
         doc.setDrawColor(120);
         doc.setLineWidth(0.1);
-        doc.rect(x, y, lw, 5);
+        doc.rect(x, y, lw, 4.5);
         const n = Math.max(lg.segments || 11, 2), every = n > 6 ? 2 : 1;
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
+        doc.setFontSize(8);
         for (let i = 0; i < n; i += every) {
             const t = lg.min + ((lg.max - lg.min) * i) / (n - 1);
-            doc.text(String(+t.toFixed(2)), x + (lw * i) / (n - 1), y + 9.5, { align: i === 0 ? "left" : i === n - 1 ? "right" : "center" });
+            doc.text(String(+t.toFixed(2)), x + (lw * i) / (n - 1), y + 8.5, { align: i === 0 ? "left" : i === n - 1 ? "right" : "center" });
         }
-        y += 14;
+        y += 12;
         doc.setTextColor(90);
         doc.text(`${layer.label}${unit ? ` [${unit}]` : ""}${layer.better ? (layer.better === "higher" ? " · higher is better" : " · lower is better") : ""}`, x, y);
-        y += 12;
+        y += 10;
         doc.setTextColor(0);
     }
 
     // Rooms.
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
+    doc.setFontSize(8.5);
     doc.text(`ROOMS (${rooms.length})`, x, y);
-    y += 7;
+    y += 6;
     doc.setFont("helvetica", "normal");
     for (const r of rooms) {
         if (y > H - M - 10) {
@@ -226,16 +226,16 @@ export async function exportViewPdf({ svg, view: screenView, home, project, laye
         }
         if (lg) {
             doc.setFillColor(...rgbOf(legendColor(lg, r.average)));
-            doc.rect(x, y - 3, 3.6, 3.6, "F");
+            doc.rect(x, y - 2.6, 3.2, 3.2, "F");
         }
-        const name = doc.splitTextToSize(r.label, S - 28)[0];
-        doc.text(name, x + 6, y);
+        const name = doc.splitTextToSize(r.label, S - 26)[0];
+        doc.text(name, x + 5.5, y);
         doc.text(num(r.average, unit), x + S, y, { align: "right" });
-        y += 6.5;
+        y += 5.6;
     }
 
     // Footer.
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setTextColor(120);
     const stamp = new Date().toISOString().slice(0, 10);
     doc.text(`Design Explorer · ${project} · ${layer.label} · ${level} · exported ${stamp}${note ? " · " + note : ""}`, M, H - M + 4);
