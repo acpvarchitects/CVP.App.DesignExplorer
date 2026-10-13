@@ -2125,15 +2125,56 @@ code {
     }
 }
 
-/* Two folding sections under the score: About this analysis, Parameters of this study. */
+/* Two folding sections at the end of the sidebar (About this analysis, Parameters of this
+   study): closed at opening, each in a soft grey box with the title as the handle. */
+.an-section {
+    background: var(--soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 0;
+}
+
+.an-section + .an-section {
+    margin-top: 8px;
+}
+
 .an-section > summary {
     cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     font-size: 11px;
     letter-spacing: 1.5px;
     text-transform: uppercase;
     font-weight: 700;
-    color: #577066;
-    padding: 4px 0;
+    color: var(--accent);
+    padding: 10px 14px;
+}
+
+.an-section > summary::-webkit-details-marker {
+    display: none;
+}
+
+.an-section > summary::after {
+    content: "+";
+    font-size: 16px;
+    font-weight: 400;
+    letter-spacing: 0;
+}
+
+.an-section[open] > summary::after {
+    content: "−";
+}
+
+.an-section > summary:hover {
+    color: var(--accent-dark);
+}
+
+.an-section > .about-body {
+    padding: 0 14px 14px;
+    font-size: 13px;
+    overflow: visible;
 }
 
 .an-params dl {
