@@ -99,7 +99,7 @@ shown that way in the preview (no level picker yet: one file per cell).
 the level's score, a vector legend, the rooms with their averages (hover = highlight
 in the plan) and the description, always visible. Right: the plan, with the level buttons over it top right
 (highest first); hovering a room shows its name, the value at that point and the room average. Pan and zoom are kept when the level or
-the analysis changes (every level shares one plan frame); Reset view fits the level again. `?an=` / `?level=` keep the view in the address.
+the analysis changes (every level shares one plan frame); Reset view fits the level again. `?an=` / `?level=` keep the view in the address. **Show labels** puts the room numbers on the plan (they keep their screen size). **Export view** saves the current view (same zoom and pan) as a vector PDF on A3 landscape: rooms, score and legend on the left, the plan with a graphic scale on the right, and the room numbers when labels are shown.
 
 Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" component):
 
@@ -116,8 +116,8 @@ Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" com
 | `title` | optional page title (default: the folder name) |
 | `levels[]` | `{ key, label, elevation_m, plan_file, viewbox }`, lowest first |
 | `layers[]` with `kind: "analysis"`, `dim: "2d"` | `key`, `label`, `unit`, `better` (`higher` / `lower`), `file_pattern` (`<key>_<level>.svg`), `levels` (keys that exist), `score_label`, `scores` `{ level: value }`, `rooms` `{ level: [{ label, average, area_m2 }] }`, `legend` `{ min, max, segments, colors[] }` (colours spread evenly from min to max), `description` `[{ heading, text }]` |
-| `parameters` | `[{ label, value }]` used by every analysis of the study (location, climate file, grid, analysis plane, glazing...); a layer's own `parameters` (method, thresholds, hours...) follow. Shown as "Parameters of this study" under the description |
-| `about` | `[{ heading, text }]`, folded at the end of the description |
+| `parameters` | rows used by every analysis of the study (weather station, climate data, source models, grid, analysis plane, apertures, opaque surfaces...); a layer's own `parameters` (method, thresholds, hours...) follow. A row is `{ label, value }` or a group `{ label, items: [{ label, value }] }` (shown as a list). Shown in the folding section "Parameters of this study" |
+| `about` | `[{ heading, text }]` shared by every analysis (e.g. The model, Limits), shown after the analysis' own description in "About this analysis" |
 
 ## Page, top to bottom
 
@@ -181,6 +181,7 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 | `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera |
 | `plan2d.js` | 2D plan viewer (SVG layers, pan / zoom by viewBox, room hover) and `legendColor()` |
 | `analysis.html` / `analysis.js` | single-analysis page: the 2D analyses of one study, level by level |
+| `pdfexport.js` | "Export view" on the analysis page: vector PDF (A3 landscape) of the plan as framed, with legend, rooms, score and a graphic scale; loads jsPDF 2.5.1 + svg2pdf.js 2.2.3 from jsdelivr on first use |
 | `style.css` | all styles |
 
 ## Deploy (dev)

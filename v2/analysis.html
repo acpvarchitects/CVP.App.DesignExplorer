@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Design Explorer · Analysis</title>
     <link rel="icon" href="../favicon.png" />
-    <link rel="stylesheet" href="style.css?v=59" />
+    <link rel="stylesheet" href="style.css?v=61" />
 </head>
 <body class="an-page">
     <header class="topbar">
@@ -18,6 +18,7 @@
             <span id="projectNote" class="muted"></span>
         </div>
         <div class="actions">
+            <button id="exportBtn" type="button" title="Vector PDF (A3) of the plan as framed now, with legend, rooms and scale">Export view</button>
             <button id="shareBtn" type="button">Copy link</button>
         </div>
     </header>
@@ -41,9 +42,14 @@
                 <summary><span class="eyebrow">Rooms</span><span id="roomCount" class="muted small"></span></summary>
                 <ul id="roomList"></ul>
             </details>
-            <div class="an-block an-about">
+            <details class="an-block an-section" open>
+                <summary>About this analysis</summary>
                 <div id="description" class="about-body"></div>
-            </div>
+            </details>
+            <details class="an-block an-section" open>
+                <summary>Parameters of this study</summary>
+                <div id="parameters" class="about-body an-params"></div>
+            </details>
         </aside>
 
         <!-- Right: the plan, vector, pan and zoom -->
@@ -58,6 +64,7 @@
             <div class="an-tools">
                 <button id="zoomIn" type="button" aria-label="Zoom in">+</button>
                 <button id="zoomOut" type="button" aria-label="Zoom out">−</button>
+                <button id="labelsBtn" type="button" aria-pressed="false">Show labels</button>
                 <button id="resetView" type="button">Reset view</button>
             </div>
             <p class="an-hint muted small">Scroll to zoom · drag to move · double-click to reset</p>
@@ -67,6 +74,6 @@
 
     <div id="message" class="message" hidden></div>
 
-    <script type="module" src="analysis.js?v=7"></script>
+    <script type="module" src="analysis.js?v=11"></script>
 </body>
 </html>
