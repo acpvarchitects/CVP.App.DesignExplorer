@@ -183,7 +183,7 @@ export async function exportViewPdf({ svg, view: screenView, home, project, laye
     y += 9.5;
     doc.setTextColor(0);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(24);
+    doc.setFontSize(15);
     doc.text(num(score, unit), x, y);
     y += 8;
 
