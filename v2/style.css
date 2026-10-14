@@ -1025,9 +1025,14 @@ html.nav-collapsed .left-panel .drawer {
     display: block;
 }
 
-.media-3d {
+.media-3d,
+.media-2d {
     position: absolute;
     inset: 0;
+}
+
+.media-2d {
+    background: #fff;
 }
 
 .media-table {
@@ -2063,4 +2068,365 @@ code {
     .preview.expanded .media {
         height: 450px;
     }
+}
+
+/* ---- Single analysis page (analysis.html): one study, 2D plan analyses level by level ---- */
+.an-page {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.an-layout {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 14px;
+    padding: 14px 28px 18px;
+}
+
+.an-side {
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.an-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.an-block select {
+    width: 100%;
+}
+
+/* Level picker over the plan, top right: a small titled card, highest level first. */
+.an-levels-box {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    max-height: calc(100% - 70px);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px 10px;
+    background: #fff;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.an-levels-box .eyebrow {
+    font-size: 12px;
+    text-align: center;
+    letter-spacing: 1.2px;
+}
+
+.an-levels {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+}
+
+.an-levels button {
+    min-width: 56px;
+    padding: 5px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.an-levels button.on {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.an-score strong {
+    font-size: 24px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+}
+
+.an-legend-title {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.an-legend-bar {
+    height: 12px;
+    border-radius: 2px;
+    border: 1px solid var(--line-strong);
+}
+
+.an-legend-ticks {
+    position: relative;
+    height: 16px;
+    margin: 2px 6px 4px;
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.an-legend-ticks span {
+    position: absolute;
+    transform: translateX(-50%);
+}
+
+.an-rooms summary {
+    cursor: pointer;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.an-rooms ul {
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 0;
+    font-size: 12px;
+}
+
+.an-rooms li {
+    display: grid;
+    grid-template-columns: 12px 1fr auto;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 4px;
+    border-radius: 4px;
+    cursor: default;
+}
+
+.an-rooms li:hover {
+    background: var(--soft);
+}
+
+.an-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.an-room-value {
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+}
+
+.an-about {
+    border-top: 1px solid var(--line);
+    padding-top: 10px;
+}
+
+.an-about .about-body {
+    padding: 0;
+    font-size: 13px;
+    overflow: visible;
+}
+
+.an-about .about-body h2 {
+    font-size: 14px;
+}
+
+.an-view {
+    position: relative;
+    min-height: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #fff;
+}
+
+.an-plan {
+    position: absolute;
+    inset: 0;
+}
+
+.plan2d-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+
+.plan2d-svg.dragging {
+    cursor: grabbing;
+}
+
+.plan2d-plan {
+    pointer-events: none;
+}
+
+.plan2d-analysis g.room {
+    transition: opacity 0.12s;
+}
+
+/* Adjacent analysis cells: no antialiasing seams between them. */
+.plan2d-analysis path {
+    shape-rendering: crispEdges;
+}
+
+.plan2d-analysis g.room.dim {
+    opacity: 0.25;
+}
+
+.an-tools {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    display: flex;
+    gap: 4px;
+}
+
+.an-tools button {
+    padding: 3px 10px;
+}
+
+.an-hint {
+    position: absolute;
+    left: 14px;
+    bottom: 12px;
+    pointer-events: none;
+}
+
+.an-status {
+    position: absolute;
+    left: 14px;
+    top: 12px;
+}
+
+.an-tooltip {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 5px 9px;
+    font-size: 12px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid var(--line-strong);
+    border-radius: 5px;
+    pointer-events: none;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 860px) {
+    .an-page {
+        height: auto;
+    }
+
+    .an-layout {
+        grid-template-columns: 1fr;
+        padding: 12px 16px;
+    }
+
+    .an-view {
+        height: 70vh;
+    }
+}
+
+/* Two folding sections at the end of the sidebar (About this analysis, Parameters of this
+   study): closed at opening, each in a soft grey box with the title as the handle. */
+.an-section {
+    background: var(--soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 0;
+}
+
+.an-section + .an-section {
+    margin-top: -10px; /* 6px apart: the sidebar's 16px gap minus 10 */
+}
+
+.an-section > summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--accent);
+    padding: 10px 14px;
+}
+
+.an-section > summary::-webkit-details-marker {
+    display: none;
+}
+
+.an-section > summary::after {
+    content: "+";
+    font-size: 16px;
+    font-weight: 400;
+    letter-spacing: 0;
+}
+
+.an-section[open] > summary::after {
+    content: "−";
+}
+
+.an-section > summary:hover {
+    color: var(--accent-dark);
+}
+
+.an-section > .about-body {
+    padding: 0 14px 14px;
+    font-size: 13px;
+    overflow: visible;
+}
+
+.an-params dl {
+    display: grid;
+    grid-template-columns: minmax(100px, 36%) 1fr;
+    gap: 6px 12px;
+    margin: 6px 0 0;
+    font-size: 13px;
+}
+
+.an-params dt {
+    color: var(--muted);
+}
+
+.an-params dd {
+    margin: 0;
+}
+
+.an-params dd ul {
+    margin: 0;
+    padding-left: 16px;
+}
+
+/* Room numbers over the plan (Show labels); drawn in screen pixels. */
+.plan2d-label {
+    pointer-events: none;
+}
+
+.plan2d-label rect {
+    fill: #fff;
+    fill-opacity: 0.5;
+}
+
+.plan2d-label text {
+    font: 600 11px system-ui, sans-serif;
+    fill: #000;
+    text-anchor: middle;
+}
+
+.an-tools button[aria-pressed="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
 }

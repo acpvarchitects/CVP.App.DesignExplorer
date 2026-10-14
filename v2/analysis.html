@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Design Explorer · Analysis</title>
+    <link rel="icon" href="../favicon.png" />
+    <link rel="stylesheet" href="style.css?v=64" />
+</head>
+<body class="an-page">
+    <header class="topbar">
+        <div class="brand">
+            <img src="../img/antonio-citterio-patricia-viel.png" alt="Antonio Citterio Patricia Viel" />
+            <span class="brand-app">Design Explorer</span>
+        </div>
+        <div class="project">
+            <span id="projectName"></span>
+            <span id="projectNote" class="muted"></span>
+        </div>
+        <div class="actions">
+            <button id="exportBtn" type="button" title="Vector PDF (A3) of the plan as framed now, with legend, rooms and scale">Export view</button>
+            <button id="shareBtn" type="button">Copy link</button>
+        </div>
+    </header>
+
+    <main id="app" class="an-layout" hidden>
+        <!-- Left: what is shown and how to read it -->
+        <aside class="an-side card" aria-label="Analysis">
+            <div class="an-block">
+                <span class="eyebrow">Analysis</span>
+                <select id="analysisSelect" aria-label="Analysis"></select>
+            </div>
+            <div class="an-block an-score">
+                <span id="scoreLabel" class="muted small"></span>
+                <strong id="scoreValue"></strong>
+                <span id="scoreHelp" class="muted small"></span>
+            </div>
+            <div class="an-block">
+                <div id="legend" class="an-legend" aria-label="Colour legend"></div>
+            </div>
+            <details class="an-block an-rooms" open>
+                <summary><span class="eyebrow">Rooms</span><span id="roomCount" class="muted small"></span></summary>
+                <ul id="roomList"></ul>
+            </details>
+            <details class="an-block an-section">
+                <summary>About this analysis</summary>
+                <div id="description" class="about-body"></div>
+            </details>
+            <details class="an-block an-section">
+                <summary>Parameters of this study</summary>
+                <div id="parameters" class="about-body an-params"></div>
+            </details>
+        </aside>
+
+        <!-- Right: the plan, vector, pan and zoom -->
+        <section class="an-view card" aria-label="Plan">
+            <div id="plan" class="an-plan"></div>
+            <!-- Levels over the plan, top right: highest first, like a section -->
+            <div class="an-levels-box">
+                <span class="eyebrow">Level</span>
+                <div id="levelButtons" class="an-levels" aria-label="Levels"></div>
+            </div>
+            <div id="tooltip" class="an-tooltip" hidden></div>
+            <div class="an-tools">
+                <button id="zoomIn" type="button" aria-label="Zoom in">+</button>
+                <button id="zoomOut" type="button" aria-label="Zoom out">−</button>
+                <button id="labelsBtn" type="button" aria-pressed="true">Hide labels</button>
+                <button id="resetView" type="button">Reset view</button>
+            </div>
+            <p class="an-hint muted small">Scroll to zoom · drag to move · double-click to reset</p>
+            <p id="status" class="an-status muted small"></p>
+        </section>
+    </main>
+
+    <div id="message" class="message" hidden></div>
+
+    <script type="module" src="analysis.js?v=16"></script>
+</body>
+</html>
