@@ -452,16 +452,56 @@ html.nav-collapsed .left-panel .drawer {
     min-height: 0;
     overflow-y: auto;
     padding: 0 var(--acpv-sys-space-2, 8px);
+    /* Scrollbar of the library's side-nav region (side-nav.component.css, ui 0.21.1): `auto`
+       so the webkit rules below apply (a non-auto scrollbar-width makes Chrome ignore them and
+       draw its own thin bar with arrow buttons); thin only where there is no ::-webkit-scrollbar. */
+    scrollbar-width: auto;
+    scrollbar-color: auto;
 }
 
-/* Same model as Pantheon's frame card: the card itself does not scroll, an inner container does,
-   and the card keeps the library's 12px padding-inline-end (main-shell.component.css, "SCROLLBAR
-   GUTTER"), so the scrollbar floats clear of the card's right edge, top and bottom curves. */
+@supports not selector(::-webkit-scrollbar) {
+    .left-panel {
+        scrollbar-width: thin;
+        scrollbar-color: var(--md-sys-color-outline-variant) transparent;
+    }
+}
+
+.left-panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+.left-panel::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+.left-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.left-panel::-webkit-scrollbar-thumb {
+    background-color: var(--md-sys-color-outline-variant);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+    border-radius: var(--acpv-sys-radius-full, 9999px);
+}
+
+.left-panel::-webkit-scrollbar-thumb:hover {
+    background-color: var(--md-sys-color-outline);
+}
+
+/* Pantheon's model: the card itself does not scroll, an inner container does. Frame card of the
+   library (main-shell.component.css, ui 0.21.3): the theme's native thin scrollbar, 22px in from
+   the card's right edge. A scrollbar is drawn inside the element's border, so the 22px
+   TRANSPARENT right border puts it there (the background still paints under it) and keeps the bar
+   clear of the 16px corner curves. No scrollbar-gutter on the card. */
 .center {
     min-width: 0;
     min-height: 0;
     overflow: hidden;
-    padding: var(--acpv-sys-space-2, 8px) 12px var(--acpv-sys-space-2, 8px) 0;
+    padding: var(--acpv-sys-space-2, 8px) 0;
+    border-right: 22px solid transparent;
 }
 
 .center-scroll {

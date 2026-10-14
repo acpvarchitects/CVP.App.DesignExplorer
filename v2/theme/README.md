@@ -24,9 +24,12 @@ Shape/frame follow the library: shell = `surface-container`, cards flat on `surf
 (tone + radius only, no border), buttons pill (`corner-full`), fields `radius-xs`.
 
 Layout follows `main-shell`: 8px shell gap on four sides, left panel fused with the shell (280px,
-`--acpv-left-panel-width`), ONE center card, 16px panel/card gap. Scrollbar = `theme/custom-theme.scss`
-(copied into `style.css`). Like the library, the window does not scroll: the left panel and the center
-card scroll inside themselves (`scrollbar-gutter: stable`). Below 900px the layout is one column and the page
+`--acpv-left-panel-width`), ONE center card, 16px panel/card gap. Scrollbars follow ui **0.21.3**:
+the theme's native thin bar (`* { scrollbar-width: thin }` of `theme/custom-theme.scss`, copied into
+`style.css`) on the center card, moved 22px in from the card's edge by a 22px transparent right border
+(`main-shell.component.css`), and the side-nav's own 8px bar, no arrows, round thumb, on the left panel
+(`side-nav.component.css`). Like the library, the window does not scroll: the left panel and the center
+card scroll inside themselves. Below 900px the layout is one column and the page
 scrolls instead; `scroller()` in `app.js` picks the right one.
 
 Right side sheet (`acpv-right-panel`, docked): 256px (`--acpv-sys-sidesheet-width`), a card like the center one,
