@@ -3,8 +3,13 @@
 // stays high is good on every goal. Dragging on an axis filters the options.
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
-const HEIGHT = 280;
-const MARGIN = { top: 48, right: 80, bottom: 22, left: 80 };
+const PLOT_INNER = 210; // height of the plot area itself (between the header and the foot)
+let HEIGHT = 280;
+// top = axis header (title, unit): grows with the longest title; bottom = foot ("↑ better" / "✕ hide")
+const MARGIN = { top: 48, right: 72, bottom: 38, left: 56 };
+const TITLE_LINE = 14; // px between the lines of an axis title
+const UNIT_GAP = 20; // px from the last title line to the unit line
+const PLOT_GAP = 16; // px from the unit line to the top of the axis
 const GROUP_GAP = 10; // px between the batches of a grouped axis
 
 export class ParallelChart {
@@ -67,8 +72,22 @@ export class ParallelChart {
         if (!this.model) return;
         const { axes, options } = this.model;
         this.width = this.el.clientWidth;
-        this.svg.attr("width", this.width).attr("viewBox", `0 0 ${this.width} ${HEIGHT}`);
         this.x = d3.scalePoint(axes.map((a) => a.col), [MARGIN.left, this.width - MARGIN.right]);
+        const spacing = axes.length > 1 ? this.x.step() : this.width;
+        // Titles wrap to as many lines as their axis is wide; the header grows to fit the longest
+        // one, the plot area keeps its height.
+        // The unit ("[kWh/m²]") is not part of the title: it sits on its own line under it, so the
+        // names wrap less.
+        const parts = new Map(axes.map((a) => [a.col, splitUnit(a.label)]));
+        const titles = new Map(axes.map((a) => [a.col, titleLines(this.svg, parts.get(a.col).name, spacing - 12, a.info ? " ⓘ" : "")]));
+        const lines = Math.max(1, ...[...titles.values()].map((l) => l.length));
+        const hasUnits = [...parts.values()].some((p) => p.unit);
+        // first baseline at 12; the unit sits UNIT_GAP under the last title line and leaves
+        // PLOT_GAP before the plot (room for the top tick value); no unit: 8px under the title
+        const lastTitle = 12 + (lines - 1) * TITLE_LINE;
+        MARGIN.top = lastTitle + (hasUnits ? UNIT_GAP + PLOT_GAP : 8);
+        HEIGHT = MARGIN.top + PLOT_INNER + MARGIN.bottom;
+        this.svg.attr("width", this.width).attr("height", HEIGHT).attr("viewBox", `0 0 ${this.width} ${HEIGHT}`);
         this.segments = new Map(axes.filter((a) => a.groups).map((a) => [a.col, segmentsOf(a)]));
         this.y = new Map(
             axes.filter((a) => !a.groups).map((a) => {
@@ -83,7 +102,6 @@ export class ParallelChart {
         // Forget drag ranges on axes that no longer exist.
         for (const col of this.ranges.keys()) if (!this.y.has(col)) this.ranges.delete(col);
 
-        const spacing = axes.length > 1 ? this.x.step() : this.width;
         const axis = this.axesLayer
             .selectAll("g.pc-axis")
             .data(axes, (a) => a.col)
@@ -95,22 +113,32 @@ export class ParallelChart {
             g.selectChildren().remove();
             if (a.groups) this.drawGroups(g, a);
             else g.append("g").call(d3.axisLeft(this.y.get(a.col)).ticks(5).tickSizeOuter(0));
-            // Header: title, then "↑ better"; on hover that line becomes "✕ hide" (removes the axis).
+            // Header: title and unit. Foot (under the plot): "↑ better", which on hover becomes
+            // "✕ hide" (removes the axis). One group, so hovering the title shows "✕ hide" too.
             const head = g.append("g").attr("class", "pc-head");
+            const footY = HEIGHT - MARGIN.bottom;
             head.append("rect").attr("x", -(spacing - 12) / 2).attr("y", 0).attr("width", spacing - 12).attr("height", MARGIN.top).attr("fill", "transparent");
+            head.append("rect").attr("x", -(spacing - 12) / 2).attr("y", footY).attr("width", spacing - 12).attr("height", MARGIN.bottom).attr("fill", "transparent");
             const label = head.append("text").attr("class", "pc-label").attr("y", 12).attr("text-anchor", "middle");
-            wrap(label, a.label, spacing - 12, a.info ? " ⓘ" : "");
+            wrap(label, a.label, titles.get(a.col), !!a.info);
             // A described axis: its title opens "About" (pointer + ⓘ so it can be found).
             if (a.info) label.classed("has-info", true).on("click", () => this.onInfo?.(a.col));
+            if (parts.get(a.col).unit) {
+                head.append("text")
+                    .attr("class", "pc-unit")
+                    .attr("y", MARGIN.top - PLOT_GAP)
+                    .attr("text-anchor", "middle")
+                    .text(parts.get(a.col).unit);
+            }
             head.append("text")
                 .attr("class", "pc-hint")
-                .attr("y", MARGIN.top - 8)
+                .attr("y", footY + 17)
                 .attr("text-anchor", "middle")
                 .text(a.dir > 0 ? "↑ better" : a.dir < 0 ? "↓ better (flipped)" : "");
             if (this.onHide && axes.length > 1) {
                 head.append("text")
                     .attr("class", "pc-hide")
-                    .attr("y", MARGIN.top - 8)
+                    .attr("y", footY + 17)
                     .attr("text-anchor", "middle")
                     .text("✕ hide")
                     .on("click", () => this.onHide(a.col))
@@ -245,16 +273,41 @@ function segmentsOf(a) {
     });
 }
 
-// Splits an axis label over at most two lines so neighbours don't overlap.
-// `suffix` (e.g. the ⓘ of a described axis) follows the last line.
-function wrap(text, label, width, suffix = "") {
-    const words = label.split(/\s+/);
-    const lines = [""];
-    for (const w of words) {
-        const next = lines[lines.length - 1] ? lines[lines.length - 1] + " " + w : w;
-        if (next.length * 6.5 > width && lines[lines.length - 1] && lines.length < 2) lines.push(w);
-        else lines[lines.length - 1] = next;
+// Splits an axis title into lines no wider than `width`, measured with the real font (the
+// text is drawn in a hidden .pc-label), so neighbouring titles never overlap. A single word wider
+// than the axis stays whole. `suffix` (the ⓘ of a described axis) follows the last line.
+// "Summer Solar Radiation [kWh/m²]" -> { name: "Summer Solar Radiation", unit: "kWh/m²" }
+function splitUnit(label) {
+    const m = label.match(/^(.*\S)\s*\[(.+)\]$/);
+    return m ? { name: m[1], unit: m[2] } : { name: label, unit: "" };
+}
+
+function titleLines(svg, label, width, suffix = "") {
+    const holder = svg.append("g").attr("class", "pc-axis").attr("visibility", "hidden");
+    const probe = holder.append("text").attr("class", "pc-label");
+    const fits = (t) => probe.text(t).node().getComputedTextLength() <= width;
+    const lines = [];
+    // "A & B" is one unit: if the title has to wrap there, the word before the "&" and the one
+    // after it go to the next line together ("Pool & Deck", never "Pool &" / "Deck")
+    const words = [];
+    let joinNext = false;
+    for (const w of label.split(/\s+/)) {
+        if (joinNext) words[words.length - 1] += " " + w;
+        else if (w === "&" && words.length) words[words.length - 1] += " &";
+        else words.push(w);
+        joinNext = w === "&" && words.length > 0;
     }
-    lines.forEach((l, i) => text.append("tspan").attr("x", 0).attr("dy", i ? 14 : 0).text(l + (i === lines.length - 1 ? suffix : "")));
-    text.append("title").text(suffix ? label + " · click for a description" : label);
+    words[words.length - 1] += suffix; // the ⓘ stays glued to the last word, never alone on a line
+    for (const w of words) {
+        const cur = lines[lines.length - 1];
+        if (cur !== undefined && fits(cur + " " + w)) lines[lines.length - 1] = cur + " " + w;
+        else lines.push(w);
+    }
+    holder.remove();
+    return lines;
+}
+
+function wrap(text, label, lines, described = false) {
+    lines.forEach((l, i) => text.append("tspan").attr("x", 0).attr("dy", i ? TITLE_LINE : 0).text(l));
+    text.append("title").text(described ? label + " · click for a description" : label);
 }

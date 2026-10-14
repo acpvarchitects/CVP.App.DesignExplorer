@@ -140,9 +140,9 @@ Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" com
      pale lines. Computed over the methods shown, on the first 3 goals by default; the other
      filters don't change the front. With many goals almost every option is on it.
    "Clear chart filters" clears every filter (ranges, batch bars, Pareto).
-   **Hiding a result**: on hover, an axis's "↑ better" line becomes "✕ hide". A hidden result
+   **Hiding a result**: on hover, an axis's "↑ better" line under the plot becomes "✕ hide". A hidden result
    disappears everywhere (chart, Measurements, Pareto goals, Where this option stands, Compare,
-   Order by) and its filter is dropped; "2 hidden ▾" beside Clear chart filters lists them to
+   Order by) and its filter is dropped; the "Hidden results" section of the sidebar (with its rail icon) lists them to
    bring one back, or all.
    Kept in the URL (`?hide=`, positions among inputs + results). Index can be hidden from the
    chart too.
@@ -153,7 +153,7 @@ Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" com
    pieces together: apartments, cores and corridors); the chosen level stays from option to option.
    A 3D analysis shows its score for the option top right (`score_label`
    + value + unit) and, like the Table view, an "ⓘ About" button. "Where this option stands" shows actual value positions among the
-   matching options.
+   matching options, in the right side sheet (under the preview below 1100px).
 4. **Gallery** of matching options ("Order by" one result or Index; Index by default when the study
    has it, each batch together); "Compare" builds a shortlist of up to 4.
 5. **Compare methods** (2+ methods shown): matching count, best and median per method.
@@ -182,7 +182,8 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 | `plan2d.js` | 2D plan viewer (SVG layers, pan / zoom by viewBox, room hover) and `legendColor()` |
 | `analysis.html` / `analysis.js` | single-analysis page: the 2D analyses of one study, level by level |
 | `pdfexport.js` | "Export view" on the analysis page: vector PDF (A3 landscape) of the plan as framed, with legend, rooms, score and a graphic scale; loads jsPDF 2.5.1 + svg2pdf.js 2.2.3 from jsdelivr on first use |
-| `style.css` | all styles |
+| `style.css` | all styles; its colour/radius/font names are aliases of the `@acpvarchitects/ui` tokens |
+| `theme/` | vendored `@acpvarchitects/ui` 0.17.1 tokens (`base.css`, `tertiary/coral.css`, `tokens/`) + local Inter font; see `theme/README.md`. `<body class="light-medium-contrast">` picks the contrast mode (as the library ThemeService does in the Angular apps); `<html class="acpv-density--2">` the density |
 
 ## Deploy (dev)
 

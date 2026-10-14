@@ -1,0 +1,48 @@
+/*
+ * ACPV Tertiary Palette: Coral
+ * App: Iride
+ * 
+ * This file contains ONLY the tertiary color tokens.
+ * Must be used together with base.css
+ * 
+ * Usage:
+ *   @import '@acpvarchitects/ui/theme/base.css';
+ *   @import '@acpvarchitects/ui/theme/tertiary/coral.css';
+ * 
+ * Or use the preset:
+ *   @import '@acpvarchitects/ui/theme/presets/iride.css';
+ */
+
+/* ========================================
+   LIGHT THEME - Tertiary Coral
+   ========================================
+   Only :root and .light — medium-contrast and high-contrast inherit
+   their tertiary values from base.css (fix drift §4.4 design-handoff).
+   ======================================== */
+:root,
+.light {
+  --md-sys-color-tertiary: rgb(132 37 19);
+  --md-sys-color-on-tertiary: rgb(255 255 255);
+  --md-sys-color-tertiary-container: rgb(164 60 40);
+  --md-sys-color-on-tertiary-container: rgb(255 205 195);
+  --md-sys-color-tertiary-fixed: rgb(255 218 211);
+  --md-sys-color-on-tertiary-fixed: rgb(62 4 0);
+  --md-sys-color-tertiary-fixed-dim: rgb(255 180 165);
+  --md-sys-color-on-tertiary-fixed-variant: rgb(132 37 19);
+}
+
+/* ========================================
+   DARK THEME - Tertiary Coral
+   ========================================
+   Same rationale: only .dark, MC/HC inherit from base.css.
+   ======================================== */
+.dark {
+  --md-sys-color-tertiary: rgb(255 180 165);
+  --md-sys-color-on-tertiary: rgb(100 13 1);
+  --md-sys-color-tertiary-container: rgb(164 60 40);
+  --md-sys-color-on-tertiary-container: rgb(255 205 195);
+  --md-sys-color-tertiary-fixed: rgb(255 218 211);
+  --md-sys-color-on-tertiary-fixed: rgb(62 4 0);
+  --md-sys-color-tertiary-fixed-dim: rgb(255 180 165);
+  --md-sys-color-on-tertiary-fixed-variant: rgb(132 37 19);
+}
