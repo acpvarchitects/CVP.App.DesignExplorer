@@ -3,7 +3,11 @@
 Vendored from `@acpvarchitects/ui` **0.17.1** (`projects/ui/theme/`): `base.css` (MD3 colour, 6 modes),
 `tertiary/coral.css` (ACPV brand) and `tokens/*.css` (`--acpv-sys-*` foundation).
 This app has no build step and no npm, so the files are copied, not installed. Do not edit them:
-to update, re-copy the same files from a newer library release and bump `?v=` in `index.html`.
+to update, re-copy the same files from a newer library release and bump `?v=` on **every** theme `<link>` in
+`index.html` and `analysis.html` (nginx serves CSS with a 30-day `immutable` cache, so an unchanged URL keeps
+the old file). The token files are linked one by one on purpose: `tokens/acpv-sys.css` is only an aggregate of
+`@import url('./x.css')`, and the browser resolves those child URLs without the parent's `?v=`, so bumping
+the aggregate would not refresh them. The aggregate stays in the folder (it is part of the copy) but is not linked.
 
 `fonts.css` is local: Inter Variable (latin + latin-ext) from `@fontsource-variable/inter`.
 
