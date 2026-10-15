@@ -55,3 +55,8 @@ The choice is kept in localStorage. Below 1100px the side sheet goes away (its c
 The methods (which studies are compared) live on top of the center card, so they stay visible when the
 sidebar is closed. To go back to the previous layout, revert the two commits "refactor(v2): methods on top of
 the center card" and "feat(v2): sidebar with hamburger".
+
+Sidebar sections (Measurements, Pareto front, Hidden results) follow the library's `acpv-sidebar-section`: header row 48px at density -2
+(`--acpv-density-section-header-height`), 12px inset, leading icon, 14px / 500 title, chevron turning up when open, 1px divider under the header,
+no surface of its own; the active-filter badge and the clear × sit before the chevron (one deliberate difference: the library puts the
+chevron first, here it is last so the chevrons stay in one column). The "Analysis" row of the Pages group uses the same chevron.

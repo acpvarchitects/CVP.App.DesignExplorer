@@ -267,7 +267,7 @@ function renderNav(studies) {
     $("navDest").innerHTML =
         `<a class="nav-row is-current" href="${esc(here)}" aria-current="page">${navIcon("explore")}<span>Explore</span></a>` +
         `<details class="nav-group" id="analysisGroup">
-            <summary class="nav-row">${navIcon("analysis")}<span>Analysis</span><i class="nav-chev" aria-hidden="true"></i></summary>
+            <summary class="nav-row">${navIcon("analysis")}<span>Analysis</span><svg class="sec-chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5L10 12.5L15 7.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
             <div class="nav-sub" id="analysisList" aria-live="polite"></div>
         </details>`;
     // rail: Explore, and Analysis, which opens the drawer on its list

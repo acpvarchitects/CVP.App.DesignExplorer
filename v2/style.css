@@ -504,19 +504,16 @@ a.rail-btn {
     display: none;
 }
 
-.nav-chev {
-    margin-left: auto;
-    margin-right: 16px;
-    width: 8px;
-    height: 8px;
-    border-right: 2px solid currentColor;
-    border-bottom: 2px solid currentColor;
-    transform: rotate(45deg);
-    transition: transform var(--acpv-sys-motion-duration-normal, 250ms) ease;
+/* same chevron as the sidebar sections (library acpv-sidebar-section), turned up when open */
+.nav-row .sec-chev {
+    width: 20px;
+    height: 20px;
+    margin: 0 var(--acpv-sys-space-3, 12px) 0 auto; /* the inset of the section headers */
+    fill: none;
 }
 
-.nav-group[open] > summary .nav-chev {
-    transform: rotate(-135deg);
+.nav-group[open] > summary .sec-chev {
+    transform: rotate(180deg);
 }
 
 .nav-sub {
@@ -913,38 +910,49 @@ a.rail-btn:focus-visible {
     margin-bottom: 4px;
 }
 
-/* One expandable section per way of filtering (Measurements, Pareto front…). */
-.filter-section + .filter-section {
-    margin-top: 10px;
-}
-
+/* One expandable section per way of filtering (Measurements, Pareto front, Hidden results), as the
+   library's acpv-sidebar-section: header row (icon, title, chevron, then the actions), a divider
+   under it, no surface of its own. Height from the density token (48px at -2, 56px otherwise). */
 .filter-section > summary {
+    position: relative;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-    padding: 5px 12px;
+    gap: var(--acpv-sys-space-2, 8px);
+    height: var(--acpv-density-section-header-height, 56px);
+    padding-inline: var(--acpv-sys-space-3, 12px);
     list-style: none;
     cursor: pointer;
-    border: 1px solid var(--line-strong);
-    border-radius: var(--acpv-sys-corner-full);
-    background: var(--soft);
-    font-weight: 600;
-    font-size: 14px;
+    user-select: none;
+    color: var(--md-sys-color-on-surface);
+    font-size: var(--acpv-sys-type-title-sm, 14px);
+    line-height: var(--acpv-sys-type-title-sm-line-height, 20px);
+    font-weight: var(--acpv-sys-type-weight-medium, 500);
 }
 
 .filter-section > summary::-webkit-details-marker {
     display: none;
 }
 
-.filter-section > summary::before {
-    content: "▸";
-    color: var(--muted);
-    margin-right: 2px;
+.filter-section > summary::after {
+    content: "";
+    position: absolute;
+    inset-inline: var(--acpv-sys-space-2, 8px);
+    bottom: 0;
+    height: 1px;
+    background: var(--md-sys-color-outline-variant);
 }
 
-.filter-section[open] > summary::before {
-    content: "▾";
+.filter-section > summary:focus-visible {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: -2px;
+    border-radius: var(--acpv-sys-radius-sm, 8px);
+}
+
+.sec-icon {
+    flex: none;
+    width: var(--acpv-sys-space-5, 20px);
+    height: var(--acpv-sys-space-5, 20px);
+    fill: var(--md-sys-color-on-surface-variant);
 }
 
 .filter-section > summary .filter-title {
@@ -955,14 +963,41 @@ a.rail-btn:focus-visible {
     text-overflow: ellipsis;
 }
 
-.filter-section.active > summary,
-.filter-section:has(.filter-badge:not(:empty)) > summary {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-    color: var(--accent);
+.sec-chev {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    color: var(--md-sys-color-on-surface-variant);
+    transition: transform var(--acpv-sys-motion-duration-normal, 250ms) ease;
 }
 
-/* active: a small round count, then × to clear the section */
+.filter-section[open] > summary .sec-chev {
+    transform: rotate(180deg);
+}
+
+/* the body opens and closes smoothly where the browser can animate <details> content */
+.filter-section {
+    interpolate-size: allow-keywords;
+}
+
+.filter-section::details-content {
+    block-size: 0;
+    overflow: clip;
+    transition: block-size var(--acpv-sys-motion-duration-normal, 250ms) ease, content-visibility var(--acpv-sys-motion-duration-normal, 250ms) allow-discrete;
+}
+
+.filter-section[open]::details-content {
+    block-size: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sec-chev,
+    .filter-section::details-content {
+        transition: none;
+    }
+}
+
+/* active: a small round count, then × to clear the section (the actions of the header) */
 .filter-badge:not(:empty) {
     min-width: 18px;
     height: 18px;
@@ -978,8 +1013,10 @@ a.rail-btn:focus-visible {
 }
 
 .filter-clear {
+    flex: none;
     width: 20px;
     height: 20px;
+    min-height: 0;
     padding: 0;
     border: 0;
     border-radius: 50%;
@@ -987,16 +1024,15 @@ a.rail-btn:focus-visible {
     color: var(--muted);
     font-size: 15px;
     line-height: 20px;
-    margin-right: -4px;
 }
 
 .filter-clear:hover:not(:disabled) {
-    background: var(--card);
+    background: var(--md-sys-color-surface-container-high);
     color: var(--accent);
 }
 
 .filter-body {
-    padding: 10px 2px 4px;
+    padding: 8px var(--acpv-sys-space-3, 12px) 12px;
 }
 
 .filter-body .filters-head {
