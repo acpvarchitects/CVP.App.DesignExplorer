@@ -61,8 +61,12 @@ function findDefinition(text, ext) {
 }
 
 // --- pixel literals ----------------------------------------------------------
-const DECL = /(?:^|[\s;{"'`])(border(?:-(?:top|bottom|start|end)-(?:left|right|start|end))?-radius)\s*:\s*([^;}"'`]+)/g;
-const PX = /(?<![\w-])(?:0*[1-9]\d*|\d*\.\d*[1-9]\d*)(?:\.\d+)?px/;
+// CSS names and units are ASCII case-insensitive; Angular style objects spell the property in camelCase.
+const RADIUS_PROP = "border(?:-(?:top|bottom|start|end)-(?:left|right|start|end))?-radius|border(?:(?:Top|Bottom|Start|End)(?:Left|Right|Start|End))?Radius";
+// `border-radius: 8px`, `'border-radius': '8px'` (ngStyle), `borderRadius: '8px'`, `el.style.borderRadius = '8px'`.
+const DECL = new RegExp("(?:^|[\\s;{,.\"'`])(" + RADIUS_PROP + ")[\"']?\\s*[:=]\\s*[\"'`]?([^;}\"'`]+)", "gi");
+// Angular unit binding: `[style.border-radius.px]="12"`.
+const UNIT_BINDING = new RegExp("\\[style\\.(?:" + RADIUS_PROP + ")\\.px\\]", "gi");
 const ALLOW = "\u0001ALLOW\u0001"; // marks a comment that carried `radius-guard-allow`
 
 function stripForLiterals(text, ext) {
@@ -79,22 +83,59 @@ function stripForLiterals(text, ext) {
   return out;
 }
 
+/** Removes every var(...) with its (arbitrarily nested) fallback: a px inside a fallback is not a literal. */
+function stripVars(value) {
+  let out = "";
+  let i = 0;
+  while (i < value.length) {
+    if (/^var\(/i.test(value.slice(i)) && !/[\w-]/.test(value[i - 1] ?? "")) {
+      let depth = 0;
+      let j = i + 3;
+      for (; j < value.length; j++) {
+        if (value[j] === "(") depth++;
+        else if (value[j] === ")" && --depth === 0) break;
+      }
+      out += " ";
+      i = j + 1;
+    } else {
+      out += value[i++];
+    }
+  }
+  return out;
+}
+
+/** True when the value holds a non-zero pixel length (any case: 8px, 8PX, 1e1px, .5px). */
+function hasPixelLength(value) {
+  for (const m of value.matchAll(/(?<![\w.-])\+?((?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)px(?![\w-])/gi)) {
+    if (parseFloat(m[1]) !== 0) return true;
+  }
+  return false;
+}
+
 /** Returns [{ line, value }] of pixel radii that are not exempt. Declarations may span several lines. */
 function findLiterals(text, ext) {
   if (ext === ".json") return [];
   const clean = stripForLiterals(text, ext);
   const lines = clean.split("\n");
+  const lineOf = (index) => clean.slice(0, index).split("\n").length - 1; // 0-based
+  // `radius-guard-allow` on the line before the declaration, or on any line it spans, exempts it.
+  const exempt = (first, last) => {
+    for (let i = Math.max(0, first - 1); i <= last; i++) if (lines[i].includes(ALLOW)) return true;
+    return false;
+  };
   const hits = [];
   DECL.lastIndex = 0;
   let m;
   while ((m = DECL.exec(clean)) !== null) {
-    // The part of the value outside var(...): a px inside var(--x, 12px) is a fallback, not a literal.
-    const outside = m[2].replace(/var\((?:[^()]|\([^()]*\))*\)/g, " ");
-    if (!PX.test(outside)) continue;
-    const propertyAt = m.index + m[0].indexOf(m[1]);
-    const i = clean.slice(0, propertyAt).split("\n").length - 1; // 0-based line of the property name
-    const exempt = lines[i].includes(ALLOW) || (i > 0 && lines[i - 1].includes(ALLOW));
-    if (!exempt) hits.push({ line: i + 1, value: `${m[1]}: ${m[2].trim().replace(/\s+/g, " ")}` });
+    if (!hasPixelLength(stripVars(m[2]))) continue;
+    const first = lineOf(m.index + m[0].indexOf(m[1]));
+    const last = lineOf(m.index + m[0].length);
+    if (!exempt(first, last)) hits.push({ line: first + 1, value: `${m[1]}: ${m[2].trim().replace(/\s+/g, " ")}` });
+  }
+  UNIT_BINDING.lastIndex = 0;
+  while ((m = UNIT_BINDING.exec(clean)) !== null) {
+    const first = lineOf(m.index);
+    if (!exempt(first, first)) hits.push({ line: first + 1, value: m[0] });
   }
   return hits;
 }
@@ -190,6 +231,17 @@ const LITERAL_FIXTURES = [
   { name: "inline style attribute", ext: ".html", hit: true, text: `<div style="border-radius: 8px">x</div>` },
   { name: "component styles in ts", ext: ".ts", hit: true, text: "@Component({ styles: [`.a { border-radius: 10px; }`] })\nexport class A {}" },
   { name: "cssText string in ts", ext: ".ts", hit: true, text: "el.style.cssText = ['color:red', 'border-radius:4px'].join(';');" },
+  { name: "uppercase unit", ext: ".css", hit: true, text: `.a { border-radius: 8PX; }` },
+  { name: "uppercase property", ext: ".css", hit: true, text: `.a { BORDER-RADIUS: 12px; }` },
+  { name: "exponent form", ext: ".css", hit: true, text: `.a { border-radius: 1e1px; }` },
+  { name: "px outside a var() that holds a calc fallback", ext: ".css", hit: true, text: `.a { border-radius: calc(8px + var(--b, 4px)); }` },
+  { name: "angular [style.border-radius.px] binding", ext: ".html", hit: true, text: `<div [style.border-radius.px]="12">x</div>` },
+  { name: "angular camelCase unit binding", ext: ".html", hit: true, text: `<div [style.borderRadius.px]="12">x</div>` },
+  { name: "ngStyle with a border-radius key", ext: ".html", hit: true, text: `<div [ngStyle]="{'border-radius': '8px'}">x</div>` },
+  { name: "style object with a camelCase key", ext: ".ts", hit: true, text: "readonly s = { borderRadius: '8px', color: 'red' };" },
+  { name: "assignment on el.style", ext: ".ts", hit: true, text: "el.style.borderRadius = '8px';" },
+  { name: "marker placed after the value does not hide another declaration", ext: ".css", hit: true,
+    text: `.a { border-radius: 8px; }\n.b { top: 0; } /* radius-guard-allow: elsewhere */\n.c { color: red; }\n.d { border-radius: 4px; }` },
   // fine
   { name: "token", ext: ".scss", hit: false, text: `.a { border-radius: var(--acpv-sys-corner-medium); }` },
   { name: "token with px fallback", ext: ".css", hit: false, text: `.a { border-radius: var(--acpv-sys-corner-medium, 12px); }` },
@@ -202,6 +254,13 @@ const LITERAL_FIXTURES = [
   { name: "scss line comment", ext: ".scss", hit: false, text: `// border-radius: 14px is gone\n.a { top: 0; }` },
   { name: "html comment", ext: ".html", hit: false, text: `<!-- border-radius: 14px -->\n<div>ok</div>` },
   { name: "token in an inline style", ext: ".html", hit: false, text: `<div style="border-radius: var(--acpv-sys-corner-medium)">x</div>` },
+  { name: "px only inside a nested var() fallback", ext: ".css", hit: false, text: `.a { border-radius: var(--a, calc(8px + var(--b, 4px))); }` },
+  { name: "angular binding of the real property, no px unit", ext: ".html", hit: false, text: `<div [style.border-radius]="r">x</div>` },
+  { name: "zero with a unit", ext: ".css", hit: false, text: `.a { border-radius: 0px; }` },
+  { name: "allow marker after the value on the next line", ext: ".css", hit: false,
+    text: `.a { border-radius:\n  12px; /* radius-guard-allow: registered gap */\n}` },
+  { name: "allow marker as a trailing comment of a one-line declaration", ext: ".scss", hit: false,
+    text: `.a { border-radius: 12px; /* radius-guard-allow: registered gap */ }` },
   { name: "allow marker on the previous line", ext: ".css", hit: false, text: `/* radius-guard-allow: registered gap */\n.a { border-radius: 12px !important; }` },
   { name: "allow marker as a scss line comment", ext: ".scss", hit: false, text: `.a { border-radius: 12px; // radius-guard-allow: registered gap\n}` },
   { name: "allow marker in an html comment", ext: ".html", hit: false, text: `<!-- radius-guard-allow: registered gap -->\n<div style="border-radius: 8px">x</div>` },
