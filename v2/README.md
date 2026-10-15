@@ -106,7 +106,10 @@ destination) and *Analysis*, a group that opens on a list of studies. The list h
 analyses, then every other study of the same place that has some: the first time the group is opened the app asks the folder that
 holds the studies for its list (a JSON `[{ name }]`, the API's `/projects`, in practice ~40 small `layers.json` requests, kept for 10
 minutes in `sessionStorage`) and keeps the studies with 2D analyses. A row opens `analysis.html` of that study (`PROJECT` or `data`,
-as the dashboard was opened). On the analysis page an **Explore** button in the app bar goes back to the dashboard of the same study,
+as the dashboard was opened). On the analysis page the corner cell of the app bar holds **Back** (arrow): the dashboard adds
+`back=index.html?<its own state>` to the links it opens the page with (order, open option, filters…), so Back returns to exactly
+that view; without `back` it uses the browser history when the previous page is on this site, and is hidden otherwise. An **Explore**
+button next to Copy link goes to the dashboard of the *same* study,
 only when the study has a `data.csv` (a plans-only study, e.g. a daylight study, has nothing to explore).
 The other way round, opening the dashboard on a plans-only study (no `data.csv`, 2D analyses in `layers.json`) opens its analysis page; with
 several plans-only studies it lists their analysis pages; mixed with studies that have data, the dashboard explores those and the

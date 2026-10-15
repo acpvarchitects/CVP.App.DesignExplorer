@@ -253,6 +253,14 @@ async function findPlanStudies(first, openNames) {
     return names.filter((n) => !openNames.includes(n)).map((name) => ({ name, ref: { key: first.ref.key, entry: entry(name) } }));
 }
 
+// Any link to the analysis page carries where it was opened from (the dashboard with its whole state:
+// order, option, filters…), so the page can offer "Back". Added when it is clicked: the state moves.
+document.addEventListener("click", (e) => {
+    const a = e.target.closest('a[href^="analysis.html"]');
+    if (!a || a.href.includes("&back=")) return;
+    a.setAttribute("href", `${a.getAttribute("href")}&back=${encodeURIComponent("index.html" + location.search)}`);
+});
+
 function renderNav(studies) {
     const plans = studies.filter(hasPlanAnalyses);
     const here = location.pathname + location.search;
