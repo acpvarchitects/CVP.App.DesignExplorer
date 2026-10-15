@@ -1713,6 +1713,9 @@ function initSidebar() {
         } else if (e.target.closest("#analysisGroup > summary")) {
             e.preventDefault();
             setCollapsed(false); // the sidebar opens with its menus closed
+            const row = e.target.closest("summary");
+            row.classList.add("is-active"); // pressed: red while it opens, like "Filters"
+            setTimeout(() => row.classList.remove("is-active"), 350);
         }
     });
     // the number on "Filters" follows the headers of the filter sections

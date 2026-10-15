@@ -466,6 +466,7 @@ html.nav-collapsed .app-frame {
     background: var(--md-sys-color-surface-container-high);
 }
 
+.nav-row:active,
 .nav-row.is-active,
 .nav-group[open] > summary.nav-row {
     background: var(--md-sys-color-tertiary-container);
