@@ -11,7 +11,7 @@ the aggregate would not refresh them. The aggregate stays in the folder (it is p
 
 **Drift check.** A copy is frozen: when the library changes a token nothing here notices. Run
 `node scripts/check-theme-drift.mjs` (needs the GitHub CLI, already logged in for ACPV): it compares every file in
-this folder with the library's source, prints `identical` / `different` / `missing`, and exits 1 on drift
+this folder with the library's source and lists the library's `tokens/` too, prints `identical` / `different` / `missing` (vendored here, gone from the library) / `not-vendored` (in the library, absent here: a new token file, or one deleted by mistake), and exits 1 on drift. `tokens/fonts.css` is skipped on purpose (v2 has its own `fonts.css`)
 (`--ref ui-v0.22.0` for a tag, `--local <path to packages/ui/projects/ui/theme>` for a checkout). Run it when the
 library releases, and after re-copying, bump `?v=` on every theme `<link>`. It does **not** compare what is copied into
 `style.css` by hand (global scrollbar, app-frame card scrollbar, side-nav bar): re-read `scrollbars.scss`,
