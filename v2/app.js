@@ -267,7 +267,6 @@ function mirrorFilterCount() {
     if (!badge) return;
     const n = ["measurementsBadge", "paretoBadge", "hiddenCount"].filter((id) => $(id).textContent.trim()).length;
     badge.textContent = n ? String(n) : "";
-    badge.closest(".nav-row").classList.toggle("is-active", n > 0);
     badge.title = n ? `${n} active filter section${n > 1 ? "s" : ""}` : "";
 }
 
