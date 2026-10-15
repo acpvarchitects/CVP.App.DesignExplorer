@@ -267,6 +267,7 @@ function mirrorFilterCount() {
     if (!badge) return;
     const n = ["measurementsBadge", "paretoBadge", "hiddenCount"].filter((id) => $(id).textContent.trim()).length;
     badge.textContent = n ? String(n) : "";
+    badge.closest(".nav-row").classList.toggle("is-active", n > 0);
     badge.title = n ? `${n} active filter section${n > 1 ? "s" : ""}` : "";
 }
 
@@ -1629,7 +1630,12 @@ function initSidebar() {
     const compact = matchMedia("(max-width: 839px)");
     const KEY = "design-explorer-v2:nav";
 
+    // the menus inside the menu start closed every time the sidebar opens (library: the drawer opens on its destinations)
+    const closeNested = () => {
+        for (const d of document.querySelectorAll("#navDest details, .filters details")) d.open = false;
+    };
     const setCollapsed = (collapsed, save = true) => {
+        if (!collapsed && root.classList.contains("nav-collapsed")) closeNested();
         root.classList.toggle("nav-collapsed", collapsed);
         toggle.setAttribute("aria-expanded", String(!collapsed));
         if (save) {
@@ -1667,7 +1673,7 @@ function initSidebar() {
     } catch {
         /* no storage */
     }
-    root.classList.toggle("nav-collapsed", saved === "collapsed");
+    root.classList.toggle("nav-collapsed", saved !== "open"); // library default: rail until opened once
     sync();
 
     toggle.addEventListener("click", () => {
@@ -1675,6 +1681,9 @@ function initSidebar() {
         else setCollapsed(!root.classList.contains("nav-collapsed"));
     });
     $("navScrim").addEventListener("click", () => setOverlay(false));
+    $("navDest").addEventListener("click", (e) => {
+        if (compact.matches && e.target.closest("a.nav-sub-row")) setOverlay(false, { focus: false });
+    });
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && compact.matches && root.classList.contains("nav-open")) setOverlay(false);
     });

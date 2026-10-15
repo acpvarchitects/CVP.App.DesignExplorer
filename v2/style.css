@@ -404,7 +404,7 @@ html.nav-collapsed .app-frame {
 .nav-dest {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--acpv-sys-space-1, 4px); /* the library's item gap */
     padding: 4px 0 8px;
 }
 
@@ -430,6 +430,20 @@ html.nav-collapsed .app-frame {
 
 .nav-row:hover {
     background: var(--md-sys-color-surface-container-high);
+}
+
+.nav-row.is-active,
+.nav-group[open] > summary.nav-row {
+    background: var(--md-sys-color-tertiary-container);
+    color: var(--md-sys-color-on-tertiary-container);
+}
+
+/* a filter section that is doing something: its icon carries the same accent (library active icon) */
+.filter-section:has(> summary .filter-badge:not(:empty)) > summary .sec-icon {
+    border-radius: var(--acpv-sys-corner-full, 9999px);
+    background: var(--md-sys-color-tertiary-container);
+    fill: var(--md-sys-color-on-tertiary-container);
+    box-shadow: 0 0 0 4px var(--md-sys-color-tertiary-container);
 }
 
 .nav-row.is-current {
@@ -911,7 +925,8 @@ html.nav-collapsed .filters {
     align-items: center;
     gap: var(--acpv-sys-space-2, 8px);
     height: var(--acpv-density-section-header-height, 56px);
-    padding-inline: var(--acpv-sys-space-3, 12px);
+    /* the icon sits on the menu's icon axis (centre x=40), the title on the menu's label column */
+    padding-inline: var(--acpv-sys-space-5, 20px) var(--acpv-sys-space-3, 12px);
     list-style: none;
     cursor: pointer;
     user-select: none;
@@ -942,8 +957,9 @@ html.nav-collapsed .filters {
 
 .sec-icon {
     flex: none;
-    width: var(--acpv-sys-space-5, 20px);
-    height: var(--acpv-sys-space-5, 20px);
+    width: 24px;
+    height: 24px;
+    margin-right: 12px;
     fill: var(--md-sys-color-on-surface-variant);
 }
 
