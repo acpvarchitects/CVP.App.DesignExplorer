@@ -1435,6 +1435,8 @@ function bindEvents() {
         state.ranges = {};
         state.batches.clear();
         state.pareto = false;
+        state.hidden.clear(); // the hidden axes come back too (same as "Show all" in Hidden results)
+        applyHidden();
         render({ syncChart: true });
     });
     // × in a section header: clear that section only, without opening/closing it.
