@@ -106,6 +106,9 @@ sidebar: drawer rows and rail icons *Explore* (this page, the active destination
 `PROJECT` / `data` entry; with several such studies, one row each, "Analysis · <name>"). The group is always there; *Analysis* is disabled (38%, tooltip says why) for a study without 2D
 analyses. On the analysis page an **Explore** button in the app bar goes back to the dashboard of the same study, only when the study
 has a `data.csv` (a plans-only study, e.g. a daylight study, has nothing to explore).
+The other way round, opening the dashboard on a plans-only study (no `data.csv`, 2D analyses in `layers.json`) opens its analysis page; with
+several plans-only studies it lists their analysis pages; mixed with studies that have data, the dashboard explores those and the
+plans-only ones stay in the *Analysis* rows.
 
 Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" component):
 

@@ -1487,7 +1487,7 @@ function bindEvents() {
 // ---- Start ----
 
 async function init() {
-    const studies = resolveStudies();
+    let studies = resolveStudies();
     if (!studies.length) {
         showMessage(
             `<h2>No project selected</h2><p>Add the project name to the address, for example <code>?PROJECT=STUDY</code>, or several: <code>?PROJECT=STUDY_A,STUDY_B</code>.</p>`
@@ -1496,8 +1496,35 @@ async function init() {
     }
 
     studies.forEach((st, i) => (st.color = STUDY_COLORS[i % STUDY_COLORS.length]));
-    const [loaded] = await Promise.all([Promise.allSettled(studies.map(loadStudy)), Promise.all(studies.map(loadManifest))]);
-    renderNav(studies);
+    let [loaded] = await Promise.all([Promise.allSettled(studies.map(loadStudy)), Promise.all(studies.map(loadManifest))]);
+
+    // A study with plans only (no data.csv, 2D analyses in layers.json) has nothing to explore: its
+    // way in is the analysis page. Alone (or all of them) it opens there; mixed with studies that
+    // have data, those are explored and the plans-only ones stay reachable from "Analysis".
+    const lacksData = (s) => loaded[studies.indexOf(s)].status === "rejected";
+    const plansOnly = studies.filter((s) => lacksData(s) && hasPlanAnalyses(s));
+    if (plansOnly.length && plansOnly.length === studies.filter(lacksData).length) {
+        if (plansOnly.length === studies.length) {
+            if (studies.length === 1) {
+                location.replace(analysisLink(plansOnly[0]));
+                return;
+            }
+            showMessage(
+                `<h2>Plans only</h2><p>These studies have no <code>data.csv</code>, only 2D analyses: open their analysis page.</p><ul>${plansOnly
+                    .map((s) => `<li><a href="${esc(analysisLink(s))}">${esc(s.name)}</a></li>`)
+                    .join("")}</ul>`
+            );
+            return;
+        }
+        const withData = (s) => !plansOnly.includes(s);
+        loaded = loaded.filter((l, i) => withData(studies[i]));
+        const allStudies = studies;
+        studies = studies.filter(withData);
+        studies.forEach((st, i) => (st.color = STUDY_COLORS[i % STUDY_COLORS.length]));
+        renderNav(allStudies);
+    } else {
+        renderNav(studies);
+    }
     const failed = studies.filter((s, i) => loaded[i].status === "rejected");
     if (failed.length) {
         loaded.forEach((l) => l.status === "rejected" && console.error(l.reason));
