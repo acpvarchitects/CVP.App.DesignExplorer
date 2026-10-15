@@ -183,7 +183,7 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 | `analysis.html` / `analysis.js` | single-analysis page: the 2D analyses of one study, level by level |
 | `pdfexport.js` | "Export view" on the analysis page: vector PDF (A3 landscape) of the plan as framed, with legend, rooms, score and a graphic scale; loads jsPDF 2.5.1 + svg2pdf.js 2.2.3 from jsdelivr on first use |
 | `style.css` | all styles; its colour/radius/font names are aliases of the `@acpvarchitects/ui` tokens |
-| `theme/` | vendored `@acpvarchitects/ui` 0.17.1 tokens (`base.css`, `tertiary/coral.css`, `tokens/`) + local Inter font; see `theme/README.md`. `<body class="light-medium-contrast">` picks the contrast mode (as the library ThemeService does in the Angular apps); `<html class="acpv-density--2">` the density |
+| `theme/` | vendored `@acpvarchitects/ui` tokens (identical to 0.22.0, `scripts/check-theme-drift.mjs` verifies it) (`base.css`, `tertiary/coral.css`, `tokens/`) + local Inter font; see `theme/README.md`. `<body class="light-medium-contrast">` picks the contrast mode (as the library ThemeService does in the Angular apps); `<html class="acpv-density--2">` the density |
 
 ## Deploy (dev)
 
