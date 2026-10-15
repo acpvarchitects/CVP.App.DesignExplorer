@@ -24,10 +24,12 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, extname } from "node:path";
 
 // Definition forms: `--x: v` (css, scss, inline style, template literals, ngStyle `{'--x': v}`, also right after a `}`),
-// Angular `[style.--x]` bindings and `setProperty('--x', v)`. A usage (`var(--x)`) or a read (`getPropertyValue`) is not one.
+// Angular `[style.--x]` bindings, `@HostBinding('style.--x')`, `style.setProperty('--x', v)` and Renderer2
+// `setStyle(el, '--x', v)`. A usage (`var(--x)`) or a read (`getPropertyValue`) is not one. This is a literal-form
+// check, not a parser: a name built at runtime (`'--' + name`) is out of its reach, and so is code review.
 const DEFINITION =
-  /(^|[\s;{}"'`])--(?:app-radius|acpv-sys-radius|acpv-sys-corner)-[a-z0-9-]+["']?\s*:|\[style\.--(?:app-radius|acpv-sys-radius|acpv-sys-corner)-[a-z0-9-]+\]|setProperty\(\s*["'`]--(?:app-radius|acpv-sys-radius|acpv-sys-corner)-/;
-const EXTENSIONS = new Set([".css", ".scss", ".html", ".ts", ".json"]);
+  /(^|[\s;{}"'`])--(?:app-radius|acpv-sys-radius|acpv-sys-corner)-[a-z0-9-]+["']?\s*:|\[style\.--(?:app-radius|acpv-sys-radius|acpv-sys-corner)-[a-z0-9-]+\]|["'`]style\.--(?:app-radius|acpv-sys-radius|acpv-sys-corner)-|style\.setProperty\(\s*["'`]--(?:app-radius|acpv-sys-radius|acpv-sys-corner)-|\.setStyle\([^)]*["'`]--(?:app-radius|acpv-sys-radius|acpv-sys-corner)-/;
+const EXTENSIONS = new Set([".css", ".scss", ".html", ".ts", ".js", ".json"]);
 // "theme" is skipped on purpose: v2/theme/ is the vendored copy of the library's own tokens, so it DEFINES
 // --acpv-sys-radius-* / --acpv-sys-corner-* by design. Whether that copy still matches the library is the
 // other check (scripts/check-theme-drift.mjs); this guard is about the app's own files (v2/style.css, ...).
@@ -38,7 +40,7 @@ function stripComments(text, ext) {
   // html: <!-- --> comments, and /* */ comments inside <style> blocks.
   if (ext === ".html") return text.replace(/<!--[\s\S]*?-->/g, " ").replace(/\/\*[\s\S]*?\*\//g, " ");
   let out = text.replace(/\/\*[\s\S]*?\*\//g, " ");
-  if (ext === ".scss" || ext === ".ts") out = out.replace(/(^|[\s;{})])\/\/.*$/gm, "$1");
+  if (ext === ".scss" || ext === ".ts" || ext === ".js") out = out.replace(/(^|[\s;{})])\/\/.*$/gm, "$1");
   return out;
 }
 
@@ -103,6 +105,18 @@ const FIXTURES = [
     text: `<div [ngStyle]="{'--app-radius-md': '10px'}">x</div>` },
   { name: "style.setProperty on a token", ext: ".ts", hit: true,
     text: "document.documentElement.style.setProperty('--acpv-sys-corner-medium', value);" },
+  { name: "angular @HostBinding of a token", ext: ".ts", hit: true,
+    text: "@HostBinding('style.--acpv-sys-corner-medium') radius = '8px';" },
+  { name: "Renderer2.setStyle on a token", ext: ".ts", hit: true,
+    text: "this.renderer.setStyle(document.documentElement, '--acpv-sys-corner-medium', value, RendererStyleFlags2.DashCase);" },
+  { name: "a setProperty that is not the CSS one", ext: ".ts", hit: false,
+    text: "config.setProperty('--acpv-sys-corner-medium', '12px');" },
+  { name: "Renderer2.setStyle on a normal property", ext: ".ts", hit: false,
+    text: "this.renderer.setStyle(el, 'width', '10px');" },
+  { name: "plain javascript setProperty on a token (static apps)", ext: ".js", hit: true,
+    text: "document.documentElement.style.setProperty('--acpv-sys-corner-medium', '8px');" },
+  { name: "javascript line comment naming a token definition", ext: ".js", hit: false,
+    text: "// --app-radius-md: 10px would change acpv-card\nconst a = 1;" },
   // reading a token or binding a normal property is fine
   { name: "reading a token with getPropertyValue", ext: ".ts", hit: false,
     text: "const r = getComputedStyle(el).getPropertyValue('--acpv-sys-corner-medium');" },
