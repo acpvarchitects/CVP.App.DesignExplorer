@@ -308,7 +308,7 @@ input[type="number"] {
     min-height: 0;
     padding: 0;
     border: 0;
-    border-radius: 16px;
+    border-radius: var(--acpv-sys-corner-full);
     background: transparent;
     transition: background-color 200ms ease;
 }
@@ -427,7 +427,7 @@ html.nav-collapsed .left-panel .drawer {
     min-height: 0;
     padding: 0;
     border: 0;
-    border-radius: var(--acpv-sys-radius-full, 999px);
+    border-radius: var(--acpv-sys-corner-full);
     background: transparent;
 }
 
@@ -484,7 +484,7 @@ html.nav-collapsed .left-panel .drawer {
     background-color: var(--md-sys-color-outline-variant);
     background-clip: padding-box;
     border: 2px solid transparent;
-    border-radius: var(--acpv-sys-radius-full, 9999px);
+    border-radius: var(--acpv-sys-corner-full);
 }
 
 .left-panel::-webkit-scrollbar-thumb:hover {
@@ -572,7 +572,7 @@ html.nav-collapsed .left-panel .drawer {
     height: 16px;
     margin-right: 8px;
     border: 2px solid var(--method);
-    border-radius: 4px;
+    border-radius: var(--acpv-sys-corner-extra-small);
     font-size: 11px;
     font-weight: 700;
     line-height: 1;
@@ -627,7 +627,7 @@ html.nav-collapsed .left-panel .drawer {
     padding: 2px 8px;
     background: var(--accent-soft);
     color: var(--accent);
-    border-radius: 4px;
+    border-radius: var(--acpv-sys-corner-extra-small);
 }
 
 .chart-scroll {
@@ -804,7 +804,7 @@ html.nav-collapsed .left-panel .drawer {
     list-style: none;
     cursor: pointer;
     border: 1px solid var(--line-strong);
-    border-radius: 999px;
+    border-radius: var(--acpv-sys-corner-full);
     background: var(--soft);
     font-weight: 600;
     font-size: 14px;
@@ -844,7 +844,7 @@ html.nav-collapsed .left-panel .drawer {
     min-width: 18px;
     height: 18px;
     padding: 0 5px;
-    border-radius: 999px;
+    border-radius: var(--acpv-sys-corner-full);
     background: var(--accent);
     color: var(--on-accent);
     font-size: 11px;
@@ -1753,7 +1753,7 @@ button.cp-primary:hover:not(:disabled) {
     padding: 10px;
     background: var(--soft);
     border-top: 3px solid var(--option);
-    border-radius: 6px;
+    border-radius: var(--acpv-sys-corner-small);
 }
 
 .cp-picks img {
@@ -1914,7 +1914,7 @@ button.cp-primary:hover:not(:disabled) {
     padding: 12px 18px;
     background: var(--accent-dark);
     color: var(--on-accent);
-    border-radius: 12px;
+    border-radius: var(--acpv-sys-corner-medium);
     box-shadow: 0 4px 18px #0003;
     white-space: nowrap;
     animation: pop 0.25s ease-out;
@@ -2008,7 +2008,7 @@ button.cp-primary:hover:not(:disabled) {
 code {
     background: var(--soft);
     padding: 1px 6px;
-    border-radius: 4px;
+    border-radius: var(--acpv-sys-corner-extra-small);
 }
 
 /* ---- Narrower screens ---- */
@@ -2205,7 +2205,7 @@ code {
 
 .an-legend-bar {
     height: 12px;
-    border-radius: 2px;
+    border-radius: var(--acpv-sys-corner-extra-small);
     border: 1px solid var(--line-strong);
 }
 
@@ -2243,7 +2243,7 @@ code {
     align-items: center;
     gap: 8px;
     padding: 3px 4px;
-    border-radius: 4px;
+    border-radius: var(--acpv-sys-corner-extra-small);
     cursor: default;
 }
 
@@ -2254,7 +2254,7 @@ code {
 .an-swatch {
     width: 12px;
     height: 12px;
-    border-radius: 2px;
+    border-radius: var(--acpv-sys-corner-extra-small);
     border: 1px solid rgba(0, 0, 0, 0.15);
 }
 
@@ -2355,7 +2355,7 @@ code {
     font-size: 12px;
     background: rgba(255, 255, 255, 0.95);
     border: 1px solid var(--line-strong);
-    border-radius: 5px;
+    border-radius: var(--acpv-sys-corner-extra-small);
     pointer-events: none;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
