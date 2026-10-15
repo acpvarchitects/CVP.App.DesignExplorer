@@ -1,0 +1,60 @@
+# =============================================================================
+# CI WORKFLOW - checks on every pull request that touches v2/ or the scripts
+# =============================================================================
+# v2 has no npm and no build (static HTML/CSS/JS served by nginx), so there is nothing to compile.
+# What can go wrong without anyone noticing is checked here:
+#   - the app redefines the library's corner-radius tokens (it loads after the library and would also
+#     change the library's own look);
+#   - a JavaScript file of v2 has a syntax error (the page would silently stop working).
+# NOT checked here: whether v2/theme/ still matches the library (scripts/check-theme-drift.mjs). It needs
+# to read acpv-frontend-libraries, which the token of this repository cannot do: run it by hand.
+# =============================================================================
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main, WIP]
+    paths: ['v2/**', 'scripts/**', '.github/workflows/ci.yml']
+  push:
+    branches: [main, WIP]
+    paths: ['v2/**', 'scripts/**', '.github/workflows/ci.yml']
+
+permissions:
+  contents: read
+
+# Cancel superseded runs on PRs and feature branches; WIP/main keep one run per commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/WIP' && github.ref != 'refs/heads/main' }}
+
+jobs:
+  v2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # An app must not (re)define the library's corner-radius tokens. v2/theme (the vendored copy of the
+      # library's tokens) is skipped by the script on purpose.
+      # acpv-frontend-libraries -> docs/reference/corner-radius.md
+      - name: Radius guard (no radius token definitions in v2, blocking)
+        run: node scripts/check-radius-tokens.mjs v2
+
+      - name: JavaScript syntax (v2/*.js, as ES modules)
+        run: |
+          status=0
+          for f in v2/*.js; do
+            if ! node --input-type=module --check < "$f"; then
+              echo "::error file=$f::syntax error"
+              status=1
+            fi
+          done
+          exit $status
