@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="theme/tokens/icons.css?v=1" />
     <link rel="stylesheet" href="theme/tokens/z-index.css?v=1" />
     <link rel="stylesheet" href="theme/fonts.css?v=1" />
-    <link rel="stylesheet" href="style.css?v=87" />
+    <link rel="stylesheet" href="style.css?v=88" />
 </head>
 <body class="light-medium-contrast an-page">
     <!-- App bar as in index.html (acpv-appbar anatomy): app icon + title, the open study in the
@@ -32,10 +32,10 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
                 </a>
             </span>
-            <div class="acpv-app-logo">
+            <a class="acpv-app-logo" id="appHome" href="index.html" aria-label="Go to homepage">
                 <img src="favicon.png" alt="" class="acpv-app-icon" />
                 <p class="acpv-app-title">Design Explorer</p>
-            </div>
+            </a>
         </div>
         <div class="acpv-appbar-center">
             <span id="projectName"></span>
@@ -99,6 +99,6 @@
 
     <div id="message" class="message" hidden></div>
 
-    <script type="module" src="analysis.js?v=18"></script>
+    <script type="module" src="analysis.js?v=19"></script>
 </body>
 </html>

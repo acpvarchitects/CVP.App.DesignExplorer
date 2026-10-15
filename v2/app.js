@@ -1627,6 +1627,14 @@ async function init() {
 // rail (one icon per section); the choice is remembered. Compact (<= 839px, the library's
 // breakpoint): the sidebar is a temporary overlay drawer: the hamburger toggles `nav-open`, a scrim
 // or Escape closes it, and while it is closed it is `inert` (out of the tab order).
+// The app icon + title go home (library: "Go to homepage"): the dashboard of the open study, without its filters or view.
+function initHomeLink() {
+    const q = new URLSearchParams(location.search);
+    const enc = (v) => encodeURI(v).replace(/[&#+]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
+    const home = ["PROJECT", "data"].filter((k) => q.has(k)).map((k) => `${k}=${enc(q.get(k))}`);
+    $("appHome").href = "index.html" + (home.length ? "?" + home.join("&") : "");
+}
+
 function initSidebar() {
     const root = document.documentElement;
     const toggle = $("navToggle");
@@ -1710,5 +1718,6 @@ function initSidebar() {
     }
 }
 
+initHomeLink();
 initSidebar();
 init();

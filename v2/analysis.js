@@ -239,6 +239,10 @@ function onHover(hit, e) {
 // it opens this page with (only a relative index.html address is accepted); without it, if the
 // previous page of the history is on this site, it goes there; otherwise there is nothing to go back to.
 function setupBack() {
+    const q = new URLSearchParams(location.search);
+    const enc = (v) => encodeURI(v).replace(/[&#+]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
+    const home = ["PROJECT", "data"].filter((k) => q.has(k)).map((k) => `${k}=${enc(q.get(k))}`);
+    document.getElementById("appHome").href = "index.html" + (home.length ? "?" + home.join("&") : "");
     const back = params.get("back") || "";
     const btn = $("backBtn");
     if (/^index\.html(\?|$)/.test(back)) {
