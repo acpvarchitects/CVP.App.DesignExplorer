@@ -532,9 +532,11 @@ html.nav-collapsed .app-frame {
     transition: opacity var(--acpv-sys-motion-duration-normal, 250ms) ease, transform 150ms ease;
 }
 
-/* Rail-only action (library): shown only while the sidebar is closed; it opens it on the filters */
-.nav-rail-only {
-    display: none;
+/* "Filters": a destination row in both states. Closed it is the icon (a click opens the sidebar);
+   open it is the title of the filter sections right below it (not a button then). */
+html:not(.nav-collapsed) .nav-rail-only {
+    cursor: default;
+    pointer-events: none;
 }
 
 .nav-rail-only .filter-badge {
@@ -552,10 +554,6 @@ html.nav-collapsed .app-frame {
 
 .left-panel {
     overflow-x: hidden;
-}
-
-html.nav-collapsed .nav-rail-only {
-    display: flex;
 }
 
 html.nav-collapsed .nav-label,
@@ -2206,10 +2204,6 @@ code {
     html.nav-collapsed .nav-label,
     html.nav-collapsed .nav-row .sec-chev {
         opacity: 1;
-    }
-
-    html.nav-collapsed .nav-rail-only {
-        display: none;
     }
 
     html.nav-collapsed .nav-sub {
