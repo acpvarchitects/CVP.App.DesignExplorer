@@ -1706,7 +1706,10 @@ function initSidebar() {
         if (compact.matches || !root.classList.contains("nav-collapsed")) return;
         if (e.target.closest("#navFilters")) {
             setCollapsed(false);
-            $("navFilters").classList.add("is-active"); // the pressed destination, until the sidebar toggles
+            // pressed: red while the sidebar opens, gone once it is open (the filters are then right below)
+            const btn = $("navFilters");
+            btn.classList.add("is-active");
+            setTimeout(() => btn.classList.remove("is-active"), 350);
         } else if (e.target.closest("#analysisGroup > summary")) {
             e.preventDefault();
             setCollapsed(false); // the sidebar opens with its menus closed
