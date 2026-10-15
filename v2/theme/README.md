@@ -1,6 +1,6 @@
 # theme/ — copy of the ACPV design tokens
 
-Vendored from `@acpvarchitects/ui` **0.17.1** (`projects/ui/theme/`): `base.css` (MD3 colour, 6 modes),
+Vendored from `@acpvarchitects/ui` (`projects/ui/theme/`), **identical to ui 0.22.0** (checked 2026-10-15; first copied at 0.17.1, the token files did not change in between): `base.css` (MD3 colour, 6 modes),
 `tertiary/coral.css` (ACPV brand) and `tokens/*.css` (`--acpv-sys-*` foundation).
 This app has no build step and no npm, so the files are copied, not installed. Do not edit them:
 to update, re-copy the same files from a newer library release and bump `?v=` on **every** theme `<link>` in
@@ -8,6 +8,14 @@ to update, re-copy the same files from a newer library release and bump `?v=` on
 the old file). The token files are linked one by one on purpose: `tokens/acpv-sys.css` is only an aggregate of
 `@import url('./x.css')`, and the browser resolves those child URLs without the parent's `?v=`, so bumping
 the aggregate would not refresh them. The aggregate stays in the folder (it is part of the copy) but is not linked.
+
+**Drift check.** A copy is frozen: when the library changes a token nothing here notices. Run
+`node scripts/check-theme-drift.mjs` (needs the GitHub CLI, already logged in for ACPV): it compares every file in
+this folder with the library's source and lists the library's `tokens/` too, prints `identical` / `different` / `missing` (vendored here, gone from the library) / `not-vendored` (in the library, absent here: a new token file, or one deleted by mistake), and exits 1 on drift. `tokens/fonts.css` is skipped on purpose (v2 has its own `fonts.css`)
+(`--ref ui-v0.22.0` for a tag, `--local <path to packages/ui/projects/ui/theme>` for a checkout). Run it when the
+library releases, and after re-copying, bump `?v=` on every theme `<link>`. It does **not** compare what is copied into
+`style.css` by hand (global scrollbar, app-frame card scrollbar, side-nav bar): re-read `scrollbars.scss`,
+`main-shell.component.css` and `side-nav.component.css` of the new release.
 
 `fonts.css` is local: Inter Variable (latin + latin-ext) from `@fontsource-variable/inter`.
 
@@ -25,7 +33,7 @@ Shape/frame follow the library: shell = `surface-container`, cards flat on `surf
 
 Layout follows `main-shell`: 8px shell gap on four sides, left panel fused with the shell (280px,
 `--acpv-left-panel-width`), ONE center card, 16px panel/card gap. Scrollbars follow ui **0.21.3**:
-the theme's native thin bar (`* { scrollbar-width: thin }` of `theme/custom-theme.scss`, copied into
+the theme's native thin bar (`* { scrollbar-width: thin }` of `theme/scrollbars.scss`, split out of `custom-theme.scss` in ui 0.21.x, copied into
 `style.css`) on the center card, moved 22px in from the card's edge by a 22px transparent right border
 (`main-shell.component.css`), and the side-nav's own 8px bar, no arrows, round thumb, on the left panel
 (`side-nav.component.css`). Like the library, the window does not scroll: the left panel and the center

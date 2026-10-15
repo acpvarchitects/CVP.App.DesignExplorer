@@ -45,7 +45,7 @@ body {
     --acpv-density-control-height: 32px;
 }
 
-/* Scrollbar of @acpvarchitects/ui (theme/custom-theme.scss) */
+/* Scrollbar of @acpvarchitects/ui (theme/scrollbars.scss, ui 0.22.0) */
 ::-webkit-scrollbar {
     width: 12px;
     height: 12px;
