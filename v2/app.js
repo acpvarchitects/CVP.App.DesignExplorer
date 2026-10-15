@@ -26,7 +26,7 @@ import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=34";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml } from "./comparison.js?v=37";
-import { ParallelChart } from "./parallel.js?v=37";
+import { ParallelChart } from "./parallel.js?v=38";
 import { paretoFront } from "./pareto.js?v=1";
 import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=2";
 import { PlanViewer } from "./plan2d.js?v=5";
@@ -606,6 +606,8 @@ function renderChart(view, syncChart) {
         scope: `${[...state.methods].sort()}|${showInputs}|${[...state.batches].sort()}`,
         options: view.scope,
         axes,
+        // the header height is sized on the full set of axes (hidden ones too): hiding one only changes the width
+        sizeAxes: [...axes, ...data.schema.allOutputs.filter((m) => state.hidden.has(m.col)).map((m) => ({ label: m.label, info: false }))],
         selected: state.sel != null ? data.options[state.sel] : null,
         matches: (o) => view.visibleSet.has(o),
         colorOf: (o) => o.study.color,

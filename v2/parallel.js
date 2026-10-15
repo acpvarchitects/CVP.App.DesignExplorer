@@ -80,8 +80,17 @@ export class ParallelChart {
         // names wrap less.
         const parts = new Map(axes.map((a) => [a.col, splitUnit(a.label)]));
         const titles = new Map(axes.map((a) => [a.col, titleLines(this.svg, parts.get(a.col).name, spacing - 12, a.info ? " ⓘ" : "")]));
-        const lines = Math.max(1, ...[...titles.values()].map((l) => l.length));
-        const hasUnits = [...parts.values()].some((p) => p.unit);
+        // The header height is fixed by the full set of axes (`sizeAxes`, hidden ones included): hiding
+        // an axis widens the others but never changes the height of the chart.
+        const sizing = this.model.sizeAxes || axes;
+        const fullSpacing = sizing.length > 1 ? (this.width - MARGIN.left - MARGIN.right) / (sizing.length - 1) : this.width;
+        const sizeParts = sizing.map((a) => splitUnit(a.label));
+        const lines = Math.max(
+            1,
+            ...sizing.map((a, i) => titleLines(this.svg, sizeParts[i].name, Math.min(spacing, fullSpacing) - 12, a.info ? " ⓘ" : "").length),
+            ...[...titles.values()].map((l) => l.length)
+        );
+        const hasUnits = sizeParts.some((p) => p.unit) || [...parts.values()].some((p) => p.unit);
         // first baseline at 12; the unit sits UNIT_GAP under the last title line and leaves
         // PLOT_GAP before the plot (room for the top tick value); no unit: 8px under the title
         const lastTitle = 12 + (lines - 1) * TITLE_LINE;
