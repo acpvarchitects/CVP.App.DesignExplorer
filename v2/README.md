@@ -101,8 +101,7 @@ in the plan) and the description, always visible. Right: the plan, with the leve
 (highest first); hovering a room shows its name, the value at that point and the room average. Pan and zoom are kept when the level or
 the analysis changes (every level shares one plan frame); Reset view fits the level again. `?an=` / `?level=` keep the view in the address. Room numbers are shown on the plan by default (**Hide labels** / **Show labels**; they keep their screen size). **Copy link** copies the main link of the analysis on screen (`PROJECT` or `data` + `an`, no level or zoom). **Export view** saves the current view (same zoom and pan) as a vector PDF on A3 landscape: rooms, score and legend on the left, the plan with a graphic scale on the right, and the room numbers when labels are shown.
 
-**Getting there and back**: the dashboard sidebar has a **Pages** group (drawer rows, rail icons): *Explore* (this page, the active
-destination) and *Analysis*, a group that opens on a list of studies. The list holds the open studies whose `layers.json` has 2D
+**Getting there and back**: the dashboard sidebar menu (one list, same icon column open or closed) has *Analysis*, a group that opens on a list of studies. The list holds the open studies whose `layers.json` has 2D
 analyses, then every other study of the same place that has some: the first time the group is opened the app asks the folder that
 holds the studies for its list (a JSON `[{ name }]`, the API's `/projects`, in practice ~40 small `layers.json` requests, kept for 10
 minutes in `sessionStorage`) and keeps the studies with 2D analyses. A row opens `analysis.html` of that study (`PROJECT` or `data`,
@@ -156,7 +155,7 @@ Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" com
    "Clear chart filters" clears every filter (ranges, batch bars, Pareto).
    **Hiding a result**: on hover, an axis's "↑ better" line under the plot becomes "✕ hide". A hidden result
    disappears everywhere (chart, Measurements, Pareto goals, Where this option stands, Compare,
-   Order by) and its filter is dropped; the "Hidden results" section of the sidebar (with its rail icon) lists them to
+   Order by) and its filter is dropped; the "Hidden results" section of the sidebar  lists them to
    bring one back, or all.
    Kept in the URL (`?hide=`, positions among inputs + results). Index can be hidden from the
    chart too.

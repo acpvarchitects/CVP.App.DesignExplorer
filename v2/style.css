@@ -401,63 +401,6 @@ html.nav-collapsed .app-frame {
     display: none;
 }
 
-.rail {
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    padding: 8px 0;
-}
-
-html.nav-collapsed .rail {
-    display: flex;
-}
-
-html.nav-collapsed .left-panel .drawer {
-    display: none;
-}
-
-.rail-btn {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    height: 36px;
-    min-height: 0;
-    padding: 0;
-    border: 0;
-    border-radius: var(--acpv-sys-corner-full);
-    background: transparent;
-}
-
-a.rail-btn {
-    text-decoration: none;
-}
-
-/* Pages (destinations): the active one is the library's tertiary-container pill
-   (md3-deviations: navigation selection), on the same icon axis as the hamburger */
-.rail-dest {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
-
-.rail-sep {
-    width: 32px;
-    margin: 4px 0;
-    border-top: 1px solid var(--md-sys-color-outline-variant);
-}
-
-.rail-btn.is-current {
-    background: var(--md-sys-color-tertiary-container);
-}
-
-.rail-btn.is-current svg {
-    fill: var(--md-sys-color-on-tertiary-container);
-}
-
 .nav-dest {
     display: flex;
     flex-direction: column;
@@ -545,27 +488,76 @@ a.rail-btn {
 }
 
 .nav-row:focus-visible,
-.nav-sub-row:focus-visible,
-a.rail-btn:focus-visible {
+.nav-sub-row:focus-visible {
     outline: 2px solid var(--md-sys-color-primary);
     outline-offset: 2px;
 }
 
-.rail-btn:hover:not(:disabled) {
-    background: var(--md-sys-color-surface-container-high);
+/* Labels fade with the drawer (library side-nav: the icons never move, only the text appears) */
+.nav-row {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    font-family: inherit;
+    cursor: pointer;
 }
 
-.rail-btn svg {
-    width: 24px;
-    height: 24px;
-    fill: var(--md-sys-color-on-surface-variant);
+.nav-label {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    transition: opacity var(--acpv-sys-motion-duration-normal, 250ms) ease;
 }
 
-.rail-btn .filter-badge {
+.nav-row .sec-chev {
+    flex: none;
+    transition: opacity var(--acpv-sys-motion-duration-normal, 250ms) ease, transform 150ms ease;
+}
+
+/* Rail-only action (library): shown only while the sidebar is closed; it opens it on the filters */
+.nav-rail-only {
+    display: none;
+}
+
+.nav-rail-only .filter-badge {
     position: absolute;
-    top: -6px;
-    right: -6px;
+    top: 0;
+    left: 36px;
     pointer-events: none;
+}
+
+/* the filters keep their drawer width, so they do not reflow while the track animates */
+.filters {
+    width: calc(var(--acpv-sys-sidenav-width, 280px) - 2 * var(--acpv-sys-space-2, 8px));
+    transition: opacity var(--acpv-sys-motion-duration-normal, 250ms) ease;
+}
+
+.left-panel {
+    overflow-x: hidden;
+}
+
+html.nav-collapsed .nav-rail-only {
+    display: flex;
+}
+
+html.nav-collapsed .nav-label,
+html.nav-collapsed .nav-row .sec-chev {
+    opacity: 0;
+}
+
+html.nav-collapsed .nav-sub {
+    display: none;
+}
+
+html.nav-collapsed .filters {
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
 }
 
 .left-panel {
@@ -2194,12 +2186,25 @@ code {
         padding-left: var(--shell-gap); /* no drawer track at the window edge */
     }
 
-    .rail {
-        display: none !important;
+    /* the overlay always shows the open menu, whatever the desktop state */
+    html.nav-collapsed .nav-label,
+    html.nav-collapsed .nav-row .sec-chev {
+        opacity: 1;
     }
 
-    html.nav-collapsed .left-panel .drawer {
-        display: block; /* the overlay always shows the drawer, whatever the desktop state */
+    html.nav-collapsed .nav-rail-only {
+        display: none;
+    }
+
+    html.nav-collapsed .nav-sub {
+        display: flex;
+    }
+
+    html.nav-collapsed .filters {
+        height: auto;
+        overflow: visible;
+        opacity: 1;
+        visibility: visible;
     }
 
     .left-panel {

@@ -50,7 +50,7 @@ library's indication for ACPV apps (docs/reference/density.md): app bar 56px, bu
 `--acpv-density-*` values are copied from `theme/density.scss` (SCSS + Angular Material, not usable here).
 
 Sidebar (library side-nav model, §1-quater): the hamburger in the app bar corner cell toggles `nav-collapsed` on
-`<html>`: drawer 280px (the filters) <-> rail 80px (one icon per filter section, with the active-filter badge).
+`<html>`: drawer 280px (the filters) <-> rail 80px. The menu is ONE list whose icons never move (fixed 64px column, labels fade in); with the sidebar closed the library's rail-only "Filters" action appears (with the count of active filter sections) and opens it.
 The choice is kept in localStorage. Below 1100px the side sheet goes away (its content moves under the preview). Below 839px (the library's compact breakpoint) the sidebar is an overlay drawer: fixed, full height, over a scrim, closed with the scrim, Escape or the hamburger; the drawer is `inert` while closed and the card is `inert` while it is open (Tab stays in the drawer and the app bar); focus goes to the first section on open and back to the hamburger on close.
 The methods (which studies are compared) live on top of the center card, so they stay visible when the
 sidebar is closed. To go back to the previous layout, revert the two commits "refactor(v2): methods on top of
