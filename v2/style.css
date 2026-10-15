@@ -494,19 +494,61 @@ a.rail-btn {
     color: var(--md-sys-color-on-tertiary-container);
 }
 
-/* a destination that is not available for this study: MD3 disabled (38%), no hover, no pointer */
-.nav-row.is-disabled,
-.rail-btn.is-disabled {
-    opacity: 0.38;
-    cursor: default;
+/* "Analysis": a group that opens on a list of studies (nav row + chevron, indented sub rows) */
+.nav-group > summary {
+    list-style: none;
+    cursor: pointer;
 }
 
-.nav-row.is-disabled:hover,
-.rail-btn.is-disabled:hover {
-    background: none;
+.nav-group > summary::-webkit-details-marker {
+    display: none;
+}
+
+.nav-chev {
+    margin-left: auto;
+    margin-right: 16px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    transition: transform var(--acpv-sys-motion-duration-normal, 250ms) ease;
+}
+
+.nav-group[open] > summary .nav-chev {
+    transform: rotate(-135deg);
+}
+
+.nav-sub {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 2px 0 6px;
+}
+
+.nav-sub-row {
+    display: block;
+    padding: 6px 12px 6px 64px; /* the label column of the rows above */
+    border-radius: var(--acpv-sys-radius-full, 999px);
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 13px;
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nav-sub-row:hover {
+    background: var(--md-sys-color-surface-container-high);
+}
+
+.nav-sub-note {
+    margin: 0;
+    padding: 4px 12px 4px 64px;
 }
 
 .nav-row:focus-visible,
+.nav-sub-row:focus-visible,
 a.rail-btn:focus-visible {
     outline: 2px solid var(--md-sys-color-primary);
     outline-offset: 2px;

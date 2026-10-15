@@ -101,14 +101,16 @@ in the plan) and the description, always visible. Right: the plan, with the leve
 (highest first); hovering a room shows its name, the value at that point and the room average. Pan and zoom are kept when the level or
 the analysis changes (every level shares one plan frame); Reset view fits the level again. `?an=` / `?level=` keep the view in the address. Room numbers are shown on the plan by default (**Hide labels** / **Show labels**; they keep their screen size). **Copy link** copies the main link of the analysis on screen (`PROJECT` or `data` + `an`, no level or zoom). **Export view** saves the current view (same zoom and pan) as a vector PDF on A3 landscape: rooms, score and legend on the left, the plan with a graphic scale on the right, and the room numbers when labels are shown.
 
-**Getting there and back**: in the dashboard, a study whose `layers.json` has 2D analyses adds a **Pages** group to the
-sidebar: drawer rows and rail icons *Explore* (this page, the active destination) and *Analysis* (`analysis.html` of that study, same
-`PROJECT` / `data` entry; with several such studies, one row each, "Analysis · <name>"). The group is always there; *Analysis* is disabled (38%, tooltip says why) for a study without 2D
-analyses. On the analysis page an **Explore** button in the app bar goes back to the dashboard of the same study, only when the study
-has a `data.csv` (a plans-only study, e.g. a daylight study, has nothing to explore).
+**Getting there and back**: the dashboard sidebar has a **Pages** group (drawer rows, rail icons): *Explore* (this page, the active
+destination) and *Analysis*, a group that opens on a list of studies. The list holds the open studies whose `layers.json` has 2D
+analyses, then every other study of the same place that has some: the first time the group is opened the app asks the folder that
+holds the studies for its list (a JSON `[{ name }]`, the API's `/projects`, in practice ~40 small `layers.json` requests, kept for 10
+minutes in `sessionStorage`) and keeps the studies with 2D analyses. A row opens `analysis.html` of that study (`PROJECT` or `data`,
+as the dashboard was opened). On the analysis page an **Explore** button in the app bar goes back to the dashboard of the same study,
+only when the study has a `data.csv` (a plans-only study, e.g. a daylight study, has nothing to explore).
 The other way round, opening the dashboard on a plans-only study (no `data.csv`, 2D analyses in `layers.json`) opens its analysis page; with
 several plans-only studies it lists their analysis pages; mixed with studies that have data, the dashboard explores those and the
-plans-only ones stay in the *Analysis* rows.
+plans-only ones stay in the *Analysis* list.
 
 Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" component):
 

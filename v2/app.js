@@ -202,8 +202,9 @@ async function loadManifest(study) {
 }
 
 // ---- Pages: the destinations of the sidebar (drawer rows, rail icons) ----
-// "Explore" is this page. "Analysis" (analysis.html, one study, level by level) is offered for every
-// study whose layers.json has 2D analyses; with several studies, one row each.
+// "Explore" is this page. "Analysis" (analysis.html: the 2D plans of ONE study, level by level) is a
+// group that opens on a list: the open studies that have 2D analyses (layers.json) first, then every
+// other study of the same API that has some, looked up the first time the group is opened.
 const NAV_ICONS = {
     explore: "M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z",
     analysis: "M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16z",
@@ -213,37 +214,83 @@ const hasPlanAnalyses = (st) =>
     !!st.manifest && (st.manifest.levels || []).length > 0 && (st.manifest.layers || []).some((l) => l.kind === "analysis" && l.dim === "2d");
 const analysisLink = (st) => `analysis.html?${st.ref.key}=${encodeURIComponent(st.ref.entry)}`;
 
+// The studies of the same place as the open ones. The folder that holds the study folders (the
+// parent of `base`, without its last "/") answers a JSON list [{ name }] - the API's /projects.
+// Cached for the session: it is ~40 small requests.
+const PLANS_TTL = 10 * 60 * 1000;
+async function findPlanStudies(first, openNames) {
+    const parent = first.base.replace(/[^/]+\/$/, "");
+    const key = `design-explorer-v2:plans:${parent}`;
+    let names = null;
+    try {
+        const c = JSON.parse(sessionStorage.getItem(key) || "null");
+        if (c && Date.now() - c.at < PLANS_TTL) names = c.names;
+    } catch {
+        /* no storage: just look it up */
+    }
+    if (!names) {
+        const list = await (await fetch(parent.replace(/\/$/, ""))).json();
+        const probes = await Promise.all(
+            list
+                .map((p) => p.name)
+                .map(async (name) => {
+                    try {
+                        const r = await fetch(`${parent}${encodeURIComponent(name)}/layers.json`);
+                        return r.ok && hasPlanAnalyses({ manifest: await r.json() }) ? name : null;
+                    } catch {
+                        return null;
+                    }
+                })
+        );
+        names = probes.filter(Boolean);
+        try {
+            sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), names }));
+        } catch {
+            /* no storage */
+        }
+    }
+    const entry = (name) => (first.ref.key === "PROJECT" ? name : `${parent}${encodeURIComponent(name)}/`);
+    return names.filter((n) => !openNames.includes(n)).map((name) => ({ name, ref: { key: first.ref.key, entry: entry(name) } }));
+}
+
 function renderNav(studies) {
     const plans = studies.filter(hasPlanAnalyses);
     const here = location.pathname + location.search;
-    const none = studies.length > 1 ? "None of these studies has 2D analyses" : "This study has no 2D analyses";
-    // The group is always there, so the destinations read the same for every study; Analysis is
-    // disabled (38% opacity, no link, tooltip says why) while the study has no 2D analyses.
-    const rows = [
-        { icon: "explore", label: "Explore", href: here, current: true },
-        ...(plans.length
-            ? plans.map((st) => ({ icon: "analysis", label: plans.length > 1 ? `Analysis · ${st.name}` : "Analysis", href: analysisLink(st) }))
-            : [{ icon: "analysis", label: "Analysis", disabled: none }]),
-    ];
-    $("navDest").innerHTML = rows
-        .map((r) =>
-            r.disabled
-                ? `<span class="nav-row is-disabled" role="link" aria-disabled="true" title="${esc(r.disabled)}">${navIcon(r.icon)}<span>${esc(r.label)}</span></span>`
-                : `<a class="nav-row${r.current ? " is-current" : ""}" href="${esc(r.href)}"${r.current ? ' aria-current="page"' : ""}>${navIcon(r.icon)}<span>${esc(r.label)}</span></a>`
-        )
-        .join("");
-    // rail: Explore, and Analysis (a link; with several studies it opens the drawer to choose)
-    const analysis = !plans.length
-        ? `<span class="rail-btn is-disabled" role="link" aria-disabled="true" aria-label="Analysis" title="${esc(none)}">${navIcon("analysis")}</span>`
-        : plans.length === 1
-          ? `<a class="rail-btn" href="${esc(analysisLink(plans[0]))}" aria-label="Analysis" title="Analysis">${navIcon("analysis")}</a>`
-          : `<button type="button" class="rail-btn" data-section="navDest" aria-label="Analysis" title="Analysis">${navIcon("analysis")}</button>`;
+    $("navDest").innerHTML =
+        `<a class="nav-row is-current" href="${esc(here)}" aria-current="page">${navIcon("explore")}<span>Explore</span></a>` +
+        `<details class="nav-group" id="analysisGroup">
+            <summary class="nav-row">${navIcon("analysis")}<span>Analysis</span><i class="nav-chev" aria-hidden="true"></i></summary>
+            <div class="nav-sub" id="analysisList" aria-live="polite"></div>
+        </details>`;
+    // rail: Explore, and Analysis, which opens the drawer on its list
     $("railDest").innerHTML =
         `<a class="rail-btn is-current" href="${esc(here)}" aria-current="page" aria-label="Explore" title="Explore">${navIcon("explore")}</a>` +
-        analysis +
+        `<button type="button" class="rail-btn" data-section="analysisGroup" aria-label="Analysis" title="Analysis">${navIcon("analysis")}</button>` +
         `<span class="rail-sep" role="separator"></span>`;
     // the current page does not navigate (that would reload it and lose the view)
     for (const a of document.querySelectorAll("#navDest .is-current, #railDest .is-current")) a.addEventListener("click", (e) => e.preventDefault());
+
+    // the list: own studies now, the other studies of the API when the group is first opened
+    const list = $("analysisList");
+    const subRow = (st) => `<a class="nav-sub-row" href="${esc(analysisLink(st))}" title="${esc(st.name)}">${esc(st.name)}</a>`;
+    const fill = (others, state) => {
+        const rows = [...plans, ...others].map(subRow);
+        const note =
+            state === "loading" ? "Looking for studies with 2D analyses…" : state === "error" ? "Could not look up the other studies." : !rows.length ? "No study with 2D analyses." : "";
+        list.innerHTML = rows.join("") + (note ? `<p class="nav-sub-note muted small">${note}</p>` : "");
+    };
+    fill([], "loading");
+    let searched = false;
+    $("analysisGroup").addEventListener("toggle", async (e) => {
+        if (!e.target.open || searched) return;
+        searched = true;
+        try {
+            fill(await findPlanStudies(studies[0], studies.map((s) => s.name)), "done");
+        } catch (err) {
+            console.error(err);
+            fill([], "error");
+        }
+    });
 }
 
 // ---- Scope, filters and order ----
