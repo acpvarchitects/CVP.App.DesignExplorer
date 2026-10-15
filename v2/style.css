@@ -462,7 +462,7 @@ html.nav-collapsed .app-frame {
     fill: currentColor;
 }
 
-.nav-row:hover {
+.nav-row:hover:not(:disabled) {
     background: var(--md-sys-color-surface-container-high);
 }
 
