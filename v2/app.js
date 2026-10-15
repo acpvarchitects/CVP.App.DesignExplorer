@@ -1701,7 +1701,7 @@ function initSidebar() {
     });
     compact.addEventListener("change", sync);
 
-    // closed sidebar: "Filters" opens it; "Analysis" opens it on its list (the click does not toggle the group)
+    // closed sidebar: "Filters" and "Analysis" open it (menus closed; the click does not toggle the group)
     $("navDest").addEventListener("click", (e) => {
         if (compact.matches || !root.classList.contains("nav-collapsed")) return;
         if (e.target.closest("#navFilters")) {
@@ -1709,8 +1709,7 @@ function initSidebar() {
             $("navFilters").classList.add("is-active"); // the pressed destination, until the sidebar toggles
         } else if (e.target.closest("#analysisGroup > summary")) {
             e.preventDefault();
-            setCollapsed(false);
-            $("analysisGroup").open = true;
+            setCollapsed(false); // the sidebar opens with its menus closed
         }
     });
     // the number on "Filters" follows the headers of the filter sections

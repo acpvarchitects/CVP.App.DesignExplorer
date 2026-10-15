@@ -566,12 +566,6 @@ html.nav-collapsed .app-frame {
     transition: opacity var(--acpv-sys-motion-duration-normal, 250ms) ease, transform 150ms ease;
 }
 
-/* "Filters": a destination row in both states. Closed it is the icon (a click opens the sidebar);
-   open it is the title of the filter sections right below it (not a button then). */
-html:not(.nav-collapsed) .nav-rail-only {
-    cursor: default;
-    pointer-events: none;
-}
 
 .nav-rail-only .filter-badge {
     position: absolute;
