@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="theme/tokens/icons.css?v=1" />
     <link rel="stylesheet" href="theme/tokens/z-index.css?v=1" />
     <link rel="stylesheet" href="theme/fonts.css?v=1" />
-    <link rel="stylesheet" href="style.css?v=84" />
+    <link rel="stylesheet" href="style.css?v=85" />
     <script type="importmap">
         {
             "imports": {
@@ -66,8 +66,8 @@
                 <!-- Rail (sidebar closed): one icon per filter section, with its active-filter badge; a
                      click opens the drawer on that section -->
                 <div class="rail" role="toolbar" aria-orientation="vertical" aria-label="Filters">
-                    <!-- Pages (rendered by renderNav): only when a study has 2D analyses -->
-                    <div id="railDest" class="rail-dest" hidden></div>
+                    <!-- Pages (rendered by renderNav): Explore, and Analysis when a study has 2D analyses -->
+                    <div id="railDest" class="rail-dest"></div>
                     <button type="button" class="rail-btn" data-section="measurementsSection" aria-label="Measurements" title="Measurements">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></svg>
                         <span id="railMeasurementsBadge" class="filter-badge"></span>
@@ -82,7 +82,7 @@
                     </button>
                 </div>
                 <!-- Drawer (sidebar open): the pages, then the filters -->
-                <nav id="navDest" class="nav-dest drawer" aria-label="Pages" hidden></nav>
+                <nav id="navDest" class="nav-dest drawer" aria-label="Pages"></nav>
                 <aside class="filters drawer" aria-label="Filters">
                     <details class="filter-section" id="measurementsSection" open>
                         <summary><span class="filter-title">Measurements</span><span id="measurementsBadge" class="filter-badge"></span><button id="measurementsClear" type="button" class="filter-clear" data-clear="measurements" hidden>×</button></summary>
@@ -224,6 +224,6 @@
         </section>
     </div>
 
-    <script type="module" src="app.js?v=85"></script>
+    <script type="module" src="app.js?v=86"></script>
 </body>
 </html>

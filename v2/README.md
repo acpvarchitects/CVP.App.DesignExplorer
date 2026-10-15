@@ -103,7 +103,7 @@ the analysis changes (every level shares one plan frame); Reset view fits the le
 
 **Getting there and back**: in the dashboard, a study whose `layers.json` has 2D analyses adds a **Pages** group to the
 sidebar: drawer rows and rail icons *Explore* (this page, the active destination) and *Analysis* (`analysis.html` of that study, same
-`PROJECT` / `data` entry; with several such studies, one row each, "Analysis · <name>"). Nothing is shown for a study without 2D
+`PROJECT` / `data` entry; with several such studies, one row each, "Analysis · <name>"). The group is always there; *Analysis* is disabled (38%, tooltip says why) for a study without 2D
 analyses. On the analysis page an **Explore** button in the app bar goes back to the dashboard of the same study, only when the study
 has a `data.csv` (a plans-only study, e.g. a daylight study, has nothing to explore).
 

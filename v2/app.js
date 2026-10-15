@@ -215,21 +215,29 @@ const analysisLink = (st) => `analysis.html?${st.ref.key}=${encodeURIComponent(s
 
 function renderNav(studies) {
     const plans = studies.filter(hasPlanAnalyses);
-    $("navDest").hidden = $("railDest").hidden = !plans.length;
-    if (!plans.length) return;
     const here = location.pathname + location.search;
+    const none = studies.length > 1 ? "None of these studies has 2D analyses" : "This study has no 2D analyses";
+    // The group is always there, so the destinations read the same for every study; Analysis is
+    // disabled (38% opacity, no link, tooltip says why) while the study has no 2D analyses.
     const rows = [
         { icon: "explore", label: "Explore", href: here, current: true },
-        ...plans.map((st) => ({ icon: "analysis", label: plans.length > 1 ? `Analysis · ${st.name}` : "Analysis", href: analysisLink(st) })),
+        ...(plans.length
+            ? plans.map((st) => ({ icon: "analysis", label: plans.length > 1 ? `Analysis · ${st.name}` : "Analysis", href: analysisLink(st) }))
+            : [{ icon: "analysis", label: "Analysis", disabled: none }]),
     ];
     $("navDest").innerHTML = rows
-        .map((r) => `<a class="nav-row${r.current ? " is-current" : ""}" href="${esc(r.href)}"${r.current ? ' aria-current="page"' : ""}>${navIcon(r.icon)}<span>${esc(r.label)}</span></a>`)
+        .map((r) =>
+            r.disabled
+                ? `<span class="nav-row is-disabled" role="link" aria-disabled="true" title="${esc(r.disabled)}">${navIcon(r.icon)}<span>${esc(r.label)}</span></span>`
+                : `<a class="nav-row${r.current ? " is-current" : ""}" href="${esc(r.href)}"${r.current ? ' aria-current="page"' : ""}>${navIcon(r.icon)}<span>${esc(r.label)}</span></a>`
+        )
         .join("");
     // rail: Explore, and Analysis (a link; with several studies it opens the drawer to choose)
-    const analysis =
-        plans.length === 1
-            ? `<a class="rail-btn" href="${esc(analysisLink(plans[0]))}" aria-label="Analysis" title="Analysis">${navIcon("analysis")}</a>`
-            : `<button type="button" class="rail-btn" data-section="navDest" aria-label="Analysis" title="Analysis">${navIcon("analysis")}</button>`;
+    const analysis = !plans.length
+        ? `<span class="rail-btn is-disabled" role="link" aria-disabled="true" aria-label="Analysis" title="${esc(none)}">${navIcon("analysis")}</span>`
+        : plans.length === 1
+          ? `<a class="rail-btn" href="${esc(analysisLink(plans[0]))}" aria-label="Analysis" title="Analysis">${navIcon("analysis")}</a>`
+          : `<button type="button" class="rail-btn" data-section="navDest" aria-label="Analysis" title="Analysis">${navIcon("analysis")}</button>`;
     $("railDest").innerHTML =
         `<a class="rail-btn is-current" href="${esc(here)}" aria-current="page" aria-label="Explore" title="Explore">${navIcon("explore")}</a>` +
         analysis +

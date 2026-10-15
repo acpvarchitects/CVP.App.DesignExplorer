@@ -494,6 +494,18 @@ a.rail-btn {
     color: var(--md-sys-color-on-tertiary-container);
 }
 
+/* a destination that is not available for this study: MD3 disabled (38%), no hover, no pointer */
+.nav-row.is-disabled,
+.rail-btn.is-disabled {
+    opacity: 0.38;
+    cursor: default;
+}
+
+.nav-row.is-disabled:hover,
+.rail-btn.is-disabled:hover {
+    background: none;
+}
+
 .nav-row:focus-visible,
 a.rail-btn:focus-visible {
     outline: 2px solid var(--md-sys-color-primary);
