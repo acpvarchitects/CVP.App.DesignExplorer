@@ -92,13 +92,13 @@ function resolveStudies() {
     if (projects.length) {
         return projects.map((entry) => {
             const [folder, label] = named(entry);
-            return { name: label || folder, base: `${API_BASE}/projects/${encodeURIComponent(folder)}/` };
+            return { name: label || folder, base: `${API_BASE}/projects/${encodeURIComponent(folder)}/`, ref: { key: "PROJECT", entry } };
         });
     }
     return list("data").map((entry) => {
         const [folder, label] = named(entry);
         const base = folder.replace(/\/*$/, "/");
-        return { name: label || decodeURIComponent(base.split("/").filter(Boolean).pop()), base };
+        return { name: label || decodeURIComponent(base.split("/").filter(Boolean).pop()), base, ref: { key: "data", entry } };
     });
 }
 
@@ -199,6 +199,106 @@ async function loadManifest(study) {
     } catch (e) {
         study.manifest = null;
     }
+}
+
+// ---- Pages: the destinations of the sidebar (drawer rows, rail icons) ----
+// "Explore" is this page. "Analysis" (analysis.html: the 2D plans of ONE study, level by level) is a
+// group that opens on a list: the open studies that have 2D analyses (layers.json) first, then every
+// other study of the same API that has some, looked up the first time the group is opened.
+const NAV_ICONS = {
+    explore: "M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z",
+    analysis: "M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16z",
+};
+const navIcon = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${NAV_ICONS[name]}"/></svg>`;
+const hasPlanAnalyses = (st) =>
+    !!st.manifest && (st.manifest.levels || []).length > 0 && (st.manifest.layers || []).some((l) => l.kind === "analysis" && l.dim === "2d");
+const analysisLink = (st) => `analysis.html?${st.ref.key}=${encodeURIComponent(st.ref.entry)}`;
+
+// The studies of the same place as the open ones. The folder that holds the study folders (the
+// parent of `base`, without its last "/") answers a JSON list [{ name }] - the API's /projects.
+// Cached for the session: it is ~40 small requests.
+const PLANS_TTL = 10 * 60 * 1000;
+async function findPlanStudies(first, openNames) {
+    const parent = first.base.replace(/[^/]+\/$/, "");
+    const key = `design-explorer-v2:plans:${parent}`;
+    let names = null;
+    try {
+        const c = JSON.parse(sessionStorage.getItem(key) || "null");
+        if (c && Date.now() - c.at < PLANS_TTL) names = c.names;
+    } catch {
+        /* no storage: just look it up */
+    }
+    if (!names) {
+        const list = await (await fetch(parent.replace(/\/$/, ""))).json();
+        const probes = await Promise.all(
+            list
+                .map((p) => p.name)
+                .map(async (name) => {
+                    try {
+                        const r = await fetch(`${parent}${encodeURIComponent(name)}/layers.json`);
+                        return r.ok && hasPlanAnalyses({ manifest: await r.json() }) ? name : null;
+                    } catch {
+                        return null;
+                    }
+                })
+        );
+        names = probes.filter(Boolean);
+        try {
+            sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), names }));
+        } catch {
+            /* no storage */
+        }
+    }
+    const entry = (name) => (first.ref.key === "PROJECT" ? name : `${parent}${encodeURIComponent(name)}/`);
+    return names.filter((n) => !openNames.includes(n)).map((name) => ({ name, ref: { key: first.ref.key, entry: entry(name) } }));
+}
+
+// Any link to the analysis page carries where it was opened from (the dashboard with its whole state:
+// order, option, filters…), so the page can offer "Back". Added when it is clicked: the state moves.
+document.addEventListener("click", (e) => {
+    const a = e.target.closest('a[href^="analysis.html"]');
+    if (!a || a.href.includes("&back=")) return;
+    a.setAttribute("href", `${a.getAttribute("href")}&back=${encodeURIComponent("index.html" + location.search)}`);
+});
+
+function renderNav(studies) {
+    const plans = studies.filter(hasPlanAnalyses);
+    const here = location.pathname + location.search;
+    $("navDest").innerHTML =
+        `<a class="nav-row is-current" href="${esc(here)}" aria-current="page">${navIcon("explore")}<span>Explore</span></a>` +
+        `<details class="nav-group" id="analysisGroup">
+            <summary class="nav-row">${navIcon("analysis")}<span>Analysis</span><i class="nav-chev" aria-hidden="true"></i></summary>
+            <div class="nav-sub" id="analysisList" aria-live="polite"></div>
+        </details>`;
+    // rail: Explore, and Analysis, which opens the drawer on its list
+    $("railDest").innerHTML =
+        `<a class="rail-btn is-current" href="${esc(here)}" aria-current="page" aria-label="Explore" title="Explore">${navIcon("explore")}</a>` +
+        `<button type="button" class="rail-btn" data-section="analysisGroup" aria-label="Analysis" title="Analysis">${navIcon("analysis")}</button>` +
+        `<span class="rail-sep" role="separator"></span>`;
+    // the current page does not navigate (that would reload it and lose the view)
+    for (const a of document.querySelectorAll("#navDest .is-current, #railDest .is-current")) a.addEventListener("click", (e) => e.preventDefault());
+
+    // the list: own studies now, the other studies of the API when the group is first opened
+    const list = $("analysisList");
+    const subRow = (st) => `<a class="nav-sub-row" href="${esc(analysisLink(st))}" title="${esc(st.name)}">${esc(st.name)}</a>`;
+    const fill = (others, state) => {
+        const rows = [...plans, ...others].map(subRow);
+        const note =
+            state === "loading" ? "Looking for studies with 2D analyses…" : state === "error" ? "Could not look up the other studies." : !rows.length ? "No study with 2D analyses." : "";
+        list.innerHTML = rows.join("") + (note ? `<p class="nav-sub-note muted small">${note}</p>` : "");
+    };
+    fill([], "loading");
+    let searched = false;
+    $("analysisGroup").addEventListener("toggle", async (e) => {
+        if (!e.target.open || searched) return;
+        searched = true;
+        try {
+            fill(await findPlanStudies(studies[0], studies.map((s) => s.name)), "done");
+        } catch (err) {
+            console.error(err);
+            fill([], "error");
+        }
+    });
 }
 
 // ---- Scope, filters and order ----
@@ -1442,7 +1542,7 @@ function bindEvents() {
 // ---- Start ----
 
 async function init() {
-    const studies = resolveStudies();
+    let studies = resolveStudies();
     if (!studies.length) {
         showMessage(
             `<h2>No project selected</h2><p>Add the project name to the address, for example <code>?PROJECT=STUDY</code>, or several: <code>?PROJECT=STUDY_A,STUDY_B</code>.</p>`
@@ -1451,7 +1551,35 @@ async function init() {
     }
 
     studies.forEach((st, i) => (st.color = STUDY_COLORS[i % STUDY_COLORS.length]));
-    const [loaded] = await Promise.all([Promise.allSettled(studies.map(loadStudy)), Promise.all(studies.map(loadManifest))]);
+    let [loaded] = await Promise.all([Promise.allSettled(studies.map(loadStudy)), Promise.all(studies.map(loadManifest))]);
+
+    // A study with plans only (no data.csv, 2D analyses in layers.json) has nothing to explore: its
+    // way in is the analysis page. Alone (or all of them) it opens there; mixed with studies that
+    // have data, those are explored and the plans-only ones stay reachable from "Analysis".
+    const lacksData = (s) => loaded[studies.indexOf(s)].status === "rejected";
+    const plansOnly = studies.filter((s) => lacksData(s) && hasPlanAnalyses(s));
+    if (plansOnly.length && plansOnly.length === studies.filter(lacksData).length) {
+        if (plansOnly.length === studies.length) {
+            if (studies.length === 1) {
+                location.replace(analysisLink(plansOnly[0]));
+                return;
+            }
+            showMessage(
+                `<h2>Plans only</h2><p>These studies have no <code>data.csv</code>, only 2D analyses: open their analysis page.</p><ul>${plansOnly
+                    .map((s) => `<li><a href="${esc(analysisLink(s))}">${esc(s.name)}</a></li>`)
+                    .join("")}</ul>`
+            );
+            return;
+        }
+        const withData = (s) => !plansOnly.includes(s);
+        loaded = loaded.filter((l, i) => withData(studies[i]));
+        const allStudies = studies;
+        studies = studies.filter(withData);
+        studies.forEach((st, i) => (st.color = STUDY_COLORS[i % STUDY_COLORS.length]));
+        renderNav(allStudies);
+    } else {
+        renderNav(studies);
+    }
     const failed = studies.filter((s, i) => loaded[i].status === "rejected");
     if (failed.length) {
         loaded.forEach((l) => l.status === "rejected" && console.error(l.reason));
@@ -1548,13 +1676,15 @@ function initSidebar() {
     });
     compact.addEventListener("change", sync);
 
-    // a rail icon opens the drawer on its section
-    for (const btn of document.querySelectorAll(".rail-btn")) {
-        btn.addEventListener("click", () => {
-            setCollapsed(false);
-            $(btn.dataset.section).open = true;
-        });
-    }
+    // a rail icon with a section opens the drawer on it (delegated: some icons are rendered later)
+    document.querySelector(".rail").addEventListener("click", (e) => {
+        const btn = e.target.closest(".rail-btn[data-section]");
+        if (!btn) return;
+        setCollapsed(false);
+        const target = $(btn.dataset.section);
+        if (target instanceof HTMLDetailsElement) target.open = true;
+        else target.querySelector("a")?.focus();
+    });
     // the rail badges mirror the ones in the section headers
     for (const [from, to] of [["measurementsBadge", "railMeasurementsBadge"], ["paretoBadge", "railParetoBadge"], ["hiddenCount", "railHiddenBadge"]]) {
         const mirror = () => {
