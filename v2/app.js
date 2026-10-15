@@ -277,10 +277,10 @@ function renderNav(studies) {
     // is the library's optional RAIL-ONLY action: shown only while the sidebar is closed, it opens it.
     $("navDest").innerHTML =
         `<details class="nav-group" id="analysisGroup">
-            <summary class="nav-row" title="Analysis">${navIcon("analysis")}<span class="nav-label">Analysis</span><svg class="sec-chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5L10 12.5L15 7.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+            <summary class="nav-row" data-tooltip="Analysis" data-tooltip-pos="right" data-tooltip-rail>${navIcon("analysis")}<span class="nav-label">Analysis</span><svg class="sec-chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5L10 12.5L15 7.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
             <div class="nav-sub" id="analysisList" aria-live="polite"></div>
         </details>` +
-        `<button type="button" class="nav-row nav-rail-only" id="navFilters" title="Filters" aria-label="Filters">${navIcon("filters")}<span class="nav-label">Filters</span><span id="navFiltersBadge" class="filter-badge"></span></button>`;
+        `<button type="button" class="nav-row nav-rail-only" id="navFilters" data-tooltip="Filters" data-tooltip-pos="right" data-tooltip-rail aria-label="Filters">${navIcon("filters")}<span class="nav-label">Filters</span><span id="navFiltersBadge" class="filter-badge"></span></button>`;
     mirrorFilterCount();
 
     // the list: own studies now, the other studies of the API when the group is first opened
@@ -1639,7 +1639,7 @@ function initSidebar() {
     const toggle = $("navToggle");
     const panel = $("leftPanel");
     const compact = matchMedia("(max-width: 839px)");
-    const KEY = "design-explorer-v2:nav";
+    const KEY = "design-explorer-v2:nav-2";
 
     // the menus inside the menu start closed every time the sidebar opens (library: the drawer opens on its destinations)
     const closeNested = () => {
@@ -1647,6 +1647,7 @@ function initSidebar() {
     };
     const setCollapsed = (collapsed, save = true) => {
         if (!collapsed && root.classList.contains("nav-collapsed")) closeNested();
+        $("navFilters")?.classList.remove("is-active");
         root.classList.toggle("nav-collapsed", collapsed);
         toggle.setAttribute("aria-expanded", String(!collapsed));
         if (save) {
@@ -1705,6 +1706,7 @@ function initSidebar() {
         if (compact.matches || !root.classList.contains("nav-collapsed")) return;
         if (e.target.closest("#navFilters")) {
             setCollapsed(false);
+            $("navFilters").classList.add("is-active"); // the pressed destination, until the sidebar toggles
         } else if (e.target.closest("#analysisGroup > summary")) {
             e.preventDefault();
             setCollapsed(false);

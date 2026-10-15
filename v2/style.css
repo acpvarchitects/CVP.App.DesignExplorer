@@ -290,6 +290,30 @@ input[type="number"] {
     color: var(--md-sys-color-on-background);
 }
 
+/* Tooltip of the library (mat-tooltip, ACPV theme): see tooltip.js */
+.acpv-tooltip {
+    position: fixed;
+    z-index: calc(var(--acpv-sys-z-modal, 1001) + 10);
+    max-width: 200px;
+    min-height: 24px;
+    box-sizing: border-box;
+    padding: 4px 8px;
+    border-radius: var(--acpv-sys-corner-extra-small, 4px);
+    background: var(--md-sys-color-inverse-surface);
+    color: var(--md-sys-color-inverse-on-surface);
+    font-size: var(--acpv-sys-type-label-md, 12px);
+    line-height: var(--acpv-sys-type-label-md-line-height, 16px);
+    font-weight: var(--acpv-sys-type-weight-medium, 500);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 75ms linear;
+}
+
+.acpv-tooltip.on {
+    opacity: 1;
+    transition-duration: 150ms;
+}
+
 /* centre-side slot: the open study */
 .acpv-appbar-center {
     flex: 1;
