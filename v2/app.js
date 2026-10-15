@@ -92,13 +92,13 @@ function resolveStudies() {
     if (projects.length) {
         return projects.map((entry) => {
             const [folder, label] = named(entry);
-            return { name: label || folder, base: `${API_BASE}/projects/${encodeURIComponent(folder)}/` };
+            return { name: label || folder, base: `${API_BASE}/projects/${encodeURIComponent(folder)}/`, ref: { key: "PROJECT", entry } };
         });
     }
     return list("data").map((entry) => {
         const [folder, label] = named(entry);
         const base = folder.replace(/\/*$/, "/");
-        return { name: label || decodeURIComponent(base.split("/").filter(Boolean).pop()), base };
+        return { name: label || decodeURIComponent(base.split("/").filter(Boolean).pop()), base, ref: { key: "data", entry } };
     });
 }
 
@@ -199,6 +199,43 @@ async function loadManifest(study) {
     } catch (e) {
         study.manifest = null;
     }
+}
+
+// ---- Pages: the destinations of the sidebar (drawer rows, rail icons) ----
+// "Explore" is this page. "Analysis" (analysis.html, one study, level by level) is offered for every
+// study whose layers.json has 2D analyses; with several studies, one row each.
+const NAV_ICONS = {
+    explore: "M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z",
+    analysis: "M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16z",
+};
+const navIcon = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${NAV_ICONS[name]}"/></svg>`;
+const hasPlanAnalyses = (st) =>
+    !!st.manifest && (st.manifest.levels || []).length > 0 && (st.manifest.layers || []).some((l) => l.kind === "analysis" && l.dim === "2d");
+const analysisLink = (st) => `analysis.html?${st.ref.key}=${encodeURIComponent(st.ref.entry)}`;
+
+function renderNav(studies) {
+    const plans = studies.filter(hasPlanAnalyses);
+    $("navDest").hidden = $("railDest").hidden = !plans.length;
+    if (!plans.length) return;
+    const here = location.pathname + location.search;
+    const rows = [
+        { icon: "explore", label: "Explore", href: here, current: true },
+        ...plans.map((st) => ({ icon: "analysis", label: plans.length > 1 ? `Analysis · ${st.name}` : "Analysis", href: analysisLink(st) })),
+    ];
+    $("navDest").innerHTML = rows
+        .map((r) => `<a class="nav-row${r.current ? " is-current" : ""}" href="${esc(r.href)}"${r.current ? ' aria-current="page"' : ""}>${navIcon(r.icon)}<span>${esc(r.label)}</span></a>`)
+        .join("");
+    // rail: Explore, and Analysis (a link; with several studies it opens the drawer to choose)
+    const analysis =
+        plans.length === 1
+            ? `<a class="rail-btn" href="${esc(analysisLink(plans[0]))}" aria-label="Analysis" title="Analysis">${navIcon("analysis")}</a>`
+            : `<button type="button" class="rail-btn" data-section="navDest" aria-label="Analysis" title="Analysis">${navIcon("analysis")}</button>`;
+    $("railDest").innerHTML =
+        `<a class="rail-btn is-current" href="${esc(here)}" aria-current="page" aria-label="Explore" title="Explore">${navIcon("explore")}</a>` +
+        analysis +
+        `<span class="rail-sep" role="separator"></span>`;
+    // the current page does not navigate (that would reload it and lose the view)
+    for (const a of document.querySelectorAll("#navDest .is-current, #railDest .is-current")) a.addEventListener("click", (e) => e.preventDefault());
 }
 
 // ---- Scope, filters and order ----
@@ -1452,6 +1489,7 @@ async function init() {
 
     studies.forEach((st, i) => (st.color = STUDY_COLORS[i % STUDY_COLORS.length]));
     const [loaded] = await Promise.all([Promise.allSettled(studies.map(loadStudy)), Promise.all(studies.map(loadManifest))]);
+    renderNav(studies);
     const failed = studies.filter((s, i) => loaded[i].status === "rejected");
     if (failed.length) {
         loaded.forEach((l) => l.status === "rejected" && console.error(l.reason));
@@ -1548,13 +1586,15 @@ function initSidebar() {
     });
     compact.addEventListener("change", sync);
 
-    // a rail icon opens the drawer on its section
-    for (const btn of document.querySelectorAll(".rail-btn")) {
-        btn.addEventListener("click", () => {
-            setCollapsed(false);
-            $(btn.dataset.section).open = true;
-        });
-    }
+    // a rail icon with a section opens the drawer on it (delegated: some icons are rendered later)
+    document.querySelector(".rail").addEventListener("click", (e) => {
+        const btn = e.target.closest(".rail-btn[data-section]");
+        if (!btn) return;
+        setCollapsed(false);
+        const target = $(btn.dataset.section);
+        if (target instanceof HTMLDetailsElement) target.open = true;
+        else target.querySelector("a")?.focus();
+    });
     // the rail badges mirror the ones in the section headers
     for (const [from, to] of [["measurementsBadge", "railMeasurementsBadge"], ["paretoBadge", "railParetoBadge"], ["hiddenCount", "railHiddenBadge"]]) {
         const mirror = () => {

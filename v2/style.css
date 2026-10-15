@@ -431,6 +431,75 @@ html.nav-collapsed .left-panel .drawer {
     background: transparent;
 }
 
+a.rail-btn {
+    text-decoration: none;
+}
+
+/* Pages (destinations): the active one is the library's tertiary-container pill
+   (md3-deviations: navigation selection), on the same icon axis as the hamburger */
+.rail-dest {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.rail-sep {
+    width: 32px;
+    margin: 4px 0;
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.rail-btn.is-current {
+    background: var(--md-sys-color-tertiary-container);
+}
+
+.rail-btn.is-current svg {
+    fill: var(--md-sys-color-on-tertiary-container);
+}
+
+.nav-dest {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px 0 8px;
+}
+
+.nav-row {
+    display: flex;
+    align-items: center;
+    height: 36px;
+    border-radius: var(--acpv-sys-radius-full, 999px);
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+/* icon column = rail width - 2 x 8px = 64px, so the icon sits on the rail's axis */
+.nav-row svg {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    margin: 0 20px;
+    fill: currentColor;
+}
+
+.nav-row:hover {
+    background: var(--md-sys-color-surface-container-high);
+}
+
+.nav-row.is-current {
+    background: var(--md-sys-color-tertiary-container);
+    color: var(--md-sys-color-on-tertiary-container);
+}
+
+.nav-row:focus-visible,
+a.rail-btn:focus-visible {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 2px;
+}
+
 .rail-btn:hover:not(:disabled) {
     background: var(--md-sys-color-surface-container-high);
 }

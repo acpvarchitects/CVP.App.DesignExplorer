@@ -31,13 +31,13 @@ function resolveStudy() {
     const project = first("PROJECT");
     if (project) {
         const [folder, label] = named(project);
-        return { name: label || folder, base: `${API_BASE}/projects/${encodeURIComponent(folder)}/` };
+        return { name: label || folder, base: `${API_BASE}/projects/${encodeURIComponent(folder)}/`, ref: { key: "PROJECT", entry: project } };
     }
     const data = first("data");
     if (!data) return null;
     const [folder, label] = named(data);
     const base = folder.replace(/\/*$/, "/");
-    return { name: label || decodeURIComponent(base.split("/").filter(Boolean).pop()), base };
+    return { name: label || decodeURIComponent(base.split("/").filter(Boolean).pop()), base, ref: { key: "data", entry: data } };
 }
 
 const analyses = () => (study.manifest.layers || []).filter((l) => l.kind === "analysis" && l.dim === "2d");
@@ -235,6 +235,19 @@ function onHover(hit, e) {
     tip.hidden = false;
 }
 
+// "Explore": back to the dashboard of the same study, only when the study has a data.csv (a study
+// that is only plans, like a daylight study, has nothing to explore).
+async function offerExplore() {
+    try {
+        const r = await fetch(study.base + "data.csv?v=" + Date.now(), { method: "HEAD" });
+        if (!r.ok) return;
+    } catch (e) {
+        return;
+    }
+    $("exploreLink").href = `index.html?${study.ref.key}=${encodeURIComponent(study.ref.entry)}`;
+    $("exploreLink").hidden = false;
+}
+
 async function start() {
     study = resolveStudy();
     if (!study) {
@@ -256,6 +269,7 @@ async function start() {
     $("projectName").textContent = study.manifest.title || study.name;
     $("projectNote").textContent = `${analyses().length} ${analyses().length === 1 ? "analysis" : "analyses"} · ${(study.manifest.levels || []).length} levels`;
     document.title = `${study.manifest.title || study.name} · Design Explorer`;
+    offerExplore();
     $("app").hidden = false;
     viewer = new PlanViewer($("plan"), { onHover });
     viewer.setLabels(true); // room numbers on by default

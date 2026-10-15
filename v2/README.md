@@ -101,6 +101,12 @@ in the plan) and the description, always visible. Right: the plan, with the leve
 (highest first); hovering a room shows its name, the value at that point and the room average. Pan and zoom are kept when the level or
 the analysis changes (every level shares one plan frame); Reset view fits the level again. `?an=` / `?level=` keep the view in the address. Room numbers are shown on the plan by default (**Hide labels** / **Show labels**; they keep their screen size). **Copy link** copies the main link of the analysis on screen (`PROJECT` or `data` + `an`, no level or zoom). **Export view** saves the current view (same zoom and pan) as a vector PDF on A3 landscape: rooms, score and legend on the left, the plan with a graphic scale on the right, and the room numbers when labels are shown.
 
+**Getting there and back**: in the dashboard, a study whose `layers.json` has 2D analyses adds a **Pages** group to the
+sidebar: drawer rows and rail icons *Explore* (this page, the active destination) and *Analysis* (`analysis.html` of that study, same
+`PROJECT` / `data` entry; with several such studies, one row each, "Analysis · <name>"). Nothing is shown for a study without 2D
+analyses. On the analysis page an **Explore** button in the app bar goes back to the dashboard of the same study, only when the study
+has a `data.csv` (a plans-only study, e.g. a daylight study, has nothing to explore).
+
 Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" component):
 
 | File | Content |
