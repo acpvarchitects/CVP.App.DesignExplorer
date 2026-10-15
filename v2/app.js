@@ -26,7 +26,7 @@ import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=34";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml } from "./comparison.js?v=37";
-import { ParallelChart } from "./parallel.js?v=37";
+import { ParallelChart } from "./parallel.js?v=38";
 import { paretoFront } from "./pareto.js?v=1";
 import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=2";
 import { PlanViewer } from "./plan2d.js?v=5";
@@ -206,7 +206,7 @@ async function loadManifest(study) {
 // group that opens on a list: the open studies that have 2D analyses (layers.json) first, then every
 // other study of the same API that has some, looked up the first time the group is opened.
 const NAV_ICONS = {
-    explore: "M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z",
+    filters: "M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z",
     analysis: "M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16z",
 };
 const navIcon = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${NAV_ICONS[name]}"/></svg>`;
@@ -261,22 +261,28 @@ document.addEventListener("click", (e) => {
     a.setAttribute("href", `${a.getAttribute("href")}&back=${encodeURIComponent("index.html" + location.search)}`);
 });
 
+// The closed sidebar shows one number on "Filters": how many filter sections are doing something.
+function mirrorFilterCount() {
+    const badge = $("navFiltersBadge");
+    if (!badge) return;
+    const n = ["measurementsBadge", "paretoBadge", "hiddenCount"].filter((id) => $(id).textContent.trim()).length;
+    badge.textContent = n ? String(n) : "";
+    badge.title = n ? `${n} active filter section${n > 1 ? "s" : ""}` : "";
+}
+
 function renderNav(studies) {
     const plans = studies.filter(hasPlanAnalyses);
-    const here = location.pathname + location.search;
+    // One list, the same in both states (library side-nav): the icon sits on a fixed 64px column,
+    // the label fades in with the drawer. "Analysis" is a group (opens on a list of studies); "Filters"
+    // is the row Pantheon has (drawer shortcut): on the rail an action that opens the sidebar, with the grey hover
+    // of the other rows; open, only the title of the filter sections below it (no hover, no click).
     $("navDest").innerHTML =
-        `<a class="nav-row is-current" href="${esc(here)}" aria-current="page">${navIcon("explore")}<span>Explore</span></a>` +
         `<details class="nav-group" id="analysisGroup">
-            <summary class="nav-row">${navIcon("analysis")}<span>Analysis</span><i class="nav-chev" aria-hidden="true"></i></summary>
+            <summary class="nav-row" data-tooltip="Analysis" data-tooltip-pos="right" data-tooltip-rail>${navIcon("analysis")}<span class="nav-label">Analysis</span><svg class="sec-chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5L10 12.5L15 7.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
             <div class="nav-sub" id="analysisList" aria-live="polite"></div>
-        </details>`;
-    // rail: Explore, and Analysis, which opens the drawer on its list
-    $("railDest").innerHTML =
-        `<a class="rail-btn is-current" href="${esc(here)}" aria-current="page" aria-label="Explore" title="Explore">${navIcon("explore")}</a>` +
-        `<button type="button" class="rail-btn" data-section="analysisGroup" aria-label="Analysis" title="Analysis">${navIcon("analysis")}</button>` +
-        `<span class="rail-sep" role="separator"></span>`;
-    // the current page does not navigate (that would reload it and lose the view)
-    for (const a of document.querySelectorAll("#navDest .is-current, #railDest .is-current")) a.addEventListener("click", (e) => e.preventDefault());
+        </details>` +
+        `<button type="button" class="nav-row nav-rail-only" id="navFilters" data-tooltip="Filters" data-tooltip-pos="right" data-tooltip-rail aria-label="Filters">${navIcon("filters")}<span class="nav-label">Filters</span><span id="navFiltersBadge" class="filter-badge"></span></button>`;
+    mirrorFilterCount();
 
     // the list: own studies now, the other studies of the API when the group is first opened
     const list = $("analysisList");
@@ -332,7 +338,6 @@ function renderHidden() {
     const all = [...data.schema.inputs, ...data.schema.allOutputs];
     const hidden = all.filter((m) => state.hidden.has(m.col));
     box.hidden = !hidden.length;
-    $("railHiddenBtn").hidden = !hidden.length;
     if (!hidden.length) {
         box.open = false;
         $("hiddenCount").textContent = "";
@@ -601,6 +606,8 @@ function renderChart(view, syncChart) {
         scope: `${[...state.methods].sort()}|${showInputs}|${[...state.batches].sort()}`,
         options: view.scope,
         axes,
+        // the header height is sized on the full set of axes (hidden ones too): hiding one only changes the width
+        sizeAxes: [...axes, ...data.schema.allOutputs.filter((m) => state.hidden.has(m.col)).map((m) => ({ label: m.label, info: false }))],
         selected: state.sel != null ? data.options[state.sel] : null,
         matches: (o) => view.visibleSet.has(o),
         colorOf: (o) => o.study.color,
@@ -1430,6 +1437,8 @@ function bindEvents() {
         state.ranges = {};
         state.batches.clear();
         state.pareto = false;
+        state.hidden.clear(); // the hidden axes come back too (same as "Show all" in Hidden results)
+        applyHidden();
         render({ syncChart: true });
     });
     // × in a section header: clear that section only, without opening/closing it.
@@ -1618,14 +1627,28 @@ async function init() {
 // rail (one icon per section); the choice is remembered. Compact (<= 839px, the library's
 // breakpoint): the sidebar is a temporary overlay drawer: the hamburger toggles `nav-open`, a scrim
 // or Escape closes it, and while it is closed it is `inert` (out of the tab order).
+// The app icon + title go home (library: "Go to homepage"): the dashboard of the open study, without its filters or view.
+function initHomeLink() {
+    const q = new URLSearchParams(location.search);
+    const enc = (v) => encodeURI(v).replace(/[&#+]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
+    const home = ["PROJECT", "data"].filter((k) => q.has(k)).map((k) => `${k}=${enc(q.get(k))}`);
+    $("appHome").href = "index.html" + (home.length ? "?" + home.join("&") : "");
+}
+
 function initSidebar() {
     const root = document.documentElement;
     const toggle = $("navToggle");
     const panel = $("leftPanel");
     const compact = matchMedia("(max-width: 839px)");
-    const KEY = "design-explorer-v2:nav";
+    const KEY = "design-explorer-v2:nav-2";
 
+    // the menus inside the menu start closed every time the sidebar opens (library: the drawer opens on its destinations)
+    const closeNested = () => {
+        for (const d of document.querySelectorAll("#navDest details, .filters details")) d.open = false;
+    };
     const setCollapsed = (collapsed, save = true) => {
+        if (!collapsed && root.classList.contains("nav-collapsed")) closeNested();
+        $("navFilters")?.classList.remove("is-active");
         root.classList.toggle("nav-collapsed", collapsed);
         toggle.setAttribute("aria-expanded", String(!collapsed));
         if (save) {
@@ -1642,7 +1665,7 @@ function initSidebar() {
         panel.inert = !open;
         document.querySelector(".center").inert = open; // the page under the scrim is out of reach (Tab, clicks)
         if (!focus) return;
-        if (open) panel.querySelector(".drawer summary")?.focus(); // not the rail: it is hidden here
+        if (open) panel.querySelector("#navDest summary")?.focus();
         else toggle.focus();
     };
     // follow the breakpoint: compact = overlay (closed), desktop = rail / drawer as remembered
@@ -1663,7 +1686,7 @@ function initSidebar() {
     } catch {
         /* no storage */
     }
-    root.classList.toggle("nav-collapsed", saved === "collapsed");
+    root.classList.toggle("nav-collapsed", saved !== "open"); // library default: rail until opened once
     sync();
 
     toggle.addEventListener("click", () => {
@@ -1671,30 +1694,33 @@ function initSidebar() {
         else setCollapsed(!root.classList.contains("nav-collapsed"));
     });
     $("navScrim").addEventListener("click", () => setOverlay(false));
+    $("navDest").addEventListener("click", (e) => {
+        if (compact.matches && e.target.closest("a.nav-sub-row")) setOverlay(false, { focus: false });
+    });
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && compact.matches && root.classList.contains("nav-open")) setOverlay(false);
     });
     compact.addEventListener("change", sync);
 
-    // a rail icon with a section opens the drawer on it (delegated: some icons are rendered later)
-    document.querySelector(".rail").addEventListener("click", (e) => {
-        const btn = e.target.closest(".rail-btn[data-section]");
-        if (!btn) return;
-        setCollapsed(false);
-        const target = $(btn.dataset.section);
-        if (target instanceof HTMLDetailsElement) target.open = true;
-        else target.querySelector("a")?.focus();
+    // closed sidebar: "Filters" and "Analysis" open it (menus closed; the click does not toggle the group)
+    $("navDest").addEventListener("click", (e) => {
+        if (compact.matches || !root.classList.contains("nav-collapsed")) return;
+        if (e.target.closest("#navFilters")) {
+            setCollapsed(false);
+        } else if (e.target.closest("#analysisGroup > summary")) {
+            e.preventDefault();
+            setCollapsed(false); // the sidebar opens with its menus closed
+            const row = e.target.closest("summary");
+            row.classList.add("is-active"); // pressed: red while it opens, like "Filters"
+            setTimeout(() => row.classList.remove("is-active"), 350);
+        }
     });
-    // the rail badges mirror the ones in the section headers
-    for (const [from, to] of [["measurementsBadge", "railMeasurementsBadge"], ["paretoBadge", "railParetoBadge"], ["hiddenCount", "railHiddenBadge"]]) {
-        const mirror = () => {
-            $(to).textContent = $(from).textContent;
-            $(to).title = $(from).title;
-        };
-        new MutationObserver(mirror).observe($(from), { childList: true, characterData: true, subtree: true, attributes: true });
-        mirror();
+    // the number on "Filters" follows the headers of the filter sections
+    for (const id of ["measurementsBadge", "paretoBadge", "hiddenCount"]) {
+        new MutationObserver(mirrorFilterCount).observe($(id), { childList: true, characterData: true, subtree: true });
     }
 }
 
+initHomeLink();
 initSidebar();
 init();

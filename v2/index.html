@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="theme/tokens/icons.css?v=1" />
     <link rel="stylesheet" href="theme/tokens/z-index.css?v=1" />
     <link rel="stylesheet" href="theme/fonts.css?v=1" />
-    <link rel="stylesheet" href="style.css?v=87" />
+    <link rel="stylesheet" href="style.css?v=103" />
     <script type="importmap">
         {
             "imports": {
@@ -41,10 +41,10 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
                 </button>
             </span>
-            <div class="acpv-app-logo">
+            <a class="acpv-app-logo" id="appHome" href="index.html" aria-label="Go to homepage">
                 <img src="favicon.png" alt="" class="acpv-app-icon" />
                 <p class="acpv-app-title">Design Explorer</p>
-            </div>
+            </a>
         </div>
         <div class="acpv-appbar-center">
             <span id="projectName"></span>
@@ -63,29 +63,13 @@
              (filters) + ONE center card (methods, chart and results) -->
         <div class="app-frame">
             <div class="left-panel" id="leftPanel">
-                <!-- Rail (sidebar closed): one icon per filter section, with its active-filter badge; a
-                     click opens the drawer on that section -->
-                <div class="rail" role="toolbar" aria-orientation="vertical" aria-label="Filters">
-                    <!-- Pages (rendered by renderNav): Explore, and Analysis when a study has 2D analyses -->
-                    <div id="railDest" class="rail-dest"></div>
-                    <button type="button" class="rail-btn" data-section="measurementsSection" aria-label="Measurements" title="Measurements">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></svg>
-                        <span id="railMeasurementsBadge" class="filter-badge"></span>
-                    </button>
-                    <button type="button" class="rail-btn" data-section="paretoSection" aria-label="Pareto front" title="Pareto front">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.25 5.61C6.27 8.2 10 13 10 13v6c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-6s3.72-4.8 5.74-7.39c.51-.66.04-1.61-.79-1.61H5.04c-.83 0-1.3.95-.79 1.61z"/></svg>
-                        <span id="railParetoBadge" class="filter-badge"></span>
-                    </button>
-                    <button type="button" id="railHiddenBtn" class="rail-btn" data-section="hiddenAxes" aria-label="Hidden results" title="Hidden results" hidden>
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/></svg>
-                        <span id="railHiddenBadge" class="filter-badge"></span>
-                    </button>
-                </div>
-                <!-- Drawer (sidebar open): the pages, then the filters -->
-                <nav id="navDest" class="nav-dest drawer" aria-label="Pages"></nav>
+                <!-- The menu (library side-nav): ONE list in both states. The icons stay on the same column
+                     whether the sidebar is open or closed; only the labels fade in. Rendered by renderNav. -->
+                <nav id="navDest" class="nav-dest" aria-label="Pages"></nav>
+                <!-- The filters: only while the sidebar is open -->
                 <aside class="filters drawer" aria-label="Filters">
-                    <details class="filter-section" id="measurementsSection" open>
-                        <summary><span class="filter-title">Measurements</span><span id="measurementsBadge" class="filter-badge"></span><button id="measurementsClear" type="button" class="filter-clear" data-clear="measurements" hidden>×</button></summary>
+                    <details class="filter-section" id="measurementsSection">
+                        <summary><svg class="sec-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 10H3V8h2v4h2V8h2v4h2V8h2v4h2V8h2v4h2V8h2v8z"/></svg><span class="filter-title">Measurements</span><span id="measurementsBadge" class="filter-badge"></span><button id="measurementsClear" type="button" class="filter-clear" data-clear="measurements" hidden>×</button><svg class="sec-chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5L10 12.5L15 7.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
                         <div class="filter-body">
                             <div class="filters-head">
                                 <p class="muted small">Min – max per result; empty = no limit.</p>
@@ -95,7 +79,7 @@
                         </div>
                     </details>
                     <details class="filter-section" id="paretoSection">
-                        <summary><span class="filter-title">Pareto front</span><span id="paretoBadge" class="filter-badge"></span><button id="paretoClear" type="button" class="filter-clear" data-clear="pareto" hidden>×</button></summary>
+                        <summary><svg class="sec-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.25 5.61C6.27 8.2 10 13 10 13v6c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-6s3.72-4.8 5.74-7.39c.51-.66.04-1.61-.79-1.61H5.04c-.83 0-1.3.95-.79 1.61z"/></svg><span class="filter-title">Pareto front</span><span id="paretoBadge" class="filter-badge"></span><button id="paretoClear" type="button" class="filter-clear" data-clear="pareto" hidden>×</button><svg class="sec-chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5L10 12.5L15 7.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
                         <div class="filter-body">
                             <label class="pareto-on"><input id="paretoOn" type="checkbox" /> Only options on the front</label>
                             <p id="paretoCount" class="muted small"></p>
@@ -106,7 +90,7 @@
                     </details>
                     <!-- Results hidden with "✕ hide" on a chart axis: bring one back, or all of them -->
                     <details class="filter-section" id="hiddenAxes" hidden>
-                        <summary><span class="filter-title">Hidden results</span><span id="hiddenCount" class="filter-badge"></span></summary>
+                        <summary><svg class="sec-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/></svg><span class="filter-title">Hidden results</span><span id="hiddenCount" class="filter-badge"></span><svg class="sec-chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5L10 12.5L15 7.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
                         <div class="filter-body">
                             <div id="hiddenList" class="hidden-list"></div>
                         </div>
@@ -224,6 +208,7 @@
         </section>
     </div>
 
-    <script type="module" src="app.js?v=89"></script>
+    <script type="module" src="tooltip.js?v=1"></script>
+    <script type="module" src="app.js?v=102"></script>
 </body>
 </html>

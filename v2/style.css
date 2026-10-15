@@ -265,6 +265,16 @@ input[type="number"] {
     display: flex;
     align-items: center;
     gap: 12px;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.acpv-app-logo:focus-visible {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
 }
 
 .acpv-app-icon {
@@ -278,6 +288,30 @@ input[type="number"] {
     font-size: var(--acpv-sys-type-title-lg, 22px);
     line-height: var(--acpv-sys-type-title-lg-line-height, 28px);
     color: var(--md-sys-color-on-background);
+}
+
+/* Tooltip of the library (mat-tooltip, ACPV theme): see tooltip.js */
+.acpv-tooltip {
+    position: fixed;
+    z-index: calc(var(--acpv-sys-z-modal, 1001) + 10);
+    max-width: 200px;
+    min-height: 24px;
+    box-sizing: border-box;
+    padding: 4px 8px;
+    border-radius: var(--acpv-sys-corner-extra-small, 4px);
+    background: var(--md-sys-color-inverse-surface);
+    color: var(--md-sys-color-inverse-on-surface);
+    font-size: var(--acpv-sys-type-label-md, 12px);
+    line-height: var(--acpv-sys-type-label-md-line-height, 16px);
+    font-weight: var(--acpv-sys-type-weight-medium, 500);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 75ms linear;
+}
+
+.acpv-tooltip.on {
+    opacity: 1;
+    transition-duration: 150ms;
 }
 
 /* centre-side slot: the open study */
@@ -401,68 +435,11 @@ html.nav-collapsed .app-frame {
     display: none;
 }
 
-.rail {
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    padding: 8px 0;
-}
-
-html.nav-collapsed .rail {
-    display: flex;
-}
-
-html.nav-collapsed .left-panel .drawer {
-    display: none;
-}
-
-.rail-btn {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    height: 36px;
-    min-height: 0;
-    padding: 0;
-    border: 0;
-    border-radius: var(--acpv-sys-corner-full);
-    background: transparent;
-}
-
-a.rail-btn {
-    text-decoration: none;
-}
-
-/* Pages (destinations): the active one is the library's tertiary-container pill
-   (md3-deviations: navigation selection), on the same icon axis as the hamburger */
-.rail-dest {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
-
-.rail-sep {
-    width: 32px;
-    margin: 4px 0;
-    border-top: 1px solid var(--md-sys-color-outline-variant);
-}
-
-.rail-btn.is-current {
-    background: var(--md-sys-color-tertiary-container);
-}
-
-.rail-btn.is-current svg {
-    fill: var(--md-sys-color-on-tertiary-container);
-}
-
 .nav-dest {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    padding: 4px 0 8px;
+    gap: var(--acpv-sys-space-1, 4px); /* the library's item gap */
+    padding: var(--acpv-sys-space-3, 12px) 0 var(--acpv-sys-space-2, 8px); /* the library's nav padding-top / item-list gap */
 }
 
 .nav-row {
@@ -485,8 +462,23 @@ a.rail-btn {
     fill: currentColor;
 }
 
-.nav-row:hover {
+.nav-row:hover:not(:disabled) {
     background: var(--md-sys-color-surface-container-high);
+}
+
+.nav-row:not(.nav-rail-only):active,
+.nav-row.is-active,
+.nav-group[open] > summary.nav-row {
+    background: var(--md-sys-color-tertiary-container);
+    color: var(--md-sys-color-on-tertiary-container);
+}
+
+/* a filter section that is doing something: its icon carries the same accent (library active icon) */
+.filter-section:has(> summary .filter-badge:not(:empty)) > summary .sec-icon {
+    border-radius: var(--acpv-sys-corner-full, 9999px);
+    background: var(--md-sys-color-tertiary-container);
+    fill: var(--md-sys-color-on-tertiary-container);
+    box-shadow: 0 0 0 4px var(--md-sys-color-tertiary-container);
 }
 
 .nav-row.is-current {
@@ -504,19 +496,16 @@ a.rail-btn {
     display: none;
 }
 
-.nav-chev {
-    margin-left: auto;
-    margin-right: 16px;
-    width: 8px;
-    height: 8px;
-    border-right: 2px solid currentColor;
-    border-bottom: 2px solid currentColor;
-    transform: rotate(45deg);
-    transition: transform var(--acpv-sys-motion-duration-normal, 250ms) ease;
+/* same chevron as the sidebar sections (library acpv-sidebar-section), turned up when open */
+.nav-row .sec-chev {
+    width: 20px;
+    height: 20px;
+    margin: 0 var(--acpv-sys-space-3, 12px) 0 auto; /* the inset of the section headers */
+    fill: none;
 }
 
-.nav-group[open] > summary .nav-chev {
-    transform: rotate(-135deg);
+.nav-group[open] > summary .sec-chev {
+    transform: rotate(180deg);
 }
 
 .nav-sub {
@@ -548,27 +537,73 @@ a.rail-btn {
 }
 
 .nav-row:focus-visible,
-.nav-sub-row:focus-visible,
-a.rail-btn:focus-visible {
+.nav-sub-row:focus-visible {
     outline: 2px solid var(--md-sys-color-primary);
     outline-offset: 2px;
 }
 
-.rail-btn:hover:not(:disabled) {
-    background: var(--md-sys-color-surface-container-high);
+/* Labels fade with the drawer (library side-nav: the icons never move, only the text appears) */
+.nav-row {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    font-family: inherit;
+    cursor: pointer;
 }
 
-.rail-btn svg {
-    width: 24px;
-    height: 24px;
-    fill: var(--md-sys-color-on-surface-variant);
-}
-
-.rail-btn .filter-badge {
-    position: absolute;
-    top: -6px;
-    right: -6px;
+/* "Filters" is a button only while the sidebar is closed (open: the title of the sections below) */
+html:not(.nav-collapsed) .nav-rail-only {
     pointer-events: none;
+}
+
+.nav-label {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    transition: opacity var(--acpv-sys-motion-duration-normal, 250ms) ease;
+}
+
+.nav-row .sec-chev {
+    flex: none;
+    transition: opacity var(--acpv-sys-motion-duration-normal, 250ms) ease, transform 150ms ease;
+}
+
+
+.nav-rail-only .filter-badge {
+    position: absolute;
+    top: 0;
+    left: 36px;
+    pointer-events: none;
+}
+
+/* the filters keep their drawer width, so they do not reflow while the track animates */
+.filters {
+    width: calc(var(--acpv-sys-sidenav-width, 280px) - 2 * var(--acpv-sys-space-2, 8px));
+    transition: opacity var(--acpv-sys-motion-duration-normal, 250ms) ease;
+}
+
+.left-panel {
+    overflow-x: hidden;
+}
+
+html.nav-collapsed .nav-label,
+html.nav-collapsed .nav-row .sec-chev {
+    opacity: 0;
+}
+
+html.nav-collapsed .nav-sub {
+    display: none;
+}
+
+html.nav-collapsed .filters {
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
 }
 
 .left-panel {
@@ -913,38 +948,51 @@ a.rail-btn:focus-visible {
     margin-bottom: 4px;
 }
 
-/* One expandable section per way of filtering (Measurements, Pareto front…). */
-.filter-section + .filter-section {
-    margin-top: 10px;
-}
-
+/* One expandable section per way of filtering (Measurements, Pareto front, Hidden results), as the
+   library's acpv-sidebar-section: header row (icon, title, chevron, then the actions), a divider
+   under it, no surface of its own. Height from the density token (48px at -2, 56px otherwise). */
 .filter-section > summary {
+    position: relative;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-    padding: 5px 12px;
+    gap: var(--acpv-sys-space-2, 8px);
+    height: var(--acpv-density-section-header-height, 56px);
+    /* the icon sits on the menu's icon axis (centre x=40), the title on the menu's label column */
+    padding-inline: var(--acpv-sys-space-5, 20px) var(--acpv-sys-space-3, 12px);
     list-style: none;
     cursor: pointer;
-    border: 1px solid var(--line-strong);
-    border-radius: var(--acpv-sys-corner-full);
-    background: var(--soft);
-    font-weight: 600;
-    font-size: 14px;
+    user-select: none;
+    color: var(--md-sys-color-on-surface);
+    font-size: var(--acpv-sys-type-title-sm, 14px);
+    line-height: var(--acpv-sys-type-title-sm-line-height, 20px);
+    font-weight: var(--acpv-sys-type-weight-medium, 500);
 }
 
 .filter-section > summary::-webkit-details-marker {
     display: none;
 }
 
-.filter-section > summary::before {
-    content: "▸";
-    color: var(--muted);
-    margin-right: 2px;
+.filter-section > summary::after {
+    content: "";
+    position: absolute;
+    inset-inline: var(--acpv-sys-space-2, 8px);
+    bottom: 0;
+    height: 1px;
+    background: var(--md-sys-color-outline-variant);
 }
 
-.filter-section[open] > summary::before {
-    content: "▾";
+.filter-section > summary:focus-visible {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: -2px;
+    border-radius: var(--acpv-sys-radius-sm, 8px);
+}
+
+.sec-icon {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    margin-right: 12px;
+    fill: var(--md-sys-color-on-surface-variant);
 }
 
 .filter-section > summary .filter-title {
@@ -955,14 +1003,41 @@ a.rail-btn:focus-visible {
     text-overflow: ellipsis;
 }
 
-.filter-section.active > summary,
-.filter-section:has(.filter-badge:not(:empty)) > summary {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-    color: var(--accent);
+.sec-chev {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    color: var(--md-sys-color-on-surface-variant);
+    transition: transform var(--acpv-sys-motion-duration-normal, 250ms) ease;
 }
 
-/* active: a small round count, then × to clear the section */
+.filter-section[open] > summary .sec-chev {
+    transform: rotate(180deg);
+}
+
+/* the body opens and closes smoothly where the browser can animate <details> content */
+.filter-section {
+    interpolate-size: allow-keywords;
+}
+
+.filter-section::details-content {
+    block-size: 0;
+    overflow: clip;
+    transition: block-size var(--acpv-sys-motion-duration-normal, 250ms) ease, content-visibility var(--acpv-sys-motion-duration-normal, 250ms) allow-discrete;
+}
+
+.filter-section[open]::details-content {
+    block-size: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sec-chev,
+    .filter-section::details-content {
+        transition: none;
+    }
+}
+
+/* active: a small round count, then × to clear the section (the actions of the header) */
 .filter-badge:not(:empty) {
     min-width: 18px;
     height: 18px;
@@ -978,8 +1053,10 @@ a.rail-btn:focus-visible {
 }
 
 .filter-clear {
+    flex: none;
     width: 20px;
     height: 20px;
+    min-height: 0;
     padding: 0;
     border: 0;
     border-radius: 50%;
@@ -987,16 +1064,15 @@ a.rail-btn:focus-visible {
     color: var(--muted);
     font-size: 15px;
     line-height: 20px;
-    margin-right: -4px;
 }
 
 .filter-clear:hover:not(:disabled) {
-    background: var(--card);
+    background: var(--md-sys-color-surface-container-high);
     color: var(--accent);
 }
 
 .filter-body {
-    padding: 10px 2px 4px;
+    padding: 8px var(--acpv-sys-space-3, 12px) 12px;
 }
 
 .filter-body .filters-head {
@@ -2158,12 +2234,21 @@ code {
         padding-left: var(--shell-gap); /* no drawer track at the window edge */
     }
 
-    .rail {
-        display: none !important;
+    /* the overlay always shows the open menu, whatever the desktop state */
+    html.nav-collapsed .nav-label,
+    html.nav-collapsed .nav-row .sec-chev {
+        opacity: 1;
     }
 
-    html.nav-collapsed .left-panel .drawer {
-        display: block; /* the overlay always shows the drawer, whatever the desktop state */
+    html.nav-collapsed .nav-sub {
+        display: flex;
+    }
+
+    html.nav-collapsed .filters {
+        height: auto;
+        overflow: visible;
+        opacity: 1;
+        visibility: visible;
     }
 
     .left-panel {
