@@ -274,7 +274,8 @@ function renderNav(studies) {
     const plans = studies.filter(hasPlanAnalyses);
     // One list, the same in both states (library side-nav): the icon sits on a fixed 64px column,
     // the label fades in with the drawer. "Analysis" is a group (opens on a list of studies); "Filters"
-    // is the library's optional RAIL-ONLY action: shown only while the sidebar is closed, it opens it.
+    // is the row Pantheon has (drawer shortcut): on the rail an action that opens the sidebar, with the grey hover
+    // of the other rows; open, only the title of the filter sections below it (no hover, no click).
     $("navDest").innerHTML =
         `<details class="nav-group" id="analysisGroup">
             <summary class="nav-row" data-tooltip="Analysis" data-tooltip-pos="right" data-tooltip-rail>${navIcon("analysis")}<span class="nav-label">Analysis</span><svg class="sec-chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5L10 12.5L15 7.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
@@ -1706,10 +1707,6 @@ function initSidebar() {
         if (compact.matches || !root.classList.contains("nav-collapsed")) return;
         if (e.target.closest("#navFilters")) {
             setCollapsed(false);
-            // pressed: red while the sidebar opens, gone once it is open (the filters are then right below)
-            const btn = $("navFilters");
-            btn.classList.add("is-active");
-            setTimeout(() => btn.classList.remove("is-active"), 350);
         } else if (e.target.closest("#analysisGroup > summary")) {
             e.preventDefault();
             setCollapsed(false); // the sidebar opens with its menus closed
