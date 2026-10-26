@@ -790,8 +790,9 @@ html.nav-collapsed .left-panel .drawer {
     margin-bottom: 4px;
 }
 
-/* One expandable section per way of filtering (Measurements, Pareto front…). */
-.filter-section + .filter-section {
+/* One expandable section per way of filtering (Measurements, Pareto front…). "Hidden results"
+   sits first and is often [hidden]: it must not push the next section down. */
+.filter-section:not([hidden]) + .filter-section {
     margin-top: 10px;
 }
 
