@@ -139,7 +139,17 @@ Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" com
      option beats on every ticked goal (at least as good on all, better on one); the rest stay as
      pale lines. Computed over the methods shown, on the first 3 goals by default; the other
      filters don't change the front. With many goals almost every option is on it.
-   "Clear chart filters" clears every filter (ranges, batch bars, Pareto).
+   - **Clustering** (`clustering.js`): reduce the options remaining after methods, batch,
+     measurement and Pareto filters to one real representative per group. Set the group count
+     and choose closest to centroid (default), or best on a result. Goal arrows supply the
+     better direction; a result without one has a higher/lower selector. The grouping uses
+     generation vectors only: changing the ranking result does not change the groups.
+     Five deterministic k-means++ starts, minimum inertia; exact duplicate vectors stay
+     together, so fewer than the requested groups may result. Missing scores fall back to
+     the nearest-centroid option with an explicit count. Missing/incompatible generation
+     data disables this reduction, with a reason. Cluster size and representative are listed;
+     hover lists the members. The URL retains count, ranking result and direction.
+   "Clear chart filters" clears every filter (ranges, batch bars, Pareto, clustering).
    **Hiding a result**: on hover, an axis's "↑ better" line under the plot becomes "✕ hide". A hidden result
    disappears everywhere (chart, Measurements, Pareto goals, Where this option stands, Compare,
    Order by) and its filter is dropped; the "Hidden results" section of the sidebar (with its rail icon) lists them to
