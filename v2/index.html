@@ -116,14 +116,14 @@
                         <summary><span class="filter-title">Clustering</span><span id="clusterBadge" class="filter-badge"></span><button id="clusterClear" type="button" class="filter-clear" data-clear="clustering" hidden>×</button></summary>
                         <div class="filter-body clustering-controls">
                             <label class="pareto-on"><input id="clusterOn" type="checkbox" /> One representative per cluster</label>
-                            <label>Number of clusters<input id="clusterK" type="number" min="1" max="1000" step="1" value="10" /></label>
+                            <label>Number of clusters <span id="clusterLimit" class="muted small">(max. 50)</span><input id="clusterK" aria-label="Number of clusters" type="number" min="1" max="50" step="1" value="10" /></label>
                             <label>Representative<select id="clusterMode"><option value="centroid">Closest to centroid</option><option value="best">Best on a result</option></select></label>
                             <div id="clusterMetricFields" hidden>
                                 <label>Result<select id="clusterMetric"></select></label>
                                 <label>Prefer<select id="clusterDirection"><option value="1">Higher values</option><option value="-1">Lower values</option></select></label>
                             </div>
                             <p id="clusterStatus" class="muted small" aria-live="polite"></p>
-                            <p class="muted small pareto-help">Groups similar generation vectors across all selected methods, after measurement and Pareto filters. Choosing a result changes the representative, not the groups. Groups update when those filters change.</p>
+                            <p class="muted small pareto-help">Builds a fixed base from the methods selected when enabled. Filters only hide representatives; they never replace them or regroup options. Change the cluster count to regroup, or the result to choose different representatives. Turn clustering off and on to use a different set of methods as its base.</p>
                             <details><summary class="small">How similarity is measured</summary><p id="clusterDescription" class="muted small"></p><p class="muted small">K-means++ with five deterministic starts. A centroid is an average vector; the default representative is a real option nearest to it. Grouping is a reduction aid, not a new performance analysis.</p></details>
                             <div id="clusterMembers"></div>
                         </div>
@@ -241,6 +241,6 @@
         </section>
     </div>
 
-    <script type="module" src="app.js?v=84"></script>
+    <script type="module" src="app.js?v=85"></script>
 </body>
 </html>

@@ -139,8 +139,9 @@ Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" com
      option beats on every ticked goal (at least as good on all, better on one); the rest stay as
      pale lines. Computed over the methods shown, on the first 3 goals by default; the other
      filters don't change the front. With many goals almost every option is on it.
-   - **Clustering** (`clustering.js`): reduce the options remaining after methods, batch,
-     measurement and Pareto filters to one real representative per group. Set the group count
+   - **Clustering** (`clustering.js`): choose up to 50 clusters (also capped by base option count, including URL values); build a fixed base from the methods selected when enabled,
+     with one real representative per group. Subsequent method/batch, measurement and Pareto
+     filters only hide representatives; no regrouping or replacement. Set the group count
      and choose closest to centroid (default), or best on a result. Goal arrows supply the
      better direction; a result without one has a higher/lower selector. The grouping uses
      generation vectors only: changing the ranking result does not change the groups.
@@ -148,7 +149,10 @@ Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" com
      together, so fewer than the requested groups may result. Missing scores fall back to
      the nearest-centroid option with an explicit count. Missing/incompatible generation
      data disables this reduction, with a reason. Cluster size and representative are listed;
-     hover lists the members. The URL retains count, ranking result and direction.
+     hover lists the members. The URL retains the base methods, count, ranking result and direction.
+     Turn clustering off and on to capture a different base method set. Changing k refits this
+     base; changing the result changes representatives only. A hidden result can still define
+     the fixed representative criterion, so hiding an axis does not silently change the selection.
    "Clear chart filters" clears every filter (ranges, batch bars, Pareto, clustering).
    **Hiding a result**: on hover, an axis's "↑ better" line under the plot becomes "✕ hide". A hidden result
    disappears everywhere (chart, Measurements, Pareto goals, Where this option stands, Compare,

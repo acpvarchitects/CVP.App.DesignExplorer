@@ -128,22 +128,38 @@ the three generated files in each output folder into that study's own prefix.
 
 ## Filtering and reproducibility
 
-Clustering follows method selection, batch bars, measurement ranges and Pareto.
-It groups the combined eligible pool, not one batch at a time. Five seeded
+Clustering captures the methods selected when enabled and groups that combined
+base pool, not one batch at a time. Measurement ranges, Pareto, batch bars and
+subsequent method toggles only hide representatives from this fixed base; they
+do not enter fitting, standardization or representative choice. Five seeded
 k-means++ starts followed by Lloyd iterations select minimum inertia. The
 algorithm is deterministic for the same ordered inputs, specification and k.
 It is not a guarantee of the global optimum. Exact duplicate vectors remain
 together; requesting more clusters than distinct vectors returns fewer groups.
+The dashboard limits the requested count to 50 or the base option count,
+whichever is smaller, including counts restored from URLs. The field displays
+the effective maximum. K-means++ keeps each point's nearest-center distance
+and updates it only for the latest center, avoiding repeated comparisons with
+all previous centers. If every distinct vector can have its own cluster, the
+exact zero-inertia partition is returned directly, retaining duplicate members.
 
 Closest-to-centroid chooses a real member, not a synthetic option. Best-on-result
 changes only this representative and uses the result's higher/lower direction;
 ties prefer the member closer to the centroid. If a whole cluster has no finite
 score, it falls back to the centroid representative and reports that count.
 
-Changing upstream filters recomputes groups; numbering is local to that view.
+Changing filters preserves groups, numbering and representatives, including when
+no representatives survive. A filtered representative is not replaced by another
+passing member. Clearing those filters restores exactly the same representatives.
+Changing k refits the same base; changing representative mode/metric chooses
+different members of the same groups. Turn clustering off and on to capture a
+different set of methods as its base. Hiding a result axis keeps the existing
+representative criterion intact.
 Clear the Clustering section to restore all eligible options. Clear chart filters
 also clears clustering. Selection state is retained in the URL (`clusters`,
-`crep`, `cdir`); Copy link continues to copy the unfiltered study home page.
+`cbase`, `crep`, `cdir`); `cbase=all` means all loaded studies independently of
+current method filters. Old URLs without cbase capture their selected methods.
+Copy link continues to copy the unfiltered study home page.
 
 Tests: `node scripts/test-clustering.mjs` and
 `python scripts/test-prepare-generation.py` (numpy required for the latter).

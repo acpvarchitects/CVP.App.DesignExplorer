@@ -1,4 +1,8 @@
 // Pure, deterministic clustering. Input features describe generation, never scores or IDs.
+export const MAX_CLUSTERS = 50;
+export function clampClusterCount(value, baseCount) {
+    return Math.max(1,Math.min(Math.floor(value)||1,MAX_CLUSTERS,Math.max(1,baseCount)));
+}
 export function optionKey(value) {
     const s = String(value ?? "").trim();
     return s && Number.isFinite(Number(s)) ? String(Number(s)) : s;
@@ -65,15 +69,28 @@ export function kmeans(vectors, requestedK, { starts = 5, iterations = 80 } = {}
     if (!vectors.length) return { clusters: [], inertia: 0, requestedK };
     const distinct = [...new Map(vectors.map(v => [Array.from(v).join(","), v])).values()];
     const k = Math.min(requestedK, distinct.length), n = vectors.length, dim = vectors[0].length;
+    if (k === distinct.length) {
+        // One group per distinct vector is already the exact zero-error solution.
+        const groups = new Map();
+        vectors.forEach((v,i) => {
+            const key = Array.from(v).join(",");
+            if (!groups.has(key)) groups.set(key,{center:Float64Array.from(v),members:[]});
+            groups.get(key).members.push(i);
+        });
+        return {clusters:[...groups.values()],inertia:0,requestedK};
+    }
     let best;
     for (let start = 0; start < starts; start++) {
         let seed = 7301 + start * 104729;
         const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
         const centers = [Float64Array.from(distinct[Math.floor(random() * distinct.length)])];
+        const nearest = new Float64Array(distinct.length).fill(Infinity);
         while (centers.length < k) {
-            const distances = distinct.map(v => Math.min(...centers.map(c => squared(v, c))));
-            let target = random() * distances.reduce((a,b) => a+b, 0), selected = distances.findLastIndex(d => d > 0);
-            for (let i = 0; i < distances.length; i++) { target -= distances[i]; if (target < 0) { selected = i; break; } }
+            // Update only against the new center: O(n*k*d), not O(n*k*k*d).
+            const last = centers[centers.length-1];
+            for (let i=0;i<distinct.length;i++) nearest[i]=Math.min(nearest[i],squared(distinct[i],last));
+            let target = random() * nearest.reduce((a,b) => a+b, 0), selected = nearest.findLastIndex(d => d > 0);
+            for (let i = 0; i < nearest.length; i++) { target -= nearest[i]; if (target < 0) { selected = i; break; } }
             centers.push(Float64Array.from(distinct[selected]));
         }
         let labels = Array(n).fill(-1);
