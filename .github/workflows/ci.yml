@@ -58,3 +58,6 @@ jobs:
             fi
           done
           exit $status
+
+      - name: Clustering and representative selection
+        run: node scripts/test-clustering.mjs

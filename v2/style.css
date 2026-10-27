@@ -918,6 +918,17 @@ html.nav-collapsed .left-panel .drawer {
     line-height: 1.4;
 }
 
+.clustering-controls > label:not(.pareto-on),
+.clustering-controls #clusterMetricFields > label {
+    display: grid;
+    gap: 4px;
+    margin-top: 12px;
+    font-size: 13px;
+}
+.clustering-controls select, .clustering-controls input[type="number"] { width: 100%; min-width: 0; }
+.clustering-controls p { margin-top: 12px; }
+.cluster-result { display: block; text-align: left; margin-top: 12px; font-size: 12px; }
+
 .filters fieldset {
     border: 0;
     border-top: 1px solid var(--line);

@@ -28,6 +28,7 @@ import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml } from "./comparison.js?v=37";
 import { ParallelChart } from "./parallel.js?v=37";
 import { paretoFront } from "./pareto.js?v=1";
+import { readGeneration, generationScope, scaleVectors, kmeans, representatives } from "./clustering.js?v=1";
 import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=2";
 import { PlanViewer } from "./plan2d.js?v=5";
 
@@ -59,6 +60,11 @@ const state = {
     batches: new Set(), // studies kept by their Index bars (a filter: the others stay as pale lines); empty = none
     pareto: false, // keep only the options on the Pareto front of `paretoGoals` (pale lines for the rest)
     paretoGoals: null, // goal columns that count for the front; null = default (first 3 goals)
+    clustering: false,
+    clusterK: 10,
+    clusterMode: "centroid",
+    clusterMetric: "",
+    clusterDirection: 1,
     hidden: new Set(), // columns hidden everywhere (chart, filters, Pareto, standings, comparison)
     showInputs: false, // input axes on the chart
     order: "", // result column that orders the gallery
@@ -201,6 +207,18 @@ async function loadManifest(study) {
     }
 }
 
+async function loadGeneration(study) {
+    try {
+        const response = await fetch(study.base + "generation.json?v=" + Date.now());
+        if (!response.ok) throw Error("generation.json unavailable");
+        const manifest = await response.json();
+        if (!/^[A-Za-z0-9_.-]+\.csv$/.test(manifest.file)) throw Error("Invalid generation filename");
+        const csv = await fetch(study.base + manifest.file + "?v=" + Date.now());
+        if (!csv.ok) throw Error("Generation CSV unavailable");
+        study.generation = readGeneration(csvParse((await csv.text()).replace(/^\uFEFF/, "")), manifest);
+    } catch (error) { study.generationError = error.message; }
+}
+
 // ---- Scope, filters and order ----
 
 const goals = () => data.schema.outputs.filter((m) => m.dir);
@@ -213,6 +231,7 @@ function applyHidden() {
     for (const col of state.hidden) delete state.ranges[col];
     if (state.paretoGoals) for (const col of state.hidden) state.paretoGoals.delete(col);
     if (state.hidden.has(state.order)) state.order = defaultOrder();
+    if (state.hidden.has(state.clusterMetric)) { state.clusterMetric = ""; state.clusterMode = "centroid"; }
     // the sidebar lists and the order menu are built once: rebuild them
     $("rangeFilters").replaceChildren();
     $("paretoGoals").replaceChildren();
@@ -311,14 +330,67 @@ function ordered(list) {
 // Everything the page shows is computed from this once per render.
 function computeView() {
     const scope = data.options.filter(inMethod);
-    const visible = ordered(scope.filter(passes));
+    const candidates = scope.filter(passes);
+    const clustering = currentClustering(candidates);
+    const visible = ordered(state.clustering && clustering.selected ? candidates.filter(o => clustering.selected.has(o)) : candidates);
     return {
         scope,
+        candidates,
+        clustering,
         visible,
         visibleSet: new Set(visible),
         stats: computeStats(visible, data.schema.outputs),
         results: rankGoals(visible, goals()), // wins among the matching options (2% rule)
     };
+}
+
+let clusteringCache = { key: "", value: null };
+function currentClustering(candidates) {
+    try {
+        const { points, scaling } = generationScope(candidates);
+        if (!state.clustering || !points.length) return { available: points.length, clusters: [] };
+        const metric = state.clusterMode === "best" ? outputByCol(state.clusterMetric) : null;
+        if (state.clusterMode === "best" && !metric) throw Error("Choose the result used to select representatives");
+        const chosen = metric && { col: metric.col, dir: metric.dir || state.clusterDirection };
+        const key = JSON.stringify([candidates.map(o => o.index),state.clusterK]);
+        if (clusteringCache.key !== key) {
+            const vectors = scaleVectors(points.map(p => p.vector),scaling);
+            const result = kmeans(vectors,state.clusterK);
+            clusteringCache = { key, value: { result, points, vectors } };
+        }
+        const cached = clusteringCache.value;
+        return { ...representatives(cached.result,cached.points,cached.vectors,chosen), available:points.length };
+    } catch (error) { return { error:error.message, clusters:[] }; }
+}
+
+function renderClustering(view) {
+    const result = view.clustering, active = state.clustering && !!result.selected;
+    $("clusterOn").checked = state.clustering;
+    $("clusterOn").disabled = !!result.error || !view.candidates.length;
+    $("clusterK").value = state.clusterK;
+    $("clusterMode").value = state.clusterMode;
+    const metricSelect = $("clusterMetric");
+    const markup = '<option value="">Choose a result</option>' + data.schema.outputs.map(m => `<option value="${esc(m.col)}">${esc(m.label)}${arrow(m)}</option>`).join("");
+    if (metricSelect.innerHTML !== markup) metricSelect.innerHTML = markup;
+    metricSelect.value = state.clusterMetric;
+    $("clusterMetricFields").hidden = state.clusterMode !== "best";
+    const metric = outputByCol(state.clusterMetric);
+    $("clusterDirection").value = String(metric?.dir || state.clusterDirection);
+    $("clusterDirection").disabled = !!metric?.dir;
+    $("clusterStatus").textContent = result.error ? `Clustering unavailable: ${result.error}. No clustering reduction applied.` :
+        active ? `${result.clusters.length} representatives from ${result.available} matching options, across the selected methods.` +
+            (result.clusters.length < Math.min(state.clusterK,result.available) ? " Identical generation vectors stay together." : "") +
+            (result.fallbacks ? ` ${result.fallbacks} cluster(s) have no valid score; their closest-to-centroid option is used.` : "") :
+        `${result.available || 0} matching options have compatible generation data.`;
+    $("clusterStatus").classList.toggle("warn",!!result.error);
+    $("clusterBadge").textContent = active ? String(result.clusters.length) : "";
+    $("railClusterBadge").textContent = $("clusterBadge").textContent;
+    $("clusterClear").hidden = !state.clustering;
+    $("clusteringSection").classList.toggle("active",active);
+    $("clusterMembers").innerHTML = active ? result.clusters.map((c,i) =>
+        `<button type="button" class="link cluster-result" data-open="${c.representative.index}" title="${esc(c.members.map(o => o.title).join('; '))}">Cluster ${i+1} · ${c.members.length} options<br>${esc(c.representative.title)}</button>`).join("") : "";
+    $("clusterDescription").textContent = [...new Set(view.candidates.map(o => o.study.generation?.manifest.description).filter(Boolean))].join(" ") ||
+        "Numeric generation features, scaled jointly across the selected methods according to their generation metadata. Index and batch names are never features.";
 }
 
 // ---- Comparing options (raw positions, separate from the 2% win rule) ----
@@ -408,6 +480,7 @@ function render({ syncChart = false } = {}) {
     renderHidden();
     renderChart(view, syncChart);
     renderFilters(view);
+    renderClustering(view);
     renderPreview(view);
     renderToolbar(view, notice);
     renderShortlistBar();
@@ -518,6 +591,7 @@ function renderChart(view, syncChart) {
     $("activeRanges").innerHTML =
         (state.batches.size ? `<span>Batch: ${esc(batchNames())}</span>` : "") +
         (state.pareto ? `<span>Pareto front: ${paretoGoalCols().length} goals</span>` : "") +
+        (state.clustering && view.clustering.selected ? `<span>Clustering: ${view.clustering.clusters.length} representatives</span>` : "") +
         Object.entries(state.ranges)
             .map(([col, [lo, hi]]) => {
                 const text = lo === -Infinity ? `≤ ${fmt(hi)}` : hi === Infinity ? `≥ ${fmt(lo)}` : `${fmt(lo)} – ${fmt(hi)}`;
@@ -619,6 +693,7 @@ function renderToolbar(view, notice) {
         scope,
         state.batches.size ? `Batch ${batchNames()} only` : "",
         pareto,
+        state.clustering && view.clustering.selected ? `${view.clustering.clusters.length} cluster representatives` : "",
         filters ? `${filters} measurement filter${filters > 1 ? "s" : ""}` : "No measurement filters",
         state.sel == null && !notice ? "Click an option to preview it" : "",
         notice,
@@ -1154,6 +1229,9 @@ function saveUrl() {
     const cols = [...data.schema.inputs, ...data.schema.allOutputs].map((m) => m.col);
     set("hide", cols.map((c, i) => (state.hidden.has(c) ? i + 1 : 0)).filter(Boolean).join(","));
     set("pareto", state.pareto ? "1" : "");
+    set("clusters", state.clustering ? state.clusterK : "");
+    set("crep", state.clustering && state.clusterMode === "best" ? state.clusterMetric : "");
+    set("cdir", state.clustering && state.clusterMode === "best" ? state.clusterDirection : "");
     // goal positions among the goals (1-based), only when they differ from the default
     const pg = goals().map((m, i) => (state.paretoGoals?.has(m.col) ? i + 1 : 0)).filter(Boolean);
     const isDefault = pg.join() === goals().slice(0, PARETO_DEFAULT).map((m, i) => i + 1).join();
@@ -1189,6 +1267,10 @@ function loadUrlState() {
     const pg = (params.get("pgoals") || "").split(",").map((n) => goals()[parseInt(n, 10) - 1]).filter(Boolean);
     if (pg.length) state.paretoGoals = new Set(pg.map((m) => m.col));
     state.pareto = params.get("pareto") === "1" && paretoGoalCols().length > 0;
+    const k = Number(params.get("clusters"));
+    if (Number.isInteger(k) && k >= 1 && k <= 1000) { state.clustering = true; state.clusterK = k; $("clusteringSection").open = true; }
+    if (outputByCol(params.get("crep"))) { state.clusterMode = "best"; state.clusterMetric = params.get("crep"); }
+    state.clusterDirection = params.get("cdir") === "-1" ? -1 : 1;
     try {
         for (const [col, lo, hi] of JSON.parse(params.get("ranges") || "[]")) {
             if (state.hidden.has(col)) continue; // a hidden result keeps no filter
@@ -1330,6 +1412,7 @@ function bindEvents() {
         state.ranges = {};
         state.batches.clear();
         state.pareto = false;
+        state.clustering = false;
         render({ syncChart: true });
     });
     // × in a section header: clear that section only, without opening/closing it.
@@ -1339,6 +1422,7 @@ function bindEvents() {
         e.preventDefault();
         if (b.dataset.clear === "measurements") state.ranges = {};
         if (b.dataset.clear === "pareto") state.pareto = false;
+        if (b.dataset.clear === "clustering") state.clustering = false;
         render({ syncChart: true });
     });
     $("resetFilters").addEventListener("click", () => {
@@ -1349,6 +1433,19 @@ function bindEvents() {
         state.pareto = e.target.checked;
         render();
     });
+    $("clusterOn").addEventListener("change", e => { state.clustering = e.target.checked; render(); });
+    $("clusterK").addEventListener("change", e => {
+        const k = e.target.valueAsNumber;
+        if (Number.isInteger(k) && k >= 1 && k <= 1000) state.clusterK = k;
+        render();
+    });
+    $("clusterMode").addEventListener("change", e => {
+        state.clusterMode = e.target.value;
+        if (state.clusterMode === "best" && !state.clusterMetric) state.clusterMetric = (goals()[0] || data.schema.outputs[0])?.col || "";
+        render();
+    });
+    $("clusterMetric").addEventListener("change", e => { state.clusterMetric = e.target.value; render(); });
+    $("clusterDirection").addEventListener("change", e => { state.clusterDirection = Number(e.target.value); render(); });
     $("paretoGoals").addEventListener("change", (e) => {
         const col = e.target.dataset.paretoGoal;
         if (!col) return;
@@ -1451,7 +1548,7 @@ async function init() {
     }
 
     studies.forEach((st, i) => (st.color = STUDY_COLORS[i % STUDY_COLORS.length]));
-    const [loaded] = await Promise.all([Promise.allSettled(studies.map(loadStudy)), Promise.all(studies.map(loadManifest))]);
+    const [loaded] = await Promise.all([Promise.allSettled(studies.map(loadStudy)), Promise.all(studies.map(loadManifest)), Promise.all(studies.map(loadGeneration))]);
     const failed = studies.filter((s, i) => loaded[i].status === "rejected");
     if (failed.length) {
         loaded.forEach((l) => l.status === "rejected" && console.error(l.reason));
