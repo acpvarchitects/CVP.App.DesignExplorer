@@ -662,9 +662,9 @@ html.nav-collapsed .left-panel .drawer {
 }
 
 .pc-l0 {
-    stroke: color-mix(in srgb, var(--md-sys-color-outline-variant) 15%, var(--card));
-    stroke-opacity: 0.3;
-    stroke-width: 0.8;
+    stroke: color-mix(in srgb, var(--md-sys-color-outline-variant) 45%, var(--card));
+    stroke-opacity: 0.4;
+    stroke-width: 0.9;
     pointer-events: none; /* filtered out: not clickable, so no hand and no hover */
 }
 
