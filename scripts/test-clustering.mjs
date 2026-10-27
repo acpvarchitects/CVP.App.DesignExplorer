@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 // Repository is intentionally build-free; import its ES module without changing package type.
 const source = await readFile(new URL('../v2/clustering.js',import.meta.url),'utf8');
-const { optionKey, readGeneration, generationScope, scaleVectors, kmeans, representatives, MAX_CLUSTERS, clampClusterCount } = await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const { optionKey, readGeneration, generationScope, scaleVectors, kmeans, representatives, clusterCountLimit, clampClusterCount } = await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 const check = (name,fn) => { fn(); console.log('PASS '+name); };
 const manifest={version:1,feature_space:'test-v1',features:['x','y'],key_column:'option',join_column:'in:Index',scaling:'standardize'};
 const table=rows=>Object.assign(rows,{columns:['option','x','y']});
@@ -86,9 +86,11 @@ check('actual app view keeps cluster base fixed under filters, including zero re
     assert.equal(vm.runInContext('clusteringCache.value',context),originalFit);
 });
 check('cluster limit and exact solution for very large requested counts',()=>{
-    assert.equal(MAX_CLUSTERS,50);
-    assert.equal(clampClusterCount(1000000,156),50);
+    assert.equal(clusterCountLimit(156),156);
+    assert.equal(clampClusterCount(1000000,156),156);
     assert.equal(clampClusterCount(50,7),7);
+    assert.equal(clampClusterCount(1000000,256),256);
+    assert.equal(clampClusterCount(100,156),100);
     assert.equal(clampClusterCount(0,156),1);
     const x=Array.from({length:128},(_,i)=>Array.from({length:32},(_,j)=>i+j));
     const result=kmeans([...x,x[0]],1000000);
