@@ -61,6 +61,7 @@ const state = {
     pareto: false, // keep only the options on the Pareto front of `paretoGoals` (pale lines for the rest)
     paretoGoals: null, // goal columns that count for the front; null = default (first 3 goals)
     clustering: false,
+    clusterMethods: [], // methods captured when enabling clustering; [] = all loaded studies
     clusterK: 10,
     clusterMode: "centroid",
     clusterMetric: "",
@@ -231,7 +232,6 @@ function applyHidden() {
     for (const col of state.hidden) delete state.ranges[col];
     if (state.paretoGoals) for (const col of state.hidden) state.paretoGoals.delete(col);
     if (state.hidden.has(state.order)) state.order = defaultOrder();
-    if (state.hidden.has(state.clusterMetric)) { state.clusterMetric = ""; state.clusterMode = "centroid"; }
     // the sidebar lists and the order menu are built once: rebuild them
     $("rangeFilters").replaceChildren();
     $("paretoGoals").replaceChildren();
@@ -273,6 +273,7 @@ function scopeLabel() {
 }
 const valueOf = (o, col) => (col in o.values ? o.values[col] : parseFloat(o.row[col]));
 const outputByCol = (col) => data.schema.outputs.find((m) => m.col === col);
+const clusterMetricByCol = (col) => data.schema.allOutputs.find((m) => m.col === col);
 // "Order by" also offers the inputs (e.g. the option Index), above the results, lowest first.
 const inputByCol = (col) => data.schema.inputs.find((m) => m.col === col);
 const orderBy = (col) => outputByCol(col) || (inputByCol(col) && { ...inputByCol(col), dir: 0, input: true });
@@ -330,12 +331,17 @@ function ordered(list) {
 // Everything the page shows is computed from this once per render.
 function computeView() {
     const scope = data.options.filter(inMethod);
+    // Clusters are a base selection. Later filters never enter fitting or representative choice.
+    const clusterBase = state.clustering
+        ? data.options.filter(o => !state.clusterMethods.length || state.clusterMethods.includes(o.study.name))
+        : scope;
     const candidates = scope.filter(passes);
-    const clustering = currentClustering(candidates);
+    const clustering = currentClustering(clusterBase);
     const visible = ordered(state.clustering && clustering.selected ? candidates.filter(o => clustering.selected.has(o)) : candidates);
     return {
         scope,
         candidates,
+        clusterBase,
         clustering,
         visible,
         visibleSet: new Set(visible),
@@ -345,14 +351,14 @@ function computeView() {
 }
 
 let clusteringCache = { key: "", value: null };
-function currentClustering(candidates) {
+function currentClustering(base) {
     try {
-        const { points, scaling } = generationScope(candidates);
+        const { points, scaling } = generationScope(base);
         if (!state.clustering || !points.length) return { available: points.length, clusters: [] };
-        const metric = state.clusterMode === "best" ? outputByCol(state.clusterMetric) : null;
+        const metric = state.clusterMode === "best" ? clusterMetricByCol(state.clusterMetric) : null;
         if (state.clusterMode === "best" && !metric) throw Error("Choose the result used to select representatives");
         const chosen = metric && { col: metric.col, dir: metric.dir || state.clusterDirection };
-        const key = JSON.stringify([candidates.map(o => o.index),state.clusterK]);
+        const key = JSON.stringify([base.map(o => o.index),state.clusterK]);
         if (clusteringCache.key !== key) {
             const vectors = scaleVectors(points.map(p => p.vector),scaling);
             const result = kmeans(vectors,state.clusterK);
@@ -366,30 +372,31 @@ function currentClustering(candidates) {
 function renderClustering(view) {
     const result = view.clustering, active = state.clustering && !!result.selected;
     $("clusterOn").checked = state.clustering;
-    $("clusterOn").disabled = !!result.error || !view.candidates.length;
+    $("clusterOn").disabled = !state.clustering && (!!result.error || !view.clusterBase.length);
     $("clusterK").value = state.clusterK;
     $("clusterMode").value = state.clusterMode;
     const metricSelect = $("clusterMetric");
-    const markup = '<option value="">Choose a result</option>' + data.schema.outputs.map(m => `<option value="${esc(m.col)}">${esc(m.label)}${arrow(m)}</option>`).join("");
+    const markup = '<option value="">Choose a result</option>' + data.schema.allOutputs.map(m => `<option value="${esc(m.col)}">${esc(m.label)}${arrow(m)}</option>`).join("");
     if (metricSelect.innerHTML !== markup) metricSelect.innerHTML = markup;
     metricSelect.value = state.clusterMetric;
     $("clusterMetricFields").hidden = state.clusterMode !== "best";
-    const metric = outputByCol(state.clusterMetric);
+    const metric = clusterMetricByCol(state.clusterMetric);
     $("clusterDirection").value = String(metric?.dir || state.clusterDirection);
     $("clusterDirection").disabled = !!metric?.dir;
     $("clusterStatus").textContent = result.error ? `Clustering unavailable: ${result.error}. No clustering reduction applied.` :
-        active ? `${result.clusters.length} representatives from ${result.available} matching options, across the selected methods.` +
+        active ? `${result.clusters.length} fixed representatives from ${result.available} base options. ${view.visible.length} remain after filters.` +
             (result.clusters.length < Math.min(state.clusterK,result.available) ? " Identical generation vectors stay together." : "") +
             (result.fallbacks ? ` ${result.fallbacks} cluster(s) have no valid score; their closest-to-centroid option is used.` : "") :
-        `${result.available || 0} matching options have compatible generation data.`;
+        `${result.available || 0} options in the selected methods have compatible generation data.`;
     $("clusterStatus").classList.toggle("warn",!!result.error);
     $("clusterBadge").textContent = active ? String(result.clusters.length) : "";
     $("railClusterBadge").textContent = $("clusterBadge").textContent;
     $("clusterClear").hidden = !state.clustering;
     $("clusteringSection").classList.toggle("active",active);
-    $("clusterMembers").innerHTML = active ? result.clusters.map((c,i) =>
-        `<button type="button" class="link cluster-result" data-open="${c.representative.index}" title="${esc(c.members.map(o => o.title).join('; '))}">Cluster ${i+1} · ${c.members.length} options<br>${esc(c.representative.title)}</button>`).join("") : "";
-    $("clusterDescription").textContent = [...new Set(view.candidates.map(o => o.study.generation?.manifest.description).filter(Boolean))].join(" ") ||
+    $("clusterMembers").innerHTML = active ? result.clusters.map((c,i) => ({...c,number:i+1}))
+        .filter(c => view.visibleSet.has(c.representative)).map(c =>
+        `<button type="button" class="link cluster-result" data-open="${c.representative.index}" title="${esc(c.members.map(o => o.title).join('; '))}">Cluster ${c.number} · ${c.members.length} options<br>${esc(c.representative.title)}</button>`).join("") : "";
+    $("clusterDescription").textContent = [...new Set(view.clusterBase.map(o => o.study.generation?.manifest.description).filter(Boolean))].join(" ") ||
         "Numeric generation features, scaled jointly across the selected methods according to their generation metadata. Index and batch names are never features.";
 }
 
@@ -591,7 +598,7 @@ function renderChart(view, syncChart) {
     $("activeRanges").innerHTML =
         (state.batches.size ? `<span>Batch: ${esc(batchNames())}</span>` : "") +
         (state.pareto ? `<span>Pareto front: ${paretoGoalCols().length} goals</span>` : "") +
-        (state.clustering && view.clustering.selected ? `<span>Clustering: ${view.clustering.clusters.length} representatives</span>` : "") +
+        (state.clustering && view.clustering.selected ? `<span>Clustering base: ${view.clustering.clusters.length} representatives</span>` : "") +
         Object.entries(state.ranges)
             .map(([col, [lo, hi]]) => {
                 const text = lo === -Infinity ? `≤ ${fmt(hi)}` : hi === Infinity ? `≥ ${fmt(lo)}` : `${fmt(lo)} – ${fmt(hi)}`;
@@ -687,13 +694,15 @@ function renderPareto(view) {
 function renderToolbar(view, notice) {
     const filters = Object.keys(state.ranges).length;
     const pareto = state.pareto ? `Pareto front of ${paretoGoalCols().length} goal${paretoGoalCols().length === 1 ? "" : "s"}` : "";
-    $("resultCount").textContent = `${view.visible.length} of ${view.scope.length} options`;
+    $("resultCount").textContent = state.clustering && view.clustering.selected
+        ? `${view.visible.length} of ${view.clustering.selected.size} representatives`
+        : `${view.visible.length} of ${view.scope.length} options`;
     const scope = scopeLabel().replace(/^a/, "A");
     $("scopeNote").textContent = [
         scope,
         state.batches.size ? `Batch ${batchNames()} only` : "",
         pareto,
-        state.clustering && view.clustering.selected ? `${view.clustering.clusters.length} cluster representatives` : "",
+        state.clustering && view.clustering.selected ? `Clustering base: ${view.clustering.clusters.length} representatives` : "",
         filters ? `${filters} measurement filter${filters > 1 ? "s" : ""}` : "No measurement filters",
         state.sel == null && !notice ? "Click an option to preview it" : "",
         notice,
@@ -1230,6 +1239,7 @@ function saveUrl() {
     set("hide", cols.map((c, i) => (state.hidden.has(c) ? i + 1 : 0)).filter(Boolean).join(","));
     set("pareto", state.pareto ? "1" : "");
     set("clusters", state.clustering ? state.clusterK : "");
+    set("cbase", state.clustering ? state.clusterMethods.join(",") || "all" : "");
     set("crep", state.clustering && state.clusterMode === "best" ? state.clusterMetric : "");
     set("cdir", state.clustering && state.clusterMode === "best" ? state.clusterDirection : "");
     // goal positions among the goals (1-based), only when they differ from the default
@@ -1269,7 +1279,10 @@ function loadUrlState() {
     state.pareto = params.get("pareto") === "1" && paretoGoalCols().length > 0;
     const k = Number(params.get("clusters"));
     if (Number.isInteger(k) && k >= 1 && k <= 1000) { state.clustering = true; state.clusterK = k; $("clusteringSection").open = true; }
-    if (outputByCol(params.get("crep"))) { state.clusterMode = "best"; state.clusterMetric = params.get("crep"); }
+    state.clusterMethods = params.has("cbase")
+        ? (params.get("cbase") || "").split(",").filter(name => data.studies.some(s => s.name === name))
+        : [...state.methods];
+    if (clusterMetricByCol(params.get("crep"))) { state.clusterMode = "best"; state.clusterMetric = params.get("crep"); }
     state.clusterDirection = params.get("cdir") === "-1" ? -1 : 1;
     try {
         for (const [col, lo, hi] of JSON.parse(params.get("ranges") || "[]")) {
@@ -1433,7 +1446,11 @@ function bindEvents() {
         state.pareto = e.target.checked;
         render();
     });
-    $("clusterOn").addEventListener("change", e => { state.clustering = e.target.checked; render(); });
+    $("clusterOn").addEventListener("change", e => {
+        state.clustering = e.target.checked;
+        if (state.clustering) state.clusterMethods = [...state.methods];
+        render();
+    });
     $("clusterK").addEventListener("change", e => {
         const k = e.target.valueAsNumber;
         if (Number.isInteger(k) && k >= 1 && k <= 1000) state.clusterK = k;
