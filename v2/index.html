@@ -116,7 +116,7 @@
                         <summary><span class="filter-title">Clustering</span><span id="clusterBadge" class="filter-badge"></span><button id="clusterClear" type="button" class="filter-clear" data-clear="clustering" hidden>×</button></summary>
                         <div class="filter-body clustering-controls">
                             <label class="pareto-on"><input id="clusterOn" type="checkbox" /> One representative per cluster</label>
-                            <label>Number of clusters<input id="clusterK" type="number" min="1" max="1000" step="1" value="10" /></label>
+                            <label>Number of clusters <span id="clusterLimit" class="muted small">(max. 50)</span><input id="clusterK" aria-label="Number of clusters" type="number" min="1" max="50" step="1" value="10" /></label>
                             <label>Representative<select id="clusterMode"><option value="centroid">Closest to centroid</option><option value="best">Best on a result</option></select></label>
                             <div id="clusterMetricFields" hidden>
                                 <label>Result<select id="clusterMetric"></select></label>

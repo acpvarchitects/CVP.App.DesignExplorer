@@ -136,6 +136,12 @@ k-means++ starts followed by Lloyd iterations select minimum inertia. The
 algorithm is deterministic for the same ordered inputs, specification and k.
 It is not a guarantee of the global optimum. Exact duplicate vectors remain
 together; requesting more clusters than distinct vectors returns fewer groups.
+The dashboard limits the requested count to 50 or the base option count,
+whichever is smaller, including counts restored from URLs. The field displays
+the effective maximum. K-means++ keeps each point's nearest-center distance
+and updates it only for the latest center, avoiding repeated comparisons with
+all previous centers. If every distinct vector can have its own cluster, the
+exact zero-inertia partition is returned directly, retaining duplicate members.
 
 Closest-to-centroid chooses a real member, not a synthetic option. Best-on-result
 changes only this representative and uses the result's higher/lower direction;

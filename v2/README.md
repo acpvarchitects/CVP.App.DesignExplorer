@@ -139,7 +139,7 @@ Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" com
      option beats on every ticked goal (at least as good on all, better on one); the rest stay as
      pale lines. Computed over the methods shown, on the first 3 goals by default; the other
      filters don't change the front. With many goals almost every option is on it.
-   - **Clustering** (`clustering.js`): build a fixed base from the methods selected when enabled,
+   - **Clustering** (`clustering.js`): choose up to 50 clusters (also capped by base option count, including URL values); build a fixed base from the methods selected when enabled,
      with one real representative per group. Subsequent method/batch, measurement and Pareto
      filters only hide representatives; no regrouping or replacement. Set the group count
      and choose closest to centroid (default), or best on a result. Goal arrows supply the

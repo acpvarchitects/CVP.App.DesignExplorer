@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 // Repository is intentionally build-free; import its ES module without changing package type.
 const source = await readFile(new URL('../v2/clustering.js',import.meta.url),'utf8');
-const { optionKey, readGeneration, generationScope, scaleVectors, kmeans, representatives } = await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const { optionKey, readGeneration, generationScope, scaleVectors, kmeans, representatives, MAX_CLUSTERS, clampClusterCount } = await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 const check = (name,fn) => { fn(); console.log('PASS '+name); };
 const manifest={version:1,feature_space:'test-v1',features:['x','y'],key_column:'option',join_column:'in:Index',scaling:'standardize'};
 const table=rows=>Object.assign(rows,{columns:['option','x','y']});
@@ -59,7 +59,7 @@ check('actual app view keeps cluster base fixed under filters, including zero re
     const options=[a,a,b,b].map((study,index)=>({index,study,row:{'in:Index':String(index%2+1)},values:{score:index%2?100:0}}));
     const state={clustering:true,clusterMethods:[],clusterK:2,clusterMode:'centroid',methods:new Set()};
     let allowed=null;
-    const context=vm.createContext({state,data:{options},generationScope,scaleVectors,kmeans,representatives,
+    const context=vm.createContext({state,data:{options},generationScope,scaleVectors,kmeans,representatives,clampClusterCount,
         inMethod:o=>!state.methods.size||state.methods.has(o.study.name),passes:o=>!allowed||allowed.has(o.index),
         ordered:x=>x,computeStats:()=>({}),rankGoals:()=>[],goals:()=>[],
         clusterMetricByCol:col=>({col,dir:1})});
@@ -84,4 +84,14 @@ check('actual app view keeps cluster base fixed under filters, including zero re
     const best=view();assert.ok(ids(best).every(i=>i%2===1));
     allowed=new Set([0,2]);assert.equal(view().visible.length,0); // no fallback to a worse passing member
     assert.equal(vm.runInContext('clusteringCache.value',context),originalFit);
+});
+check('cluster limit and exact solution for very large requested counts',()=>{
+    assert.equal(MAX_CLUSTERS,50);
+    assert.equal(clampClusterCount(1000000,156),50);
+    assert.equal(clampClusterCount(50,7),7);
+    assert.equal(clampClusterCount(0,156),1);
+    const x=Array.from({length:128},(_,i)=>Array.from({length:32},(_,j)=>i+j));
+    const result=kmeans([...x,x[0]],1000000);
+    assert.equal(result.clusters.length,128);assert.equal(result.inertia,0);
+    assert.equal(result.clusters[0].members.length,2);
 });

@@ -28,7 +28,7 @@ import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml } from "./comparison.js?v=37";
 import { ParallelChart } from "./parallel.js?v=38";
 import { paretoFront } from "./pareto.js?v=1";
-import { readGeneration, generationScope, scaleVectors, kmeans, representatives } from "./clustering.js?v=1";
+import { readGeneration, generationScope, scaleVectors, kmeans, representatives, MAX_CLUSTERS, clampClusterCount } from "./clustering.js?v=2";
 import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=2";
 import { PlanViewer } from "./plan2d.js?v=5";
 
@@ -335,6 +335,7 @@ function computeView() {
     const clusterBase = state.clustering
         ? data.options.filter(o => !state.clusterMethods.length || state.clusterMethods.includes(o.study.name))
         : scope;
+    if (state.clustering) state.clusterK = clampClusterCount(state.clusterK,clusterBase.length);
     const candidates = scope.filter(passes);
     const clustering = currentClustering(clusterBase);
     const visible = ordered(state.clustering && clustering.selected ? candidates.filter(o => clustering.selected.has(o)) : candidates);
@@ -374,6 +375,10 @@ function renderClustering(view) {
     $("clusterOn").checked = state.clustering;
     $("clusterOn").disabled = !state.clustering && (!!result.error || !view.clusterBase.length);
     $("clusterK").value = state.clusterK;
+    const limit = Math.min(MAX_CLUSTERS,view.clusterBase.length || 1);
+    $("clusterK").max = limit;
+    $("clusterK").title = `Choose between 1 and ${limit} clusters`;
+    $("clusterLimit").textContent = `(max. ${limit})`;
     $("clusterMode").value = state.clusterMode;
     const metricSelect = $("clusterMetric");
     const markup = '<option value="">Choose a result</option>' + data.schema.allOutputs.map(m => `<option value="${esc(m.col)}">${esc(m.label)}${arrow(m)}</option>`).join("");
@@ -1278,7 +1283,7 @@ function loadUrlState() {
     if (pg.length) state.paretoGoals = new Set(pg.map((m) => m.col));
     state.pareto = params.get("pareto") === "1" && paretoGoalCols().length > 0;
     const k = Number(params.get("clusters"));
-    if (Number.isInteger(k) && k >= 1 && k <= 1000) { state.clustering = true; state.clusterK = k; $("clusteringSection").open = true; }
+    if (Number.isInteger(k) && k >= 1) { state.clustering = true; state.clusterK = clampClusterCount(k,data.options.length); $("clusteringSection").open = true; }
     state.clusterMethods = params.has("cbase")
         ? (params.get("cbase") || "").split(",").filter(name => data.studies.some(s => s.name === name))
         : [...state.methods];
@@ -1453,7 +1458,7 @@ function bindEvents() {
     });
     $("clusterK").addEventListener("change", e => {
         const k = e.target.valueAsNumber;
-        if (Number.isInteger(k) && k >= 1 && k <= 1000) state.clusterK = k;
+        if (Number.isInteger(k)) state.clusterK = clampClusterCount(k,lastView?.clusterBase.length || data.options.length);
         render();
     });
     $("clusterMode").addEventListener("change", e => {
