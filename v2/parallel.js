@@ -231,7 +231,8 @@ export class ParallelChart {
         };
         const layer = (o) => (o === selected ? 3 : shortlist.includes(o.index) ? 2 : matches(o) ? 1 : 0);
         // Fainter lines when there are many, so overlapping studies stay visible.
-        this.svg.style("--pc-opacity", Math.max(0.25, Math.min(0.6, 40 / options.length)).toFixed(2));
+        const matchingCount = options.filter(matches).length;
+        this.svg.style("--pc-opacity", Math.max(0.25, Math.min(0.6, 40 / Math.max(1,matchingCount))).toFixed(2));
         // Faded lines first, the selected option last (on top).
         const sorted = [...options].sort((p, q) => layer(p) - layer(q));
         this.linesLayer

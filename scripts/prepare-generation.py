@@ -13,6 +13,7 @@ import math
 from pathlib import Path
 import shutil
 import numpy as np
+from layout_features import layout_vector
 
 
 def inside(x, y, polygon):
@@ -47,7 +48,11 @@ def vectors(buildings, spec):
     def average(a):
         return a.reshape(ny,supersample,nx,supersample).mean(axis=(1,3)).ravel()
     # Equal weights for coverage and height channels; no per-cell z-score.
-    return np.concatenate([average(occupancy),average(heights)]) / math.sqrt(2*nx*ny)
+    site=np.concatenate([average(occupancy),average(heights)]) / math.sqrt(2*nx*ny)
+    if spec.get('version',1)==1:return site
+    layout=layout_vector(buildings,inside,spec['layout'])
+    return np.concatenate([math.sqrt(spec['block_weights']['site'])*site,
+                           math.sqrt(spec['block_weights']['layout'])*layout])
 
 
 def main():
@@ -55,7 +60,9 @@ def main():
     ap.add_argument('--parser',required=True,type=Path)
     ap.add_argument('--study',action='append',nargs=3,metavar=('SOURCE_CSV','DATA_CSV','OUTPUT_DIR'),required=True)
     ap.add_argument('--spec',required=True,type=Path,help='Read existing specification; create it from all studies only on the first invocation')
+    ap.add_argument('--vector-file',default='generation.csv',help='Versioned CSV filename; upload it before replacing generation.json')
     args=ap.parse_args()
+    if Path(args.vector_file).name!=args.vector_file or not args.vector_file.endswith('.csv'):raise ValueError('Use a CSV filename only')
     module=importlib.util.spec_from_file_location('canonical_building_parser',args.parser)
     bp=importlib.util.module_from_spec(module);module.loader.exec_module(bp)
     studies=[];all_points=[]
@@ -85,19 +92,23 @@ def main():
               'weights':[0.5,0.5]}
         args.spec.parent.mkdir(parents=True,exist_ok=True)
         args.spec.write_text(json.dumps(spec,indent=2),encoding='utf-8')
+    if spec['version'] not in (1,2):raise ValueError('Unsupported feature specification version')
+    if spec['version']==2 and (spec['block_weights']!={'site':.8,'layout':.2} or
+                               spec['layout']!={'schema':'floor-plan-aspects-v1','plan_grid':12,'aspect_bins':8}):
+        raise ValueError('Unsupported layout feature configuration')
     signature=hashlib.sha256(json.dumps(spec,sort_keys=True,separators=(',',':')).encode()).hexdigest()
     for source,out,indices,buildings in studies:
         out.mkdir(parents=True,exist_ok=True)
         feature_rows=[vectors(bs,spec) for bs in buildings]
         features=['f%04d'%i for i in range(len(feature_rows[0]))]
-        with (out/'generation.csv').open('w',encoding='utf-8',newline='') as f:
+        with (out/args.vector_file).open('w',encoding='utf-8',newline='') as f:
             writer=csv.writer(f);writer.writerow(['option',*features])
             for index,values in zip(indices,feature_rows):writer.writerow([index,*[format(float(v),'.12g') for v in values]])
         shutil.copy2(source,out/'generation_source.csv')
-        manifest={'version':1,'file':'generation.csv','key_column':'option','join_column':'in:Index',
-                  'feature_space':'site-massing-grid-v1:'+signature,'features':features,'scaling':'none',
+        manifest={'version':1,'file':args.vector_file,'key_column':'option','join_column':'in:Index',
+                  'feature_space':'site-massing-grid-v%d:'%spec['version']+signature,'features':features,'scaling':'none',
                   'source_file':'generation_source.csv','source_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),
-                  'description':'Building placement, footprint and height on a shared 10 m grid; 5 m subcell sampling. Building names and row order do not affect similarity. Interior layouts and environmental results are not clustering features.',
+                  'description':('Similarity gives site arrangement, footprint and height a weight of 80%, and typical-floor layout and apartment aspects 20%. Layout considers apartment partitions, core positions and world-oriented exterior apartment facades; shared walls are excluded. Rotation is retained; directional aspect bins are periodic. This describes facade orientation, not actual views, windows or obstruction. Building names and row order do not affect similarity. Environmental results are not clustering features.' if spec.get('version',1)>1 else 'Building placement, footprint and height on a shared 10 m grid; 5 m subcell sampling. Building names and row order do not affect similarity. Interior layouts and environmental results are not clustering features.'),
                   'specification':spec}
         (out/'generation.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
         print(json.dumps({'output':str(out),'options':len(indices),'features':len(features),'feature_space':manifest['feature_space']}))

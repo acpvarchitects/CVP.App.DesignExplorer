@@ -74,6 +74,43 @@ one vector per exported option, independent of building IDs and row order:
   not a metric of every architectural quality. Nearby alternatives may be grouped
   together; inspect representatives and adjust k.
 
+### Optional v2 descriptor: layout and apartment aspects
+
+The saved site specification can use `version: 2` with
+`block_weights: {"site": 0.8, "layout": 0.2}` and
+`layout: {"schema": "floor-plan-aspects-v1", "plan_grid": 12, "aspect_bins": 8}`.
+This is a data preparation setting, with no additional interface controls.
+V1 remains supported for older studies; v1 and v2 are incompatible for pooling.
+
+V2 scales blocks by square roots of their weights, so squared Euclidean distance
+is `0.8 * siteDistance² + 0.2 * layoutDistance²`. The site block remains unchanged.
+The layout block combines a normalized local 12×12 plan grid (core mask, apartment
+mask and apartment centroid fields), world-oriented exterior apartment aspects,
+and six compact plan summaries (unit/core counts, core fraction, plan proportions,
+unit compactness and perimeter). It aggregates typology composition by residential
+apartment floor area. Internal layouts here mean unit/core polygons, not room layouts.
+
+Aspect extraction subtracts unions of shared collinear edge intervals, including
+partially shared edges, before computing outward unit normals. Core facades and
+party walls are excluded. Normals are rotated by the building's model rotation and
+interpolated into eight periodic direction bins. Mean directions plus per-unit
+direction-pair moments distinguish single- and multi-aspect unit distributions.
+This models facade orientation, not actual windows, unobstructed views, daylight,
+sunlight or visibility. The original analyses continue to measure those effects.
+
+The layout block weights plan, aspects and summaries 60/30/10 internally; these
+constants, grids and normalizations define the versioned algorithm. Actual
+distance contributions also depend on how much each property varies in the pool.
+Changing apartment row order or IDs has no effect. Fixed building frames retain
+local plan organization; world aspects explicitly retain orientation. Coarse grids
+and averaged typology mixtures do not encode every exact plan or tower adjacency.
+
+Use `--vector-file generation-v2.csv` to write a new file; upload this CSV before
+replacing `generation.json`, which points to it. Keep older vectors available for
+rollback. Updating multiple studies can briefly make mixed feature versions
+unavailable until all manifests match; the dashboard reports this instead of
+silently mixing incompatible vectors. Reload after metadata changes.
+
 Example, using absolute or caller-relative paths:
 
 ```sh

@@ -61,3 +61,12 @@ jobs:
 
       - name: Clustering and representative selection
         run: node scripts/test-clustering.mjs
+
+      - name: Setup Python for generation descriptor tests
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Layout, aspects and massing descriptor tests
+        run: |
+          python -m pip install numpy
+          python scripts/test-prepare-generation.py
