@@ -28,7 +28,7 @@ import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml } from "./comparison.js?v=37";
 import { ParallelChart } from "./parallel.js?v=38";
 import { paretoFront } from "./pareto.js?v=1";
-import { readGeneration, generationScope, scaleVectors, kmeans, representatives, MAX_CLUSTERS, clampClusterCount } from "./clustering.js?v=2";
+import { readGeneration, generationScope, scaleVectors, kmeans, representatives, clusterCountLimit, clampClusterCount } from "./clustering.js?v=3";
 import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=2";
 import { PlanViewer } from "./plan2d.js?v=5";
 
@@ -375,7 +375,7 @@ function renderClustering(view) {
     $("clusterOn").checked = state.clustering;
     $("clusterOn").disabled = !state.clustering && (!!result.error || !view.clusterBase.length);
     $("clusterK").value = state.clusterK;
-    const limit = Math.min(MAX_CLUSTERS,view.clusterBase.length || 1);
+    const limit = clusterCountLimit(view.clusterBase.length);
     $("clusterK").max = limit;
     $("clusterK").title = `Choose between 1 and ${limit} clusters`;
     $("clusterLimit").textContent = `(max. ${limit})`;

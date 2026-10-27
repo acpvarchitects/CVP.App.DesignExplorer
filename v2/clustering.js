@@ -1,7 +1,9 @@
 // Pure, deterministic clustering. Input features describe generation, never scores or IDs.
-export const MAX_CLUSTERS = 50;
+export function clusterCountLimit(baseCount) {
+    return Math.max(1,Math.floor(baseCount)||1);
+}
 export function clampClusterCount(value, baseCount) {
-    return Math.max(1,Math.min(Math.floor(value)||1,MAX_CLUSTERS,Math.max(1,baseCount)));
+    return Math.max(1,Math.min(Math.floor(value)||1,clusterCountLimit(baseCount)));
 }
 export function optionKey(value) {
     const s = String(value ?? "").trim();
