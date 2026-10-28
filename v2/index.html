@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="theme/tokens/icons.css?v=1" />
     <link rel="stylesheet" href="theme/tokens/z-index.css?v=1" />
     <link rel="stylesheet" href="theme/fonts.css?v=1" />
-    <link rel="stylesheet" href="style.css?v=89" />
+    <link rel="stylesheet" href="style.css?v=90" />
     <script type="importmap">
         {
             "imports": {
@@ -195,10 +195,15 @@
                         <h2 id="resultCount"></h2>
                         <span id="scopeNote" class="muted small"></span>
                     </div>
-                    <label class="order">
-                        Order by <select id="orderSelect"></select>
-                        <small id="orderDirection" class="muted"></small>
-                    </label>
+                    <div class="result-tools">
+                        <label id="thumbChoice" class="order" hidden>
+                            Thumbnail <select id="thumbSelect"></select>
+                        </label>
+                        <label class="order">
+                            Order by <select id="orderSelect"></select>
+                            <small id="orderDirection" class="muted"></small>
+                        </label>
+                    </div>
                 </div>
                 <div id="shortlistBar" class="shortlist-bar"></div>
                 <div id="gallery" class="gallery" aria-label="Options"></div>
@@ -241,6 +246,6 @@
         </section>
     </div>
 
-    <script type="module" src="app.js?v=87"></script>
+    <script type="module" src="app.js?v=88"></script>
 </body>
 </html>

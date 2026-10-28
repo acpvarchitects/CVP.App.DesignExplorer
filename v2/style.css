@@ -1473,6 +1473,13 @@ html.nav-collapsed .left-panel .drawer {
     font-size: 19px;
 }
 
+/* Thumbnail choice, then Order by at the far right */
+.result-tools {
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+}
+
 .order {
     font-size: 12px;
     text-align: right;

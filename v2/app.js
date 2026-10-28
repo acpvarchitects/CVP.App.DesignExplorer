@@ -72,6 +72,7 @@ const state = {
     sel: null, // option index shown in the preview; null = preview closed
     mode: "image",
     layer: { image: 0, model: 0, analysis: 0, table: 0 },
+    thumb: 0, // image column used as thumbnail in the gallery and the comparison
     expanded: false,
     shortlist: [], // option indexes, in the order they were picked
     notice: "", // one-off message, e.g. why the preview closed
@@ -462,7 +463,7 @@ const directionText = (m) => (m.dir > 0 ? "Higher is better" : m.dir < 0 ? "Lowe
 const arrow = (m) => (m.dir > 0 ? " ↑" : m.dir < 0 ? " ↓" : "");
 const methodLabel = (o) => `<span class="method-label" style="--method:${o.study.color}">${esc(o.study.name)}</span>`;
 const thumbUrl = (o) => {
-    const img = data.schema.images[state.layer.image] || data.schema.images[0];
+    const img = data.schema.images[state.thumb] || data.schema.images[0];
     return img ? assetUrl(o, o.row[img.col]) : null;
 };
 
@@ -732,6 +733,15 @@ function renderToolbar(view, notice) {
             : m.dir > 0
               ? "Higher is better · highest first"
               : "High to low · no preferred direction";
+
+    // Thumbnail: which image column the gallery shows, when the export has more than one view.
+    const images = data.schema.images;
+    $("thumbChoice").hidden = images.length < 2;
+    const thumbs = $("thumbSelect");
+    if (!thumbs.options.length) {
+        thumbs.innerHTML = images.map((im, i) => `<option value="${i}">${esc(im.label)}</option>`).join("");
+    }
+    thumbs.value = String(state.thumb);
 }
 
 function renderShortlistBar() {
@@ -1233,7 +1243,8 @@ function saveUrl() {
     set("methods", [...state.methods].join(","));
     p.delete("method"); // single-method links from earlier versions
     set("order", state.order);
-    set("option", state.sel != null ? state.sel + 1 : "");
+    set("thumb", state.thumb ? state.thumb + 1 : "");
+    set("option",state.sel != null ? state.sel + 1 : "");
     set("mode", state.sel != null ? state.mode : "");
     set("layer", state.sel != null && state.layer[state.mode] ? state.layer[state.mode] + 1 : "");
     set("compare", state.shortlist.map((i) => i + 1).join(","));
@@ -1265,7 +1276,9 @@ function loadUrlState() {
     state.hidden = new Set((params.get("hide") || "").split(",").map((n) => cols[parseInt(n, 10) - 1]).filter(Boolean));
     if (state.hidden.size) applyHidden();
     state.order = orderBy(order) && !state.hidden.has(order) ? order : defaultOrder();
-    const option = parseInt(params.get("option"), 10);
+    const thumb = parseInt(params.get("thumb"), 10);
+    if (thumb >= 1 && thumb <= data.schema.images.length) state.thumb = thumb - 1;
+    const option =parseInt(params.get("option"), 10);
     if (option >= 1 && option <= data.options.length) state.sel = option - 1;
     const mode = modeInfo(params.get("mode") || "");
     if (mode && layersOf(mode.key).length) state.mode = mode.key;
@@ -1483,6 +1496,10 @@ function bindEvents() {
     });
     $("orderSelect").addEventListener("change", (e) => {
         state.order = e.target.value;
+        render();
+    });
+    $("thumbSelect").addEventListener("change", (e) => {
+        state.thumb = +e.target.value;
         render();
     });
     // Any [data-open] button opens that option; [data-pick] toggles the shortlist.
