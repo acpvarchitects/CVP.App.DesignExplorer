@@ -1623,20 +1623,35 @@ html.nav-collapsed .left-panel .drawer {
     padding: 3px 8px;
 }
 
+/* Compare and, with clustering on, a plain "See cluster" link on the same line: the card keeps its height */
 .card-actions {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    align-items: center;
+    gap: 8px;
     margin: 4px 12px 12px;
+    min-width: 0;
 }
 
 .card-actions .pick {
     margin: 0;
+    flex: none;
 }
 
-.see-cluster {
+.see-cluster,
+.see-cluster:hover:not(:disabled) {
+    margin-left: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
     font-size: 12px;
-    padding: 3px 8px;
+    color: var(--accent);
+    text-decoration: underline;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
 }
 
 /* Cluster window: a wide card with the mosaic of the cluster's options */

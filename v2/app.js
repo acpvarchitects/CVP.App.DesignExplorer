@@ -796,7 +796,7 @@ function renderGallery(view) {
         const see = el.querySelector(".see-cluster");
         const cluster = clusterOf.get(o);
         see.hidden = !cluster;
-        if (cluster) see.textContent = `See cluster · ${cluster.members.length}`;
+        if (cluster) see.textContent = `See cluster (${cluster.members.length})`;
         const img = el.querySelector("img");
         const src = thumbUrl(o);
         if (src && img.getAttribute("src") !== src) img.src = src;
