@@ -50,10 +50,10 @@ export class Viewer {
 
         this.resizeObserver = new ResizeObserver(() => this.resize());
         this.resizeObserver.observe(container);
-        this.visibilityObserver = new IntersectionObserver(([entry]) => { this.inViewport = entry.isIntersecting; });
-        this.visibilityObserver.observe(container);
         this.renderer.setAnimationLoop(() => {
-            if (!this.container.offsetParent || this.inViewport === false) return; // hidden/offscreen: skip rendering
+            if (!this.container.offsetParent) return; // hidden: skip rendering
+            const rect = this.container.getBoundingClientRect();
+            if (rect.bottom < 0 || rect.top > window.innerHeight) return;
             this.controls.update();
             this.renderer.render(this.scene, this.camera);
         });
@@ -97,6 +97,8 @@ export class Viewer {
         // an analysis without levels keeps the choice for the next one that has them
         if (this.levels.length && this.level != null && this.level >= this.levels.length) this.level = null;
         this.applyLevel();
+        // Commit the new frame even if the animation loop was throttled while offscreen.
+        this.renderer.render(this.scene, this.camera);
 
         const failed = parts.length - objects.length;
         this.onStatus(!objects.length ? "Couldn't load this 3D file." : failed ? `${failed} of ${parts.length} layers couldn't load.` : "");
@@ -114,7 +116,6 @@ export class Viewer {
     dispose() {
         this.clear();
         this.resizeObserver.disconnect();
-        this.visibilityObserver.disconnect();
         this.renderer.setAnimationLoop(null);
         this.controls.dispose();
         const disposeObject = root => {

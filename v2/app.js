@@ -23,10 +23,10 @@
 // Page sections, top to bottom: method tabs + chart, measurement filters,
 // preview (only after clicking an option), gallery, Compare methods, Compare options.
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
-import { Viewer } from "./viewer.js?v=35";
+import { Viewer } from "./viewer.js?v=36";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml, comparisonViews } from "./comparison.js?v=39";
-import { ComparisonMedia } from "./comparison-media.js?v=1";
+import { ComparisonMedia } from "./comparison-media.js?v=2";
 import { ParallelChart } from "./parallel.js?v=38";
 import { paretoFront } from "./pareto.js?v=1";
 import { readGeneration, generationScope, scaleVectors, kmeans, representatives, clusterCountLimit, clampClusterCount } from "./clustering.js?v=3";
@@ -1537,7 +1537,13 @@ function bindEvents() {
     // Compare options: pick another option in a slot (A to D).
     $("comparison").addEventListener("change", (e) => {
         const view = e.target.closest('[data-compare-view]');
-        if (view) { state.compareView = view.value; render(); return; }
+        if (view) {
+            state.compareView = view.value;
+            const selected = comparisonViews(data).find(v => v.key === state.compareView);
+            comparisonMedia?.mount($("comparison"), state.shortlist.map(i => data.options[i]), selected);
+            saveUrl();
+            return;
+        }
         const slot = e.target.closest("[data-slot]");
         if (!slot) return;
         const ids = [...state.shortlist];

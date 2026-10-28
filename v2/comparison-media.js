@@ -1,5 +1,5 @@
 // Independent media for the comparison slots. Existing canvases survive page redraws.
-import { Viewer } from './viewer.js?v=35';
+import { Viewer } from './viewer.js?v=36';
 import { PlanViewer } from './plan2d.js?v=6';
 
 export class ComparisonMedia {
@@ -26,7 +26,7 @@ export class ComparisonMedia {
                 }
                 slot.reset.addEventListener('click', () => slot.is2d ? slot.plan?.reset() : slot.viewer?.resetView());
                 this.slots.set(i, slot);
-            } else {
+            } else if (host !== slot.root) {
                 host.replaceWith(slot.root);
             }
             const key = `${option.index}|${view?.key || ''}`;

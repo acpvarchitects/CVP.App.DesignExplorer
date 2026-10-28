@@ -182,6 +182,10 @@ Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" com
    in `compareview` in the URL. Missing assets are reported in their slot. Interactive viewers
    survive ordinary filter redraws; removing a slot releases its WebGL context and observers,
    and offscreen viewers skip drawing.
+   View-only changes update the existing slots directly (no section HTML rebuild).
+   This avoids detaching active WebGL canvases, which could leave Chrome displaying an
+   older analysis while its HTML legend changed. Compositions also commit a frame immediately;
+   offscreen detection uses current bounds rather than observer state across reparenting.
 
 The URL keeps ticked methods, order, option, mode/layer, ranges, batch filter, shortlist and
 "Show inputs", so the address bar shares the current view. "Copy link" copies the home page

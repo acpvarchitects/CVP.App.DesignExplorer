@@ -43,3 +43,25 @@ assert.deepEqual(JSON.parse(JSON.stringify(parts)), [
 assert.equal(context.state.mode, 'image');
 assert.equal(context.partsFor({row: {}}, {col: 'sun', composed: true}, 'analysis'), null);
 console.log('PASS comparison analysis composition is independent of main preview mode');
+
+// Rebuilding the section detaches all WebGL canvases. A view-only change must update
+// existing slots directly, without invoking the full app/section render path.
+const changeStart = app.indexOf("const view = e.target.closest('[data-compare-view]')");
+const changeEnd = app.indexOf('const slot = e.target.closest', changeStart);
+const calls = [];
+const activeView = views.find(v => v.mode === 'analysis');
+const existingBox = {};
+const changeContext = vm.createContext({state: {shortlist: [0, 1], mode: 'image'},
+    data: {options: ['a', 'b']}, comparisonViews: () => views,
+    comparisonMedia: {mount: (...args) => calls.push(args)},
+    $: () => existingBox, saveUrl: () => calls.push('saved'),
+    render: () => { throw Error('Must not rebuild the comparison DOM on view change'); }});
+const onChange = vm.runInContext(`(function(e) { ${app.slice(changeStart, changeEnd)} })`, changeContext);
+onChange({target: {closest: () => ({value: activeView.key})}});
+assert.equal(changeContext.state.compareView, activeView.key);
+assert.equal(changeContext.state.mode, 'image');
+assert.equal(calls[0][0], existingBox);
+assert.deepEqual(Array.from(calls[0][1]), ['a', 'b']);
+assert.equal(calls[0][2], activeView);
+assert.equal(calls[1], 'saved');
+console.log('PASS repeated comparison view changes preserve connected viewer canvases');
