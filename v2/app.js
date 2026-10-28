@@ -1381,13 +1381,18 @@ function loadUrlState() {
     }
 }
 
-// "Copy link" shares the study's home page: only which studies are open (PROJECT or data),
-// none of the current filters, option or view (the address bar still keeps those).
-async function copyLink() {
+// The study's home page: only which studies are open (PROJECT or data), none of the current filters,
+// option or view. "Copy link" shares it and the logo goes back to it.
+function homeUrl() {
     // encodeURI keeps "," and ":" readable (PROJECT=A:Label,B); "&", "#", "+" are escaped by hand
     const enc = (v) => encodeURI(v).replace(/[&#+]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
     const home = ["PROJECT", "data"].filter((k) => params.has(k)).map((k) => `${k}=${enc(params.get(k))}`);
-    const url = location.origin + location.pathname + (home.length ? "?" + home.join("&") : "");
+    return location.origin + location.pathname + (home.length ? "?" + home.join("&") : "");
+}
+
+// (the address bar still keeps the current filters, option and view)
+async function copyLink() {
+    const url = homeUrl();
     try {
         await navigator.clipboard.writeText(url);
     } catch {
@@ -1632,6 +1637,7 @@ function bindEvents() {
     });
     $("resetView").addEventListener("click", () => ($("preview2d").hidden ? viewer && viewer.resetView() : plan2d && plan2d.reset()));
     $("shareBtn").addEventListener("click", copyLink);
+    $("homeLink").href = homeUrl(); // the logo reloads the study from scratch: nothing open, no filters
     $("aboutView").addEventListener("click", () => {
         const o = state.sel != null ? data.options[state.sel] : null;
         if (o) openAbout(described([o.study], () => viewEntry(o)));
