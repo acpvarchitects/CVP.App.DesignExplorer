@@ -4,7 +4,7 @@
 # v2 has no npm and no build (static HTML/CSS/JS served by nginx), so there is nothing to compile.
 # What can go wrong without anyone noticing is checked here:
 #   - the app redefines the library's corner-radius tokens (it loads after the library and would also
-#     change the library's own look);
+#     change the library's own look), or writes a radius in pixels instead of using a token;
 #   - a JavaScript file of v2 has a syntax error (the page would silently stop working).
 # NOT checked here: whether v2/theme/ still matches the library (scripts/check-theme-drift.mjs). It needs
 # to read acpv-frontend-libraries, which the token of this repository cannot do: run it by hand.
@@ -45,7 +45,7 @@ jobs:
       # An app must not (re)define the library's corner-radius tokens. v2/theme (the vendored copy of the
       # library's tokens) is skipped by the script on purpose.
       # acpv-frontend-libraries -> docs/reference/corner-radius.md
-      - name: Radius guard (no radius token definitions in v2, blocking)
+      - name: Radius guard (no radius token definitions, no pixel radii in v2, blocking)
         run: node scripts/check-radius-tokens.mjs v2
 
       - name: JavaScript syntax (v2/*.js, as ES modules)
