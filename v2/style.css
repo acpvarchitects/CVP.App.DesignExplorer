@@ -1662,6 +1662,10 @@ html.nav-collapsed .left-panel .drawer {
 .cluster-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    /* rows keep their content height and the grid scrolls; without this a long cluster squeezes the tiles */
+    grid-auto-rows: max-content;
+    align-content: start;
+    min-height: 0;
     gap: 12px;
     overflow-y: auto;
     padding: 16px 22px 22px;
