@@ -690,6 +690,13 @@ html.nav-collapsed .left-panel .drawer {
     fill: var(--text);
 }
 
+/* "area-adjusted" under the title: a qualifier, not part of the name */
+.pc-axis .pc-label .pc-sub {
+    font-size: 11px;
+    font-weight: 400;
+    fill: var(--muted);
+}
+
 /* Axis header: on hover, "↑ better" gives way to "✕ hide". */
 .pc-axis .pc-hide {
     font-size: 10px;

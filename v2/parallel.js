@@ -80,7 +80,8 @@ export class ParallelChart {
         // names wrap less.
         const parts = new Map(axes.map((a) => [a.col, splitUnit(a.label)]));
         const titles = new Map(axes.map((a) => [a.col, titleLines(this.svg, parts.get(a.col).name, spacing - 12, a.info ? " ⓘ" : "")]));
-        const lines = Math.max(1, ...[...titles.values()].map((l) => l.length));
+        // A qualifier ("Area-adjusted") is a regular-weight line under the title, counted as one line.
+        const lines = Math.max(1, ...axes.map((a) => titles.get(a.col).length + (parts.get(a.col).sub ? 1 : 0)));
         const hasUnits = [...parts.values()].some((p) => p.unit);
         // first baseline at 12; the unit sits UNIT_GAP under the last title line and leaves
         // PLOT_GAP before the plot (room for the top tick value); no unit: 8px under the title
@@ -120,7 +121,7 @@ export class ParallelChart {
             head.append("rect").attr("x", -(spacing - 12) / 2).attr("y", 0).attr("width", spacing - 12).attr("height", MARGIN.top).attr("fill", "transparent");
             head.append("rect").attr("x", -(spacing - 12) / 2).attr("y", footY).attr("width", spacing - 12).attr("height", MARGIN.bottom).attr("fill", "transparent");
             const label = head.append("text").attr("class", "pc-label").attr("y", 12).attr("text-anchor", "middle");
-            wrap(label, a.label, titles.get(a.col), !!a.info);
+            wrap(label, a.label, titles.get(a.col), !!a.info, parts.get(a.col).sub);
             // A described axis: its title opens "About" (pointer + ⓘ so it can be found).
             if (a.info) label.classed("has-info", true).on("click", () => this.onInfo?.(a.col));
             if (parts.get(a.col).unit) {
@@ -278,9 +279,13 @@ function segmentsOf(a) {
 // text is drawn in a hidden .pc-label), so neighbouring titles never overlap. A single word wider
 // than the axis stays whole. `suffix` (the ⓘ of a described axis) follows the last line.
 // "Summer Solar Radiation [kWh/m²]" -> { name: "Summer Solar Radiation", unit: "kWh/m²" }
+// A leading "...-adjusted" qualifier becomes a subtitle:
+// "Area-adjusted Sky View [%]" -> { name: "Sky View", sub: "area-adjusted", unit: "%" }
 function splitUnit(label) {
     const m = label.match(/^(.*\S)\s*\[(.+)\]$/);
-    return m ? { name: m[1], unit: m[2] } : { name: label, unit: "" };
+    const out = m ? { name: m[1], unit: m[2] } : { name: label, unit: "" };
+    const q = out.name.match(/^(\S+-adjusted)\s+(.+)$/i);
+    return q ? { ...out, name: q[2], sub: q[1].toLowerCase() } : out;
 }
 
 function titleLines(svg, label, width, suffix = "") {
@@ -308,7 +313,8 @@ function titleLines(svg, label, width, suffix = "") {
     return lines;
 }
 
-function wrap(text, label, lines, described = false) {
+function wrap(text, label, lines, described = false, sub = "") {
     lines.forEach((l, i) => text.append("tspan").attr("x", 0).attr("dy", i ? TITLE_LINE : 0).text(l));
+    if (sub) text.append("tspan").attr("class", "pc-sub").attr("x", 0).attr("dy", TITLE_LINE).text(sub);
     text.append("title").text(described ? label + " · click for a description" : label);
 }
