@@ -1623,6 +1623,86 @@ html.nav-collapsed .left-panel .drawer {
     padding: 3px 8px;
 }
 
+.card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 4px 12px 12px;
+}
+
+.card-actions .pick {
+    margin: 0;
+}
+
+.see-cluster {
+    font-size: 12px;
+    padding: 3px 8px;
+}
+
+/* Cluster window: a wide card with the mosaic of the cluster's options */
+.cluster-card {
+    width: min(1180px, 100%);
+}
+
+.cluster-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    overflow-y: auto;
+    padding: 16px 22px 22px;
+}
+
+.cluster-tile {
+    display: flex;
+    flex-direction: column;
+    background: var(--md-sys-color-surface-container-low);
+    border-radius: var(--acpv-sys-radius-lg);
+    overflow: hidden;
+    box-shadow: var(--acpv-sys-shadow-1);
+}
+
+.cluster-tile.rep {
+    box-shadow: inset 0 0 0 3px var(--accent), var(--acpv-sys-shadow-1);
+}
+
+.cluster-tile.out {
+    opacity: 0.45;
+}
+
+.cluster-tile .card-main:disabled {
+    cursor: default;
+}
+
+.cluster-name {
+    display: block;
+    padding: 8px 10px 2px;
+    font-size: 13px;
+}
+
+.cluster-name b {
+    color: var(--accent);
+    font-size: 11px;
+    margin-left: 4px;
+}
+
+.cluster-name em {
+    color: var(--muted);
+    font-size: 11px;
+    margin-left: 4px;
+}
+
+.cluster-tile .pick {
+    margin: 6px 10px 10px;
+    align-self: flex-start;
+}
+
+.cluster-tile .pick[aria-pressed="true"] {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: var(--accent);
+    font-weight: 600;
+}
+
 .option-card.picked .pick {
     background: var(--accent-soft);
     color: var(--accent);

@@ -346,6 +346,7 @@ function computeView() {
     return {
         scope,
         candidates,
+        candidateSet: new Set(candidates),
         clusterBase,
         clustering,
         visible,
@@ -483,7 +484,10 @@ function showMessage(html) {
 function render({ syncChart = false } = {}) {
     const view = computeView();
     lastView = view;
-    if (state.sel != null && !view.visibleSet.has(data.options[state.sel])) {
+    // With clustering on, a cluster member opened from its cluster window may be previewed although only
+    // representatives are in the gallery, as long as it passes the filters.
+    const peek = (o) => state.clustering && view.clustering.selected && view.candidateSet.has(o);
+    if (state.sel != null && !view.visibleSet.has(data.options[state.sel]) && !peek(data.options[state.sel])) {
         const o = data.options[state.sel];
         state.notice = inMethod(o)
             ? `${o.title} is filtered out, so its preview closed.`
@@ -776,15 +780,23 @@ function renderGallery(view) {
                         <span class="card-note"></span>
                     </div>
                 </button>
-                <button type="button" class="pick" data-pick="${o.index}">Compare</button>`;
+                <div class="card-actions">
+                    <button type="button" class="pick" data-pick="${o.index}">Compare</button>
+                    <button type="button" class="see-cluster" data-cluster="${o.index}" hidden></button>
+                </div>`;
             cards.set(o.index, el);
         }
     }
     const m = orderBy(state.order);
+    const clusterOf = new Map(state.clustering && view.clustering.selected ? view.clustering.clusters.map((c) => [c.representative, c]) : []);
     for (const o of data.options) {
         const el = cards.get(o.index);
         el.hidden = !view.visibleSet.has(o);
         if (el.hidden) continue;
+        const see = el.querySelector(".see-cluster");
+        const cluster = clusterOf.get(o);
+        see.hidden = !cluster;
+        if (cluster) see.textContent = `See cluster · ${cluster.members.length}`;
         const img = el.querySelector("img");
         const src = thumbUrl(o);
         if (src && img.getAttribute("src") !== src) img.src = src;
@@ -908,6 +920,49 @@ function openAbout(items) {
 function closeAbout() {
     if ($("aboutOverlay").hidden) return;
     $("aboutOverlay").hidden = true;
+    if (aboutReturn?.focus) aboutReturn.focus();
+}
+
+// Cluster window: the mosaic of every option in one cluster, representative first. Members outside the
+// current filters are faded (the clusters are fitted on the base set, before the filters).
+let clusterOpen = null; // representative index of the cluster shown
+function openCluster(index, keepFocus = false) {
+    const view = lastView;
+    const clusters = view?.clustering?.clusters || [];
+    const number = clusters.findIndex((c) => c.representative.index === index);
+    if (number < 0) return closeCluster();
+    const c = clusters[number];
+    const rest = ordered(c.members.filter((o) => o !== c.representative));
+    const outside = c.members.filter((o) => !view.candidateSet.has(o)).length;
+    $("clusterTitle").textContent = `Cluster ${number + 1} · ${c.members.length} option${c.members.length === 1 ? "" : "s"}`;
+    $("clusterSub").textContent = `Representative ${c.representative.title} · ${clusters.length} clusters from ${view.clustering.available} options` +
+        (outside ? ` · ${outside} outside the current filters (faded)` : "");
+    $("clusterBody").innerHTML = [c.representative, ...rest]
+        .map((o) => {
+            const out = !view.candidateSet.has(o);
+            const picked = state.shortlist.includes(o.index);
+            return `<div class="cluster-tile${o === c.representative ? " rep" : ""}${out ? " out" : ""}">
+                <button type="button" class="card-main" data-cluster-open="${o.index}" ${out ? "disabled" : ""}>
+                    <div class="option-image"><img loading="lazy" src="${esc(thumbUrl(o) || "")}" alt="${esc(o.name)}" /></div>
+                    <span class="cluster-name">${esc(o.title)}${o === c.representative ? " <b>Representative</b>" : ""}${out ? " <em>outside filters</em>" : ""}</span>
+                </button>
+                <button type="button" class="pick" data-cluster-pick="${o.index}" aria-pressed="${picked}">${picked ? "✓ In shortlist" : "Compare"}</button>
+            </div>`;
+        })
+        .join("");
+    if (clusterOpen == null) aboutReturn = document.activeElement;
+    clusterOpen = index;
+    $("clusterOverlay").hidden = false;
+    if (!keepFocus) {
+        $("clusterBody").scrollTop = 0;
+        $("clusterClose").focus();
+    }
+}
+
+function closeCluster() {
+    if ($("clusterOverlay").hidden) return;
+    $("clusterOverlay").hidden = true;
+    clusterOpen = null;
     if (aboutReturn?.focus) aboutReturn.focus();
 }
 
@@ -1521,7 +1576,9 @@ function bindEvents() {
         const pick = e.target.closest("[data-pick]");
         const open = e.target.closest("[data-open]");
         const remove = e.target.closest("[data-remove]");
+        const cluster = e.target.closest("[data-cluster]");
         if (pick) togglePick(+pick.dataset.pick);
+        else if (cluster) openCluster(+cluster.dataset.cluster);
         else if (open) openOption(+open.dataset.open, true);
         else if (e.target.closest("[data-see]")) seeComparison();
         else if (e.target.closest("[data-back]")) backToOptions();
@@ -1585,7 +1642,24 @@ function bindEvents() {
         if (b && viewer) viewer.setLevel(b.dataset.level === "" ? null : +b.dataset.level);
     });
     $("aboutOverlay").addEventListener("click", (e) => e.target === e.currentTarget && closeAbout());
+    $("clusterClose").addEventListener("click", closeCluster);
+    $("clusterOverlay").addEventListener("click", (e) => {
+        if (e.target === e.currentTarget) return closeCluster();
+        const open = e.target.closest("[data-cluster-open]");
+        const pick = e.target.closest("[data-cluster-pick]");
+        if (open) {
+            closeCluster();
+            openOption(+open.dataset.clusterOpen, true);
+        } else if (pick) {
+            togglePick(+pick.dataset.clusterPick);
+            openCluster(clusterOpen, true); // refresh the Compare labels in place
+        }
+    });
     document.addEventListener("keydown", (e) => {
+        if (!$("clusterOverlay").hidden) {
+            if (e.key === "Escape") closeCluster();
+            return;
+        }
         if (!$("aboutOverlay").hidden) return; // keys don't act on the page behind the card
         if (state.sel == null || e.target.closest?.("input, textarea, select, [contenteditable]")) return;
         if (e.key === "ArrowLeft") step(-1);

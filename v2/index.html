@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="theme/tokens/icons.css?v=1" />
     <link rel="stylesheet" href="theme/tokens/z-index.css?v=1" />
     <link rel="stylesheet" href="theme/fonts.css?v=1" />
-    <link rel="stylesheet" href="style.css?v=91" />
+    <link rel="stylesheet" href="style.css?v=92" />
     <script type="importmap">
         {
             "imports": {
@@ -246,6 +246,20 @@
         </section>
     </div>
 
-<script type="module" src="app.js?v=90"></script>
+    <!-- Cluster window: opened from "See cluster" on a representative's card -->
+    <div id="clusterOverlay" class="about-overlay" hidden>
+        <section class="about-card cluster-card" role="dialog" aria-modal="true" aria-labelledby="clusterTitle">
+            <div class="about-head">
+                <div>
+                    <h2 id="clusterTitle"></h2>
+                    <p id="clusterSub" class="muted small"></p>
+                </div>
+                <button id="clusterClose" type="button" aria-label="Close">✕</button>
+            </div>
+            <div id="clusterBody" class="cluster-grid"></div>
+        </section>
+    </div>
+
+<script type="module" src="app.js?v=91"></script>
 </body>
 </html>
