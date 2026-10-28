@@ -29,9 +29,11 @@ export function comparisonHtml({ data, chosen, esc, fmt, thumbUrl, maxOptions })
     const picks = `<div class="cp-picks">${chosen
         .map(
             (o, i) => `<article style="--option:${SLOT_COLORS[i]}">
-                <img src="${esc(thumbUrl(o) || "")}" alt="${esc(label(o))}" />
-                <div>
+                <div class="cp-thumb">
+                    <img src="${esc(thumbUrl(o) || "")}" alt="${esc(label(o))}" />
                     <b>${slotName(i)}</b>
+                </div>
+                <div class="cp-controls">
                     <select data-slot="${i}" aria-label="Option ${slotName(i)}">${data.studies
                         .map(
                             (s) => `<optgroup label="${esc(s.name)}">${all
@@ -40,9 +42,9 @@ export function comparisonHtml({ data, chosen, esc, fmt, thumbUrl, maxOptions })
                                 .join("")}</optgroup>`
                         )
                         .join("")}</select>
-                    ${data.studies.length > 1 ? `<small>${esc(o.study.name)}</small>` : ""}
                     <button type="button" data-remove="${o.index}" aria-label="Remove ${esc(label(o))}">Remove</button>
                 </div>
+                ${data.studies.length > 1 ? `<small>${esc(o.study.name)}</small>` : ""}
             </article>`
         )
         .join("")}${chosen.length < maxOptions ? `<button type="button" class="cp-add" data-add>Add option +</button>` : ""}</div>`;

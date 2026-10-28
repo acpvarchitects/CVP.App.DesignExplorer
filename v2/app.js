@@ -25,7 +25,7 @@
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=34";
 import { rankGoals } from "./compare.js?v=37";
-import { comparisonHtml } from "./comparison.js?v=37";
+import { comparisonHtml } from "./comparison.js?v=38";
 import { ParallelChart } from "./parallel.js?v=38";
 import { paretoFront } from "./pareto.js?v=1";
 import { readGeneration, generationScope, scaleVectors, kmeans, representatives, clusterCountLimit, clampClusterCount } from "./clustering.js?v=3";

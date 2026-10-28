@@ -1759,47 +1759,67 @@ button.cp-primary:hover:not(:disabled) {
 }
 
 .cp-picks article {
-    flex: 1 1 210px;
+    flex: 1 1 260px;
     min-width: 0;
     display: flex;
-    gap: 10px;
+    flex-direction: column;
+    gap: 8px;
     padding: 10px;
     background: var(--soft);
     border-top: 3px solid var(--option);
     border-radius: var(--acpv-sys-corner-small);
 }
 
+/* The thumbnail is the card: large, with the slot letter in its top-left corner. */
+.cp-thumb {
+    position: relative;
+}
+
 .cp-picks img {
-    width: 86px;
-    height: 85px;
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 10; /* Colibri thumbnails are 1600x1000; other sizes letterbox */
     object-fit: contain;
     background: var(--card);
+    border-radius: var(--acpv-sys-corner-small);
 }
 
-.cp-picks article > div {
-    flex: 1;
-    min-width: 0;
+.cp-thumb b {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    min-width: 28px;
+    padding: 2px 8px;
+    text-align: center;
+    font-size: 16px;
+    line-height: 24px;
+    color: #fff;
+    background: var(--option);
+    border-radius: var(--acpv-sys-corner-small);
 }
 
-.cp-picks b {
-    color: var(--option);
+.cp-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .cp-picks select {
-    width: 100%;
-    font-size: 12px;
-    padding: 5px;
+    flex: 1;
+    min-width: 0;
+    font-size: 11px;
+    padding: 3px 4px;
 }
 
 .cp-picks small {
     display: block;
-    margin: 5px 0;
     font-size: 10px;
     color: var(--muted);
     overflow-wrap: anywhere;
 }
 
 .cp-picks article button {
+    flex: none;
     font-size: 11px;
     padding: 3px 8px;
 }
