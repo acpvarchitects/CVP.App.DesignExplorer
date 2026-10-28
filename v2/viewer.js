@@ -48,9 +48,12 @@ export class Viewer {
         this.framed = false;
         this.request = 0;
 
-        new ResizeObserver(() => this.resize()).observe(container);
+        this.resizeObserver = new ResizeObserver(() => this.resize());
+        this.resizeObserver.observe(container);
+        this.visibilityObserver = new IntersectionObserver(([entry]) => { this.inViewport = entry.isIntersecting; });
+        this.visibilityObserver.observe(container);
         this.renderer.setAnimationLoop(() => {
-            if (!this.container.offsetParent) return; // hidden: skip rendering
+            if (!this.container.offsetParent || this.inViewport === false) return; // hidden/offscreen: skip rendering
             this.controls.update();
             this.renderer.render(this.scene, this.camera);
         });
@@ -106,6 +109,32 @@ export class Viewer {
         this.levels = [];
         this.onLevels([], this.level);
         this.onStatus("");
+    }
+
+    dispose() {
+        this.clear();
+        this.resizeObserver.disconnect();
+        this.visibilityObserver.disconnect();
+        this.renderer.setAnimationLoop(null);
+        this.controls.dispose();
+        const disposeObject = root => {
+            const geometries = new Set(), materials = new Set();
+            root.traverse(node => {
+                if (node.geometry) geometries.add(node.geometry);
+                if (node.userData.baseGeometry) geometries.add(node.userData.baseGeometry);
+                for (const g of node.userData.levelGeometries || []) if (g) geometries.add(g);
+                for (const m of [node.material].flat().filter(Boolean)) {
+                    if (m !== HALFTONE && m !== edgeLines.colored && m !== edgeLines.plain) materials.add(m);
+                }
+            });
+            geometries.forEach(g => g.dispose());
+            materials.forEach(m => m.dispose());
+        };
+        for (const pending of this.cache.values()) pending.then(disposeObject).catch(() => {});
+        this.cache.clear();
+        this.renderer.dispose();
+        this.renderer.forceContextLoss();
+        this.renderer.domElement.remove();
     }
 
     // Isolate one level of the analysis (index into this.levels), or null for all.

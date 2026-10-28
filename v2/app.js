@@ -23,14 +23,15 @@
 // Page sections, top to bottom: method tabs + chart, measurement filters,
 // preview (only after clicking an option), gallery, Compare methods, Compare options.
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
-import { Viewer } from "./viewer.js?v=34";
+import { Viewer } from "./viewer.js?v=35";
 import { rankGoals } from "./compare.js?v=37";
-import { comparisonHtml } from "./comparison.js?v=38";
+import { comparisonHtml, comparisonViews } from "./comparison.js?v=39";
+import { ComparisonMedia } from "./comparison-media.js?v=1";
 import { ParallelChart } from "./parallel.js?v=38";
 import { paretoFront } from "./pareto.js?v=1";
 import { readGeneration, generationScope, scaleVectors, kmeans, representatives, clusterCountLimit, clampClusterCount } from "./clustering.js?v=3";
 import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=2";
-import { PlanViewer } from "./plan2d.js?v=5";
+import { PlanViewer } from "./plan2d.js?v=6";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
 const MAX_SHORTLIST = 4;
@@ -75,12 +76,14 @@ const state = {
     thumb: 0, // image column used as thumbnail in the gallery and the comparison
     expanded: false,
     shortlist: [], // option indexes, in the order they were picked
+    compareView: '', // shared by comparison slots only; independent of main preview/gallery
     notice: "", // one-off message, e.g. why the preview closed
 };
 let data; // { studies, schema, options, stats }
 let viewer;
 let plan2d; // 2D plan viewer (an analysis cell holding an .svg)
 let chart;
+let comparisonMedia;
 let mediaKey = null; // what the preview media currently shows, to avoid reloading 3D
 let lastView = null; // the view of the latest render (for chart callbacks)
 const cards = new Map(); // option index -> gallery card element
@@ -1017,9 +1020,9 @@ async function showTable(url, key) {
 
 // The 3D layers of one view for one option, or null when the option has no file for it.
 // Empty cells mean "no such layer for this option" (for example no pools) and are skipped.
-function partsFor(o, layer) {
+function partsFor(o, layer, mode = state.mode) {
     const file = (col) => (col ? assetUrl(o, (o.row[col] || "").trim()) : null);
-    const analysisView = state.mode === "analysis";
+    const analysisView = mode === "analysis";
     const own = [];
     if (!layer.composed) {
         const url = file(layer.col);
@@ -1130,7 +1133,16 @@ function renderComparison() {
     const chosen = state.shortlist.map((i) => data.options[i]);
     const detailsOpen = box.querySelector("details")?.open; // keep "exact values" open across redraws
     box.hidden = chosen.length < 2;
-    box.innerHTML = box.hidden ? "" : comparisonHtml({ data, chosen, esc, fmt, thumbUrl, maxOptions: MAX_SHORTLIST });
+    const views = comparisonViews(data);
+    const selected = views.find(v => v.key === state.compareView) || views[0];
+    state.compareView = selected?.key || '';
+    box.innerHTML = box.hidden ? "" : comparisonHtml({ data, chosen, esc, fmt, thumbUrl, maxOptions: MAX_SHORTLIST, views, selectedView: state.compareView });
+    if (box.hidden) comparisonMedia?.clear();
+    else {
+        comparisonMedia ||= new ComparisonMedia({ assetUrl, partsFor, parseCsv: csvParse, esc, fmt,
+            fadeContext: v => v.mode === 'analysis' && !OVER_GENERAL[v.layer.col] });
+        comparisonMedia.mount(box, chosen, selected);
+    }
     if (detailsOpen && box.querySelector("details")) box.querySelector("details").open = true;
     renderPopup();
 }
@@ -1248,6 +1260,7 @@ function saveUrl() {
     set("mode", state.sel != null ? state.mode : "");
     set("layer", state.sel != null && state.layer[state.mode] ? state.layer[state.mode] + 1 : "");
     set("compare", state.shortlist.map((i) => i + 1).join(","));
+    set("compareview", state.shortlist.length >= 2 ? state.compareView : '');
     set("inputs", state.showInputs ? "1" : "");
     set("batch", batchNames(","));
     // hidden columns by position among inputs + results (1-based)
@@ -1289,6 +1302,7 @@ function loadUrlState() {
         .map((n) => parseInt(n, 10) - 1)
         .filter((i, k, all) => i >= 0 && i < data.options.length && all.indexOf(i) === k)
         .slice(0, MAX_SHORTLIST);
+    state.compareView = params.get('compareview') || '';
     state.showInputs = params.get("inputs") === "1";
     const batches = (params.get("batch") || "").split(",").filter((n) => data.studies.some((s) => s.name === n) && inMethod({ study: { name: n } }));
     state.batches = new Set(data.studies.length > 1 ? batches : []);
@@ -1522,6 +1536,8 @@ function bindEvents() {
     });
     // Compare options: pick another option in a slot (A to D).
     $("comparison").addEventListener("change", (e) => {
+        const view = e.target.closest('[data-compare-view]');
+        if (view) { state.compareView = view.value; render(); return; }
         const slot = e.target.closest("[data-slot]");
         if (!slot) return;
         const ids = [...state.shortlist];

@@ -40,7 +40,15 @@ export class PlanViewer {
         this.labels = null; // <g> of the labels, rebuilt with each plan
         this.token = 0;
         this.bindEvents();
-        new ResizeObserver(() => this.apply()).observe(container);
+        this.resizeObserver = new ResizeObserver(() => this.apply());
+        this.resizeObserver.observe(container);
+    }
+
+    dispose() {
+        this.token++;
+        this.resizeObserver.disconnect();
+        if (this.frame) cancelAnimationFrame(this.frame);
+        this.svg.remove();
     }
 
     async show(layers) {

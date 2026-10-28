@@ -62,6 +62,9 @@ jobs:
       - name: Clustering and representative selection
         run: node scripts/test-clustering.mjs
 
+      - name: Comparison views and independent composition
+        run: node scripts/test-comparison.mjs
+
       - name: Setup Python for generation descriptor tests
         uses: actions/setup-python@v5
         with:

@@ -8,8 +8,26 @@ import { aboutTheSame } from "./compare.js?v=37";
 export const SLOT_COLORS = ["#176a83", "#bc6332", "#7655a2", "#448452"];
 const slotName = (i) => String.fromCharCode(65 + i); // A, B, C, D
 
+export function comparisonViews({ schema, studies }) {
+    const labelFor = (layer, mode) => {
+        for (const study of studies) {
+            const manifest = study.manifest;
+            const entries = mode === 'image' ? manifest?.thumbnails?.views : mode === 'table' ? manifest?.tables : manifest?.layers;
+            const entry = entries?.find(e => (e.column || e.key) === layer.col);
+            if (entry?.label) return entry.label;
+        }
+        return layer.label;
+    };
+    return [['image', schema.images], ['model', schema.models], ['analysis', schema.analyses], ['table', schema.tables]]
+        .flatMap(([mode, layers]) => layers.map((layer, i) => ({
+            key: `${mode}:${layer.col || i}`, mode, layer,
+            label: mode === 'model' ? (layers.length === 1 ? '3D model' : `3D model · ${layer.label}`)
+                : mode === 'table' ? `Table · ${labelFor(layer, mode)}` : labelFor(layer, mode),
+        })));
+}
+
 // ctx: { data, chosen: [option], esc, fmt, thumbUrl }. Returns the section's HTML.
-export function comparisonHtml({ data, chosen, esc, fmt, thumbUrl, maxOptions }) {
+export function comparisonHtml({ data, chosen, esc, fmt, thumbUrl, maxOptions, views = [], selectedView = '' }) {
     const all = data.options;
     const goals = data.schema.outputs.filter((m) => m.dir); // visible results only (hidden ones are left out)
     const rows = data.schema.outputs.map((m) => resultRow(m, chosen, all));
@@ -26,11 +44,15 @@ export function comparisonHtml({ data, chosen, esc, fmt, thumbUrl, maxOptions })
         <button type="button" class="cp-primary" data-back>Back to options ↑</button>
     </header>`;
 
+    const viewControl = views.length ? `<label class="cp-view-control">View for all compared options
+        <select data-compare-view aria-label="View for all compared options">${views.map(v =>
+            `<option value="${esc(v.key)}"${v.key === selectedView ? ' selected' : ''}>${esc(v.label)}</option>`).join('')}</select>
+    </label>` : '';
     const picks = `<div class="cp-picks">${chosen
         .map(
             (o, i) => `<article style="--option:${SLOT_COLORS[i]}">
                 <div class="cp-thumb">
-                    <img src="${esc(thumbUrl(o) || "")}" alt="${esc(label(o))}" />
+                    <div class="cp-media" data-cp-media="${i}"></div>
                     <b>${slotName(i)}</b>
                 </div>
                 <div class="cp-controls">
@@ -94,7 +116,7 @@ export function comparisonHtml({ data, chosen, esc, fmt, thumbUrl, maxOptions })
 
     const foot = `<footer class="cp-note">¹ Best found is the best value of each measurement across all loaded options: it is not one buildable option, and filters don't change it. Close results count as about the same: under 2% apart, or within 1 dB for noise.</footer>`;
 
-    return head + picks + body + foot;
+    return head + viewControl + picks + body + foot;
 }
 
 // One result across the chosen options: ranking, leaders (best plus anything about the

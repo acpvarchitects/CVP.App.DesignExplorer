@@ -176,6 +176,12 @@ Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" com
    values with the best value found per result. Close results are "about the same": under 2%
    apart, or within 1 dB for noise (`compare.js`). "See comparison ↓" (shortlist line, and a
    pop-up for a few seconds after Compare) and "Back to options ↑" scroll there and back.
+   One **View for all compared options** dropdown switches every slot together between
+   the study's images (for example Plan / Axonometric), 3D model, each analysis and tables.
+   This selection is independent of the main preview and gallery thumbnail, and is retained
+   in `compareview` in the URL. Missing assets are reported in their slot. Interactive viewers
+   survive ordinary filter redraws; removing a slot releases its WebGL context and observers,
+   and offscreen viewers skip drawing.
 
 The URL keeps ticked methods, order, option, mode/layer, ranges, batch filter, shortlist and
 "Show inputs", so the address bar shares the current view. "Copy link" copies the home page
@@ -191,6 +197,7 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 | `about.js` | "About" card content from `layers.json` (one block per study when texts differ) |
 | `compare.js` | "about the same" and win rules |
 | `comparison.js` | the Compare options section (radar, strengths, values table) |
+| `comparison-media.js` | independent media and viewer lifecycle for the shared Compare view selector |
 | `parallel.js` | parallel-coordinates chart (d3) |
 | `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera |
 | `plan2d.js` | 2D plan viewer (SVG layers, pan / zoom by viewBox, room hover) and `legendColor()` |
