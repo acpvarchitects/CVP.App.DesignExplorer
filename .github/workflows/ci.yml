@@ -30,7 +30,7 @@ concurrency:
 
 jobs:
   v2:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, ade-linux]
     timeout-minutes: 10
 
     steps:
