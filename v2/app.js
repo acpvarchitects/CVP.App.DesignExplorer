@@ -1129,7 +1129,7 @@ function partsFor(o, layer, mode = state.mode) {
             if (replaced) {
                 if (ANALYSIS_ONLY.has(g.col) || replaced.includes(g.col)) continue; // general view minus replaced layers
             } else if (analysisView ? GENERAL_ONLY.has(g.col) : ANALYSIS_ONLY.has(g.col)) continue;
-            const opt = o.study.optional?.get(g.col); // optional in THIS option's study only
+            const opt = o.study?.optional?.get(g.col); // optional in THIS option's study only
             if (opt && !state.layersOn.has(g.col)) continue; // switched off under Layers
             const url = file(g.col);
             if (url) own.push(opt && (opt.opacity < 1 || opt.nodeOpacity) ? { url, kind: "geometry", opacity: opt.opacity, nodeOpacity: opt.nodeOpacity } : { url, kind: "geometry" });
