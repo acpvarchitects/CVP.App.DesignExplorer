@@ -218,7 +218,7 @@ async function loadManifest(study) {
 // stay per study (study.optional), so a study that does not mark a shared column optional keeps
 // drawing it unconditionally; the schema layer only carries what the Layers checkbox needs.
 function markOptionalLayers(schema, studies) {
-    const unit = (v) => (Number.isFinite(+v) && +v > 0 ? Math.min(1, +v) : null);
+    const unit = (v) => (v !== null && v !== "" && Number.isFinite(+v) && +v >= 0 ? Math.min(1, +v) : null); // 0 = fully transparent
     for (const s of studies) {
         s.optional = new Map();
         for (const l of s.manifest?.layers || []) {
