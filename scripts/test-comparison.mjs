@@ -44,6 +44,20 @@ assert.equal(context.state.mode, 'image');
 assert.equal(context.partsFor({row: {}}, {col: 'sun', composed: true}, 'analysis'), null);
 console.log('PASS comparison analysis composition is independent of main preview mode');
 
+// Optional (toggle) layers are per study: switched off, a layer disappears only from the
+// options of the study that marks it optional; another study sharing the column keeps it.
+context.state.layersOn = new Set();
+const zones = {row: {roof: 'roof.glb'}};
+const optionalStudy = {optional: new Map([['roof', {opacity: 0.3, nodeOpacity: {roof_clash: 0.85}}]])};
+const plainStudy = {optional: new Map()};
+const urls = (o) => JSON.parse(JSON.stringify((context.partsFor(o, {composed: true}, 'model') || []).map((p) => p.url))); // vm realm -> plain arrays
+assert.deepEqual(urls({...zones, study: optionalStudy}), []);
+assert.deepEqual(urls({...zones, study: plainStudy}), ['roof.glb']);
+context.state.layersOn.add('roof');
+assert.deepEqual(JSON.parse(JSON.stringify(context.partsFor({...zones, study: optionalStudy}, {composed: true}, 'model'))),
+    [{url: 'roof.glb', kind: 'geometry', opacity: 0.3, nodeOpacity: {roof_clash: 0.85}}]);
+console.log('PASS optional layers follow their own study and carry its opacity');
+
 // Rebuilding the section detaches all WebGL canvases. A view-only change must update
 // existing slots directly, without invoking the full app/section render path.
 const changeStart = app.indexOf("const view = e.target.closest('[data-compare-view]')");

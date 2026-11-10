@@ -1,10 +1,10 @@
 // Independent media for the comparison slots. Existing canvases survive page redraws.
-import { Viewer } from './viewer.js?v=36';
+import { Viewer } from './viewer.js?v=38';
 import { PlanViewer } from './plan2d.js?v=6';
 
 export class ComparisonMedia {
-    constructor({ assetUrl, partsFor, parseCsv, esc, fmt, fadeContext }) {
-        Object.assign(this, { assetUrl, partsFor, parseCsv, esc, fmt, fadeContext });
+    constructor({ assetUrl, partsFor, parseCsv, esc, fmt, fadeContext, layersKey }) {
+        Object.assign(this, { assetUrl, partsFor, parseCsv, esc, fmt, fadeContext, layersKey });
         this.slots = new Map();
     }
 
@@ -29,7 +29,8 @@ export class ComparisonMedia {
             } else if (host !== slot.root) {
                 host.replaceWith(slot.root);
             }
-            const key = `${option.index}|${view?.key || ''}`;
+            // the optional-layer choice is part of the key: a Layers toggle recomposes the 3D slots
+            const key = `${option.index}|${view?.key || ''}|${this.layersKey?.() || ''}`;
             if (key !== slot.key) {
                 slot.key = key;
                 const pending = this.show(slot, option, view);

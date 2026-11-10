@@ -1174,6 +1174,36 @@ html.nav-collapsed .left-panel .drawer {
     border-radius: var(--radius);
 }
 
+/* Top left of a composed 3D view: optional geometry layers (layers.json "toggle": true). */
+.layer-toggles {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: var(--radius);
+    font-size: 12px;
+}
+
+.layer-toggles[hidden] {
+    display: none;
+}
+
+.layer-toggles-title {
+    font-size: 11px;
+    opacity: 0.7;
+}
+
+.layer-toggles label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
 /* Right side of a 3D analysis made of whole floors: isolate one level at a time. */
 .level-picker {
     position: absolute;

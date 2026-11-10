@@ -81,15 +81,19 @@ export class Viewer {
         if (request !== this.request) return;
 
         const objects = [];
+        const overlay = new Map(); // translucent overlays (part.opacity < 1), e.g. spacing zones
         loaded.forEach((l, i) => {
-            if (l.status === "fulfilled") objects.push(l.value);
-            else console.error("3D load failed", parts[i].url, l.reason);
+            if (l.status === "fulfilled") {
+                objects.push(l.value);
+                if (parts[i].opacity < 1 || parts[i].nodeOpacity) overlay.set(l.value, parts[i]);
+            } else console.error("3D load failed", parts[i].url, l.reason);
         });
         for (const o of this.shown) this.root.remove(o);
         this.shown = new Set(objects);
         for (const o of objects) {
             this.root.add(o);
             if (o.userData.kind === "context") setOpacity(o, fadeContext ? CONTEXT_FADE : 1);
+            else if (overlay.has(o)) setOverlayOpacity(o, overlay.get(o));
         }
         if (objects.length && !this.centred) this.centre(objects);
         if (objects.length && !this.framed) this.resetView();
@@ -460,6 +464,28 @@ function isByteColor(array) {
         if (Math.abs(v - Math.round(v)) > 1e-3) return false;
     }
     return true;
+}
+
+// A translucent overlay: the layer opacity on every mesh, then `nodeOpacity` ({glTF node name:
+// opacity}) on the meshes under those nodes. Overridden meshes get their own material (prepare()
+// shares one material per file), cloned once per loaded file.
+function setOverlayOpacity(root, { opacity = 1, nodeOpacity = null }) {
+    setOpacity(root, opacity);
+    if (!nodeOpacity) return;
+    root.traverse((node) => {
+        const value = nodeOpacity[node.name];
+        if (value == null) return;
+        node.traverse((mesh) => {
+            if (!mesh.isMesh) return;
+            if (!mesh.userData.ownMaterial) {
+                mesh.material = mesh.material.clone();
+                mesh.userData.ownMaterial = true;
+            }
+            mesh.material.transparent = value < 1;
+            mesh.material.opacity = value;
+            mesh.material.depthWrite = value >= 1;
+        });
+    });
 }
 
 function setOpacity(root, opacity) {
