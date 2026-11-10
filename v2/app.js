@@ -26,7 +26,7 @@ import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=38";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml, comparisonViews } from "./comparison.js?v=39";
-import { ComparisonMedia } from "./comparison-media.js?v=2";
+import { ComparisonMedia } from "./comparison-media.js?v=3";
 import { ParallelChart } from "./parallel.js?v=39";
 import { paretoFront } from "./pareto.js?v=1";
 import { readGeneration, generationScope, scaleVectors, kmeans, representatives, clusterCountLimit, clampClusterCount } from "./clustering.js?v=3";
@@ -214,20 +214,26 @@ async function loadManifest(study) {
 }
 
 // Geometry layers that layers.json marks "toggle": true are optional overlays: drawn in the 3D
-// views only when switched on (default: "default_visible"), with their label and "opacity".
+// views only when switched on (default: "default_visible"), with their "opacity". The settings
+// stay per study (study.optional), so a study that does not mark a shared column optional keeps
+// drawing it unconditionally; the schema layer only carries what the Layers checkbox needs.
 function markOptionalLayers(schema, studies) {
-    const entries = new Map();
-    for (const s of studies) for (const l of s.manifest?.layers || []) if (l.toggle && !entries.has(l.key)) entries.set(l.key, l);
+    const unit = (v) => (Number.isFinite(+v) && +v > 0 ? Math.min(1, +v) : null);
+    for (const s of studies) {
+        s.optional = new Map();
+        for (const l of s.manifest?.layers || []) {
+            if (!l.toggle || s.optional.has(l.key)) continue;
+            // node_opacity: {glTF node name: opacity} overrides the layer opacity for those nodes
+            // (e.g. the solid red clash patches inside the light spacing zones).
+            const nodeOpacity = Object.fromEntries(Object.entries(l.node_opacity || {}).map(([k, v]) => [k, unit(v)]).filter(([, v]) => v != null));
+            s.optional.set(l.key, { entry: l, opacity: unit(l.opacity) ?? 1, nodeOpacity: Object.keys(nodeOpacity).length ? nodeOpacity : null });
+        }
+    }
     for (const g of schema.layers) {
-        const l = entries.get(g.col);
+        const l = studies.map((s) => s.optional.get(g.col)?.entry).find(Boolean);
         if (!l) continue;
         const text = Array.isArray(l.description) ? l.description.map((d) => d.text).filter(Boolean).join(" ") : l.description || "";
-        const unit = (v) => (Number.isFinite(+v) && +v > 0 ? Math.min(1, +v) : null);
-        // node_opacity: {glTF node name: opacity} overrides the layer opacity for those nodes
-        // (e.g. the solid red clash patches inside the light spacing zones).
-        const nodeOpacity = Object.fromEntries(Object.entries(l.node_opacity || {}).map(([k, v]) => [k, unit(v)]).filter(([, v]) => v != null));
-        Object.assign(g, { toggle: true, defaultOn: !!l.default_visible, label: l.label || g.label, description: text,
-            opacity: unit(l.opacity) ?? 1, nodeOpacity: Object.keys(nodeOpacity).length ? nodeOpacity : null });
+        Object.assign(g, { toggle: true, defaultOn: !!l.default_visible, label: l.label || g.label, description: text });
     }
 }
 
@@ -1123,9 +1129,10 @@ function partsFor(o, layer, mode = state.mode) {
             if (replaced) {
                 if (ANALYSIS_ONLY.has(g.col) || replaced.includes(g.col)) continue; // general view minus replaced layers
             } else if (analysisView ? GENERAL_ONLY.has(g.col) : ANALYSIS_ONLY.has(g.col)) continue;
-            if (g.toggle && !state.layersOn.has(g.col)) continue; // optional layer, switched off under Layers
+            const opt = o.study.optional?.get(g.col); // optional in THIS option's study only
+            if (opt && !state.layersOn.has(g.col)) continue; // switched off under Layers
             const url = file(g.col);
-            if (url) own.push(g.opacity < 1 || g.nodeOpacity ? { url, kind: "geometry", opacity: g.opacity, nodeOpacity: g.nodeOpacity } : { url, kind: "geometry" });
+            if (url) own.push(opt && (opt.opacity < 1 || opt.nodeOpacity) ? { url, kind: "geometry", opacity: opt.opacity, nodeOpacity: opt.nodeOpacity } : { url, kind: "geometry" });
         }
         if (analysisView) {
             const url = file(layer.col);
@@ -1231,6 +1238,7 @@ function renderComparison() {
     if (box.hidden) comparisonMedia?.clear();
     else {
         comparisonMedia ||= new ComparisonMedia({ assetUrl, partsFor, parseCsv: csvParse, esc, fmt,
+            layersKey: () => [...state.layersOn].sort().join(","),
             fadeContext: v => v.mode === 'analysis' && !OVER_GENERAL[v.layer.col] });
         comparisonMedia.mount(box, chosen, selected);
     }
