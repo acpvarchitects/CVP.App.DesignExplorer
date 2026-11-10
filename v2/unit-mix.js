@@ -15,30 +15,42 @@
 const nf = (v) => Math.round(v).toLocaleString("en-GB");
 const f1 = (v) => (Number.isFinite(v) ? v.toLocaleString("en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : "–");
 const pct = (a, b) => (b ? f1((100 * a) / b) + "%" : "–");
-const signed = (v) => (v > 0 ? "+" : v < 0 ? "−" : "±") + nf(Math.abs(v));
-const gapClass = (v) => (v === 0 ? "mix-eq" : "mix-off");
+// Gaps are rounded before the sign and the colour: a float area gap of 0.3 m² reads "±0", on target.
+const signed = (v) => {
+    const r = Math.round(v);
+    return (r > 0 ? "+" : r < 0 ? "−" : "±") + nf(Math.abs(r));
+};
+const gapClass = (v) => (Math.round(v) === 0 ? "mix-eq" : "mix-off");
+const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0); // JSON numbers never reach the HTML as text
+const GREY = [150, 150, 150];
 
-// The study's mix settings; without them, the types found in the data in size order, grey.
+// The study's mix settings. Types of the data the settings do not list (or every type, without
+// settings) are appended in size order, grey, so no apartment is ever left out of the totals.
 export function mixConfig(entry, doc) {
     const cfg = entry?.mix || {};
-    let types = (cfg.types || []).map((t) => ({ ...t, key: String(t.key) }));
-    if (!types.length) {
-        const keys = [...new Set((doc?.towers || []).flatMap((t) => t.plate || []))].sort((a, b) => Number(a) - Number(b));
-        types = keys.map((key) => ({ key, label: `${key} m²`, area_m2: Number(key) || 0, rgb: [150, 150, 150] }));
-    }
+    const types = (cfg.types || []).map((t) => ({ ...t, key: String(t.key), area_m2: num(t.area_m2), parking: num(t.parking) }));
+    const known = new Set(types.map((t) => t.key));
+    const extra = [...new Set((doc?.towers || []).flatMap((t) => (t.plate || []).map(String)))]
+        .filter((k) => !known.has(k))
+        .sort((a, b) => num(a) - num(b));
+    for (const key of extra) types.push({ key, label: `${key} m²`, area_m2: num(key), rgb: GREY, parking: 0 });
     const target = cfg.target || null;
     return {
         types,
         target,
-        targetUnits: target ? types.reduce((s, t) => s + (target[t.key] || 0), 0) : null,
-        targetArea: target ? types.reduce((s, t) => s + (target[t.key] || 0) * (t.area_m2 || 0), 0) : null,
+        targetUnits: target ? types.reduce((s, t) => s + num(target[t.key]), 0) : null,
+        targetArea: target ? types.reduce((s, t) => s + num(target[t.key]) * t.area_m2, 0) : null,
         client: cfg.client || null,
-        clientParking: cfg.parking_client_per_unit ?? null,
+        clientParking: cfg.parking_client_per_unit != null ? num(cfg.parking_client_per_unit) : null,
         zones: cfg.zones || [],
     };
 }
 
-const colour = (t) => (t.rgb ? `rgb(${t.rgb.join(" ")})` : "var(--muted)");
+// Only three numbers reach the style attribute.
+const colour = (t) => {
+    const rgb = Array.isArray(t.rgb) && t.rgb.length === 3 ? t.rgb.map(num) : null;
+    return rgb ? `rgb(${rgb.join(" ")})` : "var(--muted)";
+};
 
 // One row per tower and size present on its typical floor.
 function rowsOf(doc, cfg) {
@@ -47,7 +59,7 @@ function rowsOf(doc, cfg) {
         for (const type of cfg.types) {
             const per = (tower.plate || []).filter((u) => String(u) === type.key).length;
             if (!per) continue;
-            const units = per * tower.floors;
+            const units = per * num(tower.floors);
             out.push({ tower, type, per, units, area: units * (type.area_m2 || 0), park: units * (type.parking || 0) });
         }
     }
@@ -73,15 +85,15 @@ function tiles(doc, cfg, rows, esc) {
         "Apartments",
         nf(U),
         cfg.targetUnits != null
-            ? `target ${nf(cfg.targetUnits)}${client?.units ? ` (client ${nf(client.units)})` : ""} · <span class="${gapClass(U - cfg.targetUnits)}">${signed(U - cfg.targetUnits)}</span>`
+            ? `target ${nf(cfg.targetUnits)}${client?.units != null ? ` (client ${nf(num(client.units))})` : ""} · <span class="${gapClass(U - cfg.targetUnits)}">${signed(U - cfg.targetUnits)}</span>`
             : ""
     );
-    const areaRef = client?.area_m2 ?? cfg.targetArea;
-    h += tile("Apartment area", `${nf(A)} m²`, areaRef ? `${client?.area_m2 ? "client ≈ " : "target "}${nf(areaRef)} · ${signed(A - areaRef)}` : "");
+    const areaRef = client?.area_m2 != null ? num(client.area_m2) : cfg.targetArea;
+    h += tile("Apartment area", `${nf(A)} m²`, areaRef != null ? `${client?.area_m2 != null ? "client ≈ " : "target "}${nf(areaRef)} · <span class="${gapClass(A - areaRef)}">${signed(A - areaRef)}</span>` : "");
     for (const t of cfg.types) {
         const u = sum(rows.filter((r) => r.type === t), "units");
-        const goal = cfg.target?.[t.key];
-        const meter = goal ? `<div class="mix-meter"><i style="width:${Math.min(100, (100 * u) / goal)}%;background:${colour(t)}"></i></div>` : "";
+        const goal = cfg.target ? num(cfg.target[t.key]) : null;
+        const meter = goal > 0 ? `<div class="mix-meter"><i style="width:${Math.min(100, (100 * u) / goal)}%;background:${colour(t)}"></i></div>` : "";
         h += tile(`${swatch(t)}${esc(t.label)}`, nf(u), `${pct(u, U)}${goal != null ? ` · target ${nf(goal)} · <span class="${gapClass(u - goal)}">${signed(u - goal)}</span>` : ""}`, meter);
     }
     if (cfg.types.some((t) => t.parking)) {
@@ -90,27 +102,30 @@ function tiles(doc, cfg, rows, esc) {
     return `<div class="mix-tiles">${h}</div>`;
 }
 
+// The key carries a tower id or zone key from the JSON: escaped like every other value.
+const attr = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
 function group(key, cls, label, cells, closed) {
     const open = !closed.has(key);
-    return `<tr class="${cls}" tabindex="0" data-mix-key="${key}" aria-expanded="${open}"><td class="mix-txt"><span class="mix-caret">${open ? "▾" : "▸"}</span>${label}</td>${cells}</tr>`;
+    return `<tr class="${cls}" tabindex="0" data-mix-key="${attr(key)}" aria-expanded="${open}"><td class="mix-txt"><span class="mix-caret">${open ? "▾" : "▸"}</span>${label}</td>${cells}</tr>`;
 }
 
 function towerBlock(tower, rows, U, cfg, closed, esc) {
     const sub = rows.filter((r) => r.tower === tower);
     const su = sum(sub, "units");
     const key = "t:" + tower.id;
-    const label = `${esc(tower.id)}${hotelPill(tower)}${chips(tower.plate, cfg, esc)}${tower.length_m ? `<span class="mix-meta">${f1(tower.length_m)} m</span>` : ""}`;
+    const label = `${esc(tower.id)}${hotelPill(tower)}${chips(tower.plate, cfg, esc)}${num(tower.length_m) ? `<span class="mix-meta">${f1(num(tower.length_m))} m</span>` : ""}`;
     let h = group(
         key,
         "mix-group",
         label,
-        `<td>${sum(sub, "per")}</td><td>${tower.floors}<span class="mix-dim">+${tower.base}</span></td><td>${f1(tower.height_m)}</td>` +
+        `<td>${sum(sub, "per")}</td><td>${num(tower.floors)}<span class="mix-dim">+${num(tower.base)}</span></td><td>${f1(num(tower.height_m))}</td>` +
             `<td>${nf(su)}</td><td>${nf(sum(sub, "area"))}</td><td>${pct(su, U)}</td><td>${nf(sum(sub, "park"))}</td>`,
         closed
     );
     if (!closed.has(key)) {
         for (const r of sub) {
-            h += `<tr class="mix-child"><td class="mix-txt">${swatch(r.type)} ${esc(r.type.label)}</td><td>${r.per}</td><td>${tower.floors}</td><td></td>` +
+            h += `<tr class="mix-child"><td class="mix-txt">${swatch(r.type)} ${esc(r.type.label)}</td><td>${r.per}</td><td>${num(tower.floors)}</td><td></td>` +
                 `<td>${nf(r.units)}</td><td>${nf(r.area)}</td><td>${pct(r.units, U)}</td><td>${nf(r.park)}</td></tr>`;
         }
     }
@@ -159,7 +174,7 @@ function matrix(doc, cfg, rows, ui, esc) {
                 const v = val(t, type);
                 return `<td class="mix-cell" style="--c:${colour(type)};--o:${v ? (0.12 + (0.38 * v) / max).toFixed(2) : 0}">${v ? nf(v) : '<span class="mix-zero">·</span>'}</td>`;
             }).join("") +
-            `<td>${nf(total)}</td><td>${t.floors}<span class="mix-dim">+${t.base}</span></td><td class="mix-txt">${chips(t.plate, cfg, esc)}</td></tr>`;
+            `<td>${nf(total)}</td><td>${num(t.floors)}<span class="mix-dim">+${num(t.base)}</span></td><td class="mix-txt">${chips(t.plate, cfg, esc)}</td></tr>`;
     }
     const col = (type) => sum(rows.filter((r) => r.type === type), m);
     const all = sum(rows, m);

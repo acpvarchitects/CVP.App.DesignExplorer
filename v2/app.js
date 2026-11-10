@@ -26,8 +26,8 @@ import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=38";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml, comparisonViews } from "./comparison.js?v=39";
-import { ComparisonMedia } from "./comparison-media.js?v=4";
-import { mixConfig, mixGroupKeys, mixHtml } from "./unit-mix.js?v=1";
+import { ComparisonMedia } from "./comparison-media.js?v=5";
+import { mixConfig, mixGroupKeys, mixHtml } from "./unit-mix.js?v=2";
 import { ParallelChart } from "./parallel.js?v=39";
 import { paretoFront } from "./pareto.js?v=1";
 import { readGeneration, generationScope, scaleVectors, kmeans, representatives, clusterCountLimit, clampClusterCount } from "./clustering.js?v=3";
@@ -1148,9 +1148,13 @@ function onMixEvent(e) {
     } else return;
     if (e.type === "keydown") e.preventDefault();
     if (button && !("mixFold" in button.dataset)) mixUi.closed.clear(); // new view or grouping: all open
+    // The view is re-rendered: give focus back to the same control or row (keyboard users).
+    const mark = button ? [...button.attributes].find((a) => a.name.startsWith("data-mix-")) : null;
     const focus = row?.dataset.mixKey;
     renderMix();
-    if (focus) [...$("previewTable").querySelectorAll("tr[data-mix-key]")].find((r) => r.dataset.mixKey === focus)?.focus();
+    const box = $("previewTable");
+    if (mark) box.querySelector(`[${mark.name}="${CSS.escape(mark.value)}"]`)?.focus();
+    else if (focus) [...box.querySelectorAll("tr[data-mix-key]")].find((r) => r.dataset.mixKey === focus)?.focus();
 }
 
 // Table view: a small CSV per option (first row = header). Numeric cells are formatted like

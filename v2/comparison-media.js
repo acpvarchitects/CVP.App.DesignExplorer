@@ -1,7 +1,8 @@
 // Independent media for the comparison slots. Existing canvases survive page redraws.
 import { Viewer } from './viewer.js?v=38';
 import { PlanViewer } from './plan2d.js?v=6';
-import { mixCompareHtml, mixConfig } from './unit-mix.js?v=1';
+import { mixCompareHtml, mixConfig } from './unit-mix.js?v=2';
+import { entryForView } from './about.js?v=2';
 
 export class ComparisonMedia {
     constructor({ assetUrl, partsFor, parseCsv, esc, fmt, fadeContext, layersKey }) {
@@ -74,7 +75,7 @@ export class ComparisonMedia {
             if (!response.ok) throw Error('Unit mix unavailable');
             const doc = await response.json();
             if (version !== slot.version) return;
-            const entry = option.study?.manifest?.tables?.find(e => e.key === layer.col);
+            const entry = option.study ? entryForView(option.study, layer.col) : null; // same lookup as the preview
             slot['data-table'].innerHTML = mixCompareHtml(doc, mixConfig(entry, doc), this.esc);
             slot.status.textContent = '';
             return;

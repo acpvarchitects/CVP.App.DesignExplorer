@@ -41,3 +41,20 @@ assert.ok(c.includes('4,400'));
 assert.deepEqual(mixConfig(null, doc).types.map(t => t.key), ['180', '220', '240', '300']);
 assert.ok(mixHtml(doc, mixConfig(null, doc), { view: 'tower', zones: false, measure: 'units', closed: new Set() }, esc).includes('Option total'));
 console.log('PASS unit mix views: zones order, folding, matrix in m², missing settings');
+
+// A type the settings do not list is still counted (grey, appended), never dropped.
+const odd = { towers: [{ ...doc.towers[0], plate: ['220', '200'] }] };
+const oddCfg = mixConfig(entry, odd);
+assert.deepEqual(oddCfg.types.map(t => t.key), ['180', '220', '240', '300', '200']);
+assert.ok(mixCompareHtml(odd, oddCfg, esc).includes('<td>20</td>'), 'total 2 x 10 floors includes the unlisted type');
+// Values from the JSON never reach the HTML unescaped: ids in data attributes, numbers, colours.
+const evil = { towers: [{ id: 'A" onfocus="x', floors: '<b>', base: 1, height_m: 3, plate: ['180'], zone: '"><i>', cores: 1 }] };
+const evilCfg = mixConfig({ mix: { types: [{ key: '180', label: '180', area_m2: 180, rgb: ['1);x:"', 0, 0] }] } }, evil);
+for (const view of ['tower', 'matrix']) {
+    const html = mixHtml(evil, evilCfg, { view, zones: true, measure: 'units', closed: new Set() }, esc);
+    assert.ok(!html.includes('" onfocus="') && !html.includes('<b>') && !html.includes('"><i>') && !html.includes('x:"'), view + ' escapes JSON values');
+}
+// Gaps round before sign and colour: a 0.4 m² area gap is on target.
+const near = mixHtml(doc, mixConfig({ mix: { ...entry.mix, client: { area_m2: cfg.targetArea + 0.4 } } }, doc), ui, esc);
+assert.ok(near.includes('<span class="mix-eq">±0</span>'));
+console.log('PASS unit mix: unlisted types counted, values escaped, gaps rounded');
