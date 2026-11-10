@@ -65,6 +65,9 @@ jobs:
       - name: Comparison views and independent composition
         run: node scripts/test-comparison.mjs
 
+      - name: Unit mix views and totals
+        run: node scripts/test-unit-mix.mjs
+
       - name: Setup Python for generation descriptor tests
         uses: actions/setup-python@v5
         with:

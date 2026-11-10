@@ -44,6 +44,7 @@ from Docker (local test data).
 | `analysis:<name>` | 3D analysis mesh with vertex colors (`.glb`), or a 2D plan analysis (`.svg`, see below) |
 | `target:<result>` | optional target of the `out:` column with that name (arrow optional), e.g. `target:SUL (75% GFA) [m²]`; drawn as a red dot with its value on that result's axis in the parallel chart and on its bar in "Where this option stands", plus "% of target" |
 | `table_<name>` | small table per option (`.csv`, first row = header) shown in the **Table** view; numbers are formatted, a first cell `Total` marks the totals row |
+| `mix_<name>` | unit mix per option (`.json`, see "Unit mix" below), shown as **Table · Unit mix** and in Compare options |
 
 Labels are the column names as written (arrow removed). File names are relative to the
 option's own study folder. Several studies are merged by column name.
@@ -73,6 +74,28 @@ Views (`GENERAL_ONLY`, `ANALYSIS_ONLY`, `OVER_GENERAL` in `app.js`):
   ticks it on load), with `"opacity"` (0-1) for a translucent overlay. The choice is kept while
   stepping through options and views, the comparison uses it when it next draws, and it is in the link
   (`layers=<col>,<col>`, `layers=none`; omitted when equal to the defaults).
+
+### Unit mix (`mix_<name>`, `unit-mix.js`)
+
+The cell holds one JSON per option: `{version: 1, towers: [{id, floors, base, height_m, plate,
+length_m, cores, hotel, zone}]}`. `plate` lists the unit types of one typical residential floor in
+plan order; it repeats `floors` times and the `base` floors carry no apartments. The view has
+tiles (apartments, area, one per size with a meter against the target, parking) and two tables:
+**By tower** (tower rows with plate chips, slab length, floors + base, height, apartments, m², %,
+parking, then one row per size; optional **Zones › towers** level; rows fold and unfold) and
+**Tower × size** (matrix tinted by value, totals, target and gap, apartments or m²). Compare options
+shows each option's totals per size against the target. Settings come from the column's
+`layers.json` `tables[]` entry, under `mix`:
+
+| Field | Use |
+|---|---|
+| `types[]` | `{key, label, area_m2, rgb, parking}`: column order, chip colour, m² per apartment, parking spaces per apartment |
+| `target` | `{<type key>: count}`: target mix (tiles, target and gap rows) |
+| `client` | `{units, area_m2, note}`: the client's own figures, shown next to the target |
+| `parking_client_per_unit` | client's parking assumption, shown on the parking tile |
+| `zones[]` | `{key, label}`: zone order and names; each tower's `zone` picks one |
+
+Without `mix` the types come from the data in size order, grey, with no target.
 
 ### `layers.json` (optional): descriptions and scores
 
