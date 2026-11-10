@@ -67,6 +67,12 @@ Views (`GENERAL_ONLY`, `ANALYSIS_ONLY`, `OVER_GENERAL` in `app.js`):
 - Analyses listed in `OVER_GENERAL` start from the general view and hide only the layers they
   replace (pool / deck sun hours replace `pools` + `decks`).
 - The analysis material has a depth offset, so it draws in front of layers sharing its surfaces.
+- **Optional layers:** a geometry layer whose `layers.json` entry has `"toggle": true` (e.g.
+  `spacing_zones`, the minimum spacing zones between buildings) gets a checkbox under **Layers**,
+  top left of both composed 3D views. It is drawn only while ticked (`"default_visible": true`
+  ticks it on load), with `"opacity"` (0-1) for a translucent overlay. The choice is kept while
+  stepping through options and views, the comparison uses it when it next draws, and it is in the link
+  (`layers=<col>,<col>`, `layers=none`; omitted when equal to the defaults).
 
 ### `layers.json` (optional): descriptions and scores
 
@@ -80,6 +86,7 @@ no score). Fields used:
 | `.label` | title of the "About" card |
 | `.score_label` | name of the score shown on the 3D analysis, e.g. `Average`, `Floor Efficiency` (default `Score`) |
 | `.description` | `[{heading, text}]`; lines starting with `- ` are bullets |
+| `.toggle` / `.default_visible` / `.opacity` | geometry layers only: optional overlay with its own checkbox, initial state, transparency (see Views above) |
 | `about` | `[{heading, text}]` common to all analyses, folded at the bottom of every card |
 
 Same text in every open study: shown once. Different texts (e.g. one batch computed with noise

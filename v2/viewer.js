@@ -81,15 +81,19 @@ export class Viewer {
         if (request !== this.request) return;
 
         const objects = [];
+        const opacity = new Map(); // translucent overlays (part.opacity < 1), e.g. spacing zones
         loaded.forEach((l, i) => {
-            if (l.status === "fulfilled") objects.push(l.value);
-            else console.error("3D load failed", parts[i].url, l.reason);
+            if (l.status === "fulfilled") {
+                objects.push(l.value);
+                if (parts[i].opacity < 1) opacity.set(l.value, parts[i].opacity);
+            } else console.error("3D load failed", parts[i].url, l.reason);
         });
         for (const o of this.shown) this.root.remove(o);
         this.shown = new Set(objects);
         for (const o of objects) {
             this.root.add(o);
             if (o.userData.kind === "context") setOpacity(o, fadeContext ? CONTEXT_FADE : 1);
+            else if (opacity.has(o)) setOpacity(o, opacity.get(o));
         }
         if (objects.length && !this.centred) this.centre(objects);
         if (objects.length && !this.framed) this.resetView();

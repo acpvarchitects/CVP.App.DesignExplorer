@@ -23,7 +23,7 @@
 // Page sections, top to bottom: method tabs + chart, measurement filters,
 // preview (only after clicking an option), gallery, Compare methods, Compare options.
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
-import { Viewer } from "./viewer.js?v=36";
+import { Viewer } from "./viewer.js?v=37";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml, comparisonViews } from "./comparison.js?v=39";
 import { ComparisonMedia } from "./comparison-media.js?v=2";
@@ -68,6 +68,7 @@ const state = {
     clusterMetric: "",
     clusterDirection: 1,
     hidden: new Set(), // columns hidden everywhere (chart, filters, Pareto, standings, comparison)
+    layersOn: new Set(), // optional geometry layers (layers.json "toggle": true) switched on in the 3D views
     showInputs: false, // input axes on the chart
     order: "", // result column that orders the gallery
     sel: null, // option index shown in the preview; null = preview closed
@@ -209,6 +210,20 @@ async function loadManifest(study) {
         study.manifest = response.ok ? await response.json() : null;
     } catch (e) {
         study.manifest = null;
+    }
+}
+
+// Geometry layers that layers.json marks "toggle": true are optional overlays: drawn in the 3D
+// views only when switched on (default: "default_visible"), with their label and "opacity".
+function markOptionalLayers(schema, studies) {
+    const entries = new Map();
+    for (const s of studies) for (const l of s.manifest?.layers || []) if (l.toggle && !entries.has(l.key)) entries.set(l.key, l);
+    for (const g of schema.layers) {
+        const l = entries.get(g.col);
+        if (!l) continue;
+        const text = Array.isArray(l.description) ? l.description.map((d) => d.text).filter(Boolean).join(" ") : l.description || "";
+        Object.assign(g, { toggle: true, defaultOn: !!l.default_visible, label: l.label || g.label, description: text,
+            opacity: Number.isFinite(+l.opacity) && +l.opacity > 0 ? Math.min(1, +l.opacity) : 1 });
     }
 }
 
@@ -967,7 +982,7 @@ function closeCluster() {
 }
 
 function showMedia(o) {
-    const key = `${o.index}|${state.mode}|${state.layer[state.mode]}`;
+    const key = `${o.index}|${state.mode}|${state.layer[state.mode]}|${[...state.layersOn].sort().join(",")}`;
     if (key === mediaKey) return; // unrelated redraw: keep the loaded image / 3D model
     mediaKey = key;
     const layer = layersOf()[state.layer[state.mode]];
@@ -976,6 +991,7 @@ function showMedia(o) {
     const cell2d = state.mode === "analysis" && layer?.col ? (o.row[layer.col] || "").trim() : "";
     const is2d = /\.svg$/i.test(cell2d);
     const is3d = !is2d && (state.mode === "model" || state.mode === "analysis");
+    renderLayerToggles(is3d && !!layer?.composed);
     $("preview2d").hidden = !is2d;
     const parts = is3d && layer ? partsFor(o, layer) : null;
     const src = is3d ? parts : layer ? assetUrl(o, (o.row[layer.col] || "").trim()) : null;
@@ -1022,6 +1038,21 @@ function showMedia(o) {
     if (!viewer) viewer = new Viewer($("preview3d"), (text) => ($("mediaStatus").textContent = text), { onLevels: renderLevels });
     if (parts) viewer.compose(parts, { fadeContext: state.mode === "analysis" && !OVER_GENERAL[layer.col] });
     else viewer.clear();
+}
+
+// Top left of a composed 3D view: one checkbox per optional geometry layer (layers.json
+// "toggle": true, e.g. the minimum spacing zones). The choice is kept while stepping through
+// options and views, and in the link.
+function renderLayerToggles(composed) {
+    const box = $("layerToggles");
+    const optional = data.schema.layers.filter((g) => g.toggle);
+    box.hidden = !composed || !optional.length;
+    if (box.hidden) return;
+    box.innerHTML =
+        `<span class="layer-toggles-title">Layers</span>` +
+        optional
+            .map((g) => `<label title="${esc(g.description || g.label)}"><input type="checkbox" data-layer-toggle="${esc(g.col)}"${state.layersOn.has(g.col) ? " checked" : ""} /> ${esc(g.label)}</label>`)
+            .join("");
 }
 
 // Right side of a 3D analysis made of whole floors (the unit mix): one button per level, top
@@ -1088,8 +1119,9 @@ function partsFor(o, layer, mode = state.mode) {
             if (replaced) {
                 if (ANALYSIS_ONLY.has(g.col) || replaced.includes(g.col)) continue; // general view minus replaced layers
             } else if (analysisView ? GENERAL_ONLY.has(g.col) : ANALYSIS_ONLY.has(g.col)) continue;
+            if (g.toggle && !state.layersOn.has(g.col)) continue; // optional layer, switched off under Layers
             const url = file(g.col);
-            if (url) own.push({ url, kind: "geometry" });
+            if (url) own.push(g.opacity < 1 ? { url, kind: "geometry", opacity: g.opacity } : { url, kind: "geometry" });
         }
         if (analysisView) {
             const url = file(layer.col);
@@ -1317,6 +1349,9 @@ function saveUrl() {
     set("compare", state.shortlist.map((i) => i + 1).join(","));
     set("compareview", state.shortlist.length >= 2 ? state.compareView : '');
     set("inputs", state.showInputs ? "1" : "");
+    // optional 3D layers, only when the choice differs from the layers.json defaults
+    const on = [...state.layersOn].sort().join(",");
+    set("layers", on === defaultLayersOn().sort().join(",") ? "" : on || "none");
     set("batch", batchNames(","));
     // hidden columns by position among inputs + results (1-based)
     const cols = [...data.schema.inputs, ...data.schema.allOutputs].map((m) => m.col);
@@ -1335,6 +1370,8 @@ function saveUrl() {
     ["variant", "sort", "prototype"].forEach((k) => p.delete(k)); // from earlier versions
     history.replaceState(null, "", "?" + p.toString());
 }
+
+const defaultLayersOn = () => data.schema.layers.filter((g) => g.toggle && g.defaultOn).map((g) => g.col);
 
 function loadUrlState() {
     const picked = (params.get("methods") || params.get("method") || "").split(",").filter((n) => data.studies.some((s) => s.name === n));
@@ -1359,6 +1396,8 @@ function loadUrlState() {
         .slice(0, MAX_SHORTLIST);
     state.compareView = params.get('compareview') || '';
     state.showInputs = params.get("inputs") === "1";
+    const on = params.get("layers");
+    state.layersOn = new Set(on == null ? defaultLayersOn() : on.split(",").filter((c) => data.schema.layers.some((g) => g.toggle && g.col === c)));
     const batches = (params.get("batch") || "").split(",").filter((n) => data.studies.some((s) => s.name === n) && inMethod({ study: { name: n } }));
     state.batches = new Set(data.studies.length > 1 ? batches : []);
     const pg = (params.get("pgoals") || "").split(",").map((n) => goals()[parseInt(n, 10) - 1]).filter(Boolean);
@@ -1643,6 +1682,13 @@ function bindEvents() {
         if (o) openAbout(described([o.study], () => viewEntry(o)));
     });
     $("aboutClose").addEventListener("click", closeAbout);
+    $("layerToggles").addEventListener("change", (e) => {
+        const col = e.target.dataset.layerToggle;
+        if (!col) return;
+        if (e.target.checked) state.layersOn.add(col);
+        else state.layersOn.delete(col);
+        render();
+    });
     $("levelPicker").addEventListener("click", (e) => {
         const b = e.target.closest("[data-level]");
         if (b && viewer) viewer.setLevel(b.dataset.level === "" ? null : +b.dataset.level);
@@ -1709,6 +1755,7 @@ async function init() {
         return;
     }
     schema.allOutputs = schema.outputs;
+    markOptionalLayers(schema, studies);
     data = { studies, schema, options, stats: computeStats(options, schema.outputs) };
     state.mode = (MODES.find((m) => layersOf(m.key).length) || MODES[0]).key;
     loadUrlState();
