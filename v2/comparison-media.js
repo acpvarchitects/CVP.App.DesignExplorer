@@ -1,5 +1,5 @@
 // Independent media for the comparison slots. Existing canvases survive page redraws.
-import { Viewer } from './viewer.js?v=37';
+import { Viewer } from './viewer.js?v=38';
 import { PlanViewer } from './plan2d.js?v=6';
 
 export class ComparisonMedia {

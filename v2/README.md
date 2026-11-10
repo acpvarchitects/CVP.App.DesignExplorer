@@ -87,6 +87,7 @@ no score). Fields used:
 | `.score_label` | name of the score shown on the 3D analysis, e.g. `Average`, `Floor Efficiency` (default `Score`) |
 | `.description` | `[{heading, text}]`; lines starting with `- ` are bullets |
 | `.toggle` / `.default_visible` / `.opacity` | geometry layers only: optional overlay with its own checkbox, initial state, transparency (see Views above) |
+| `.node_opacity` | `{glTF node name: opacity}`: overrides `.opacity` for those nodes of the layer, e.g. `{"spacing_zones_clash": 0.85}` keeps clash patches strong inside light zones |
 | `about` | `[{heading, text}]` common to all analyses, folded at the bottom of every card |
 
 Same text in every open study: shown once. Different texts (e.g. one batch computed with noise

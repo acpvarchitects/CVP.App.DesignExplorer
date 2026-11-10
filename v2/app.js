@@ -23,7 +23,7 @@
 // Page sections, top to bottom: method tabs + chart, measurement filters,
 // preview (only after clicking an option), gallery, Compare methods, Compare options.
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
-import { Viewer } from "./viewer.js?v=37";
+import { Viewer } from "./viewer.js?v=38";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml, comparisonViews } from "./comparison.js?v=39";
 import { ComparisonMedia } from "./comparison-media.js?v=2";
@@ -222,8 +222,12 @@ function markOptionalLayers(schema, studies) {
         const l = entries.get(g.col);
         if (!l) continue;
         const text = Array.isArray(l.description) ? l.description.map((d) => d.text).filter(Boolean).join(" ") : l.description || "";
+        const unit = (v) => (Number.isFinite(+v) && +v > 0 ? Math.min(1, +v) : null);
+        // node_opacity: {glTF node name: opacity} overrides the layer opacity for those nodes
+        // (e.g. the solid red clash patches inside the light spacing zones).
+        const nodeOpacity = Object.fromEntries(Object.entries(l.node_opacity || {}).map(([k, v]) => [k, unit(v)]).filter(([, v]) => v != null));
         Object.assign(g, { toggle: true, defaultOn: !!l.default_visible, label: l.label || g.label, description: text,
-            opacity: Number.isFinite(+l.opacity) && +l.opacity > 0 ? Math.min(1, +l.opacity) : 1 });
+            opacity: unit(l.opacity) ?? 1, nodeOpacity: Object.keys(nodeOpacity).length ? nodeOpacity : null });
     }
 }
 
@@ -1121,7 +1125,7 @@ function partsFor(o, layer, mode = state.mode) {
             } else if (analysisView ? GENERAL_ONLY.has(g.col) : ANALYSIS_ONLY.has(g.col)) continue;
             if (g.toggle && !state.layersOn.has(g.col)) continue; // optional layer, switched off under Layers
             const url = file(g.col);
-            if (url) own.push(g.opacity < 1 ? { url, kind: "geometry", opacity: g.opacity } : { url, kind: "geometry" });
+            if (url) own.push(g.opacity < 1 || g.nodeOpacity ? { url, kind: "geometry", opacity: g.opacity, nodeOpacity: g.nodeOpacity } : { url, kind: "geometry" });
         }
         if (analysisView) {
             const url = file(layer.col);
