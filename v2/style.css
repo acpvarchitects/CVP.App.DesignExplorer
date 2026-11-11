@@ -2665,3 +2665,45 @@ code {
     border-color: var(--accent);
     color: #fff;
 }
+
+/* ---- Unit mix view (unit-mix.js): tiles, A "By tower", C "Tower × size", Compare totals ---- */
+.mix { max-width: 1100px; margin: 0 auto; padding-top: 36px; font-size: 13px; } /* clear of the About button */
+.mix-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.mix-tile { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; }
+.mix-k { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.mix-v { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; margin: 2px 0; }
+.mix-d { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mix-meter { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin: 4px 0; }
+.mix-meter i { display: block; height: 100%; }
+.mix-eq { color: var(--good); font-weight: 600; }
+.mix-off { color: var(--warn); font-weight: 600; }
+.mix-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+.mix-seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--radius-button); overflow: hidden; }
+.mix-seg button, .mix-fold { font: inherit; font-size: 12px; border: 0; background: var(--card); color: var(--text); padding: 4px 12px; cursor: pointer; }
+.mix-seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.mix-fold { border: 1px solid var(--line-strong); border-radius: var(--radius-button); }
+.mix-table { width: 100%; border-collapse: collapse; background: var(--card); font-variant-numeric: tabular-nums; }
+.mix-table th, .mix-table td { padding: 5px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.mix-table th { font-size: 11px; color: var(--muted); font-weight: 600; position: sticky; top: -24px; background: var(--card); z-index: 1; }
+.mix-table .mix-txt { text-align: left; }
+.mix-table tr[data-mix-key] { cursor: pointer; }
+.mix-table tr[data-mix-key]:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.mix-zone td { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.mix-zone .mix-dim { color: inherit; opacity: .75; }
+.mix-group td { background: var(--soft); font-weight: 600; }
+.mix-child td:first-child { padding-left: 32px; }
+.mix-total td { font-weight: 700; border-top: 2px solid var(--text); }
+.mix-target td { color: var(--muted); }
+.mix-caret { display: inline-block; width: 14px; color: var(--muted); }
+.mix-zone .mix-caret { color: inherit; }
+.mix-dim { color: var(--muted); font-weight: 400; }
+.mix-meta { margin-left: 8px; color: var(--muted); font-weight: 400; font-size: 11px; }
+.mix-pill { margin-left: 6px; font-size: 10px; font-weight: 600; padding: 0 6px; border-radius: var(--radius-button); border: 1px solid var(--accent); color: var(--accent); }
+.mix-plate { display: inline-flex; gap: 2px; margin-left: 8px; vertical-align: middle; }
+.mix-plate span { font-size: 10px; font-weight: 600; color: #fff; padding: 1px 4px; border-radius: 3px; }
+.mix-sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; }
+.mix-cell { background: color-mix(in srgb, var(--c) calc(var(--o) * 100%), transparent); }
+.mix-zero { color: var(--faint); }
+.mix-note, .mix-empty { color: var(--muted); font-size: 12px; margin-top: 8px; }
+.mix-compare { font-size: 11px; }
+.mix-compare th { top: -6px; }

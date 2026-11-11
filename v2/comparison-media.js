@@ -1,6 +1,8 @@
 // Independent media for the comparison slots. Existing canvases survive page redraws.
 import { Viewer } from './viewer.js?v=38';
 import { PlanViewer } from './plan2d.js?v=6';
+import { mixCompareHtml, mixConfig } from './unit-mix.js?v=3';
+import { entryForView } from './about.js?v=2';
 
 export class ComparisonMedia {
     constructor({ assetUrl, partsFor, parseCsv, esc, fmt, fadeContext, layersKey }) {
@@ -60,6 +62,22 @@ export class ComparisonMedia {
             slot.image.onerror = () => { if (version === slot.version) slot.status.textContent = 'The image did not load.'; };
             slot.image.src = url;
             slot.image.hidden = false;
+            return;
+        }
+        if (mode === 'table' && layer.kind === 'mix') {
+            // Unit mix: the option's totals per size against its study's target (unit-mix.js).
+            if (!url) { slot.status.textContent = 'No unit mix for this option.'; return; }
+            slot['data-table'].hidden = false;
+            slot['data-table'].replaceChildren();
+            slot.status.textContent = 'Loading unit mix…';
+            slot.abort = new AbortController();
+            const response = await fetch(url, { signal: slot.abort.signal });
+            if (!response.ok) throw Error('Unit mix unavailable');
+            const doc = await response.json();
+            if (version !== slot.version) return;
+            const entry = option.study ? entryForView(option.study, layer.col) : null; // same lookup as the preview
+            slot['data-table'].innerHTML = mixCompareHtml(doc, mixConfig(entry, doc), this.esc);
+            slot.status.textContent = '';
             return;
         }
         if (mode === 'table') {

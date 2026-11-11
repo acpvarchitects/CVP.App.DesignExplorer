@@ -26,7 +26,8 @@ import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=38";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml, comparisonViews } from "./comparison.js?v=39";
-import { ComparisonMedia } from "./comparison-media.js?v=3";
+import { ComparisonMedia } from "./comparison-media.js?v=6";
+import { mixConfig, mixGroupKeys, mixHtml } from "./unit-mix.js?v=3";
 import { ParallelChart } from "./parallel.js?v=39";
 import { paretoFront } from "./pareto.js?v=1";
 import { readGeneration, generationScope, scaleVectors, kmeans, representatives, clusterCountLimit, clampClusterCount } from "./clustering.js?v=3";
@@ -139,6 +140,10 @@ function readSchema(columns, rows = []) {
             targets.set(bare(name), col);
         } else if (sep < 0 && prefix.startsWith("table_")) {
             schema.tables.push({ col, label: col.slice(6).replace(/_/g, " ") });
+        } else if (sep < 0 && prefix.startsWith("mix_")) {
+            // JSON per option, see unit-mix.js. mix_units is "Unit mix"; any other gets its own name.
+            const rest = col.slice(4).replace(/_/g, " ");
+            schema.tables.push({ col, label: rest === "units" ? "Unit mix" : `Unit mix · ${rest}`, kind: "mix" });
         } else if (sep < 0 && prefix === "context") {
             schema.context = { col };
         } else if (sep < 0 && prefix.startsWith("an_")) {
@@ -1026,7 +1031,8 @@ function showMedia(o) {
     $("mediaNote").textContent = legend ? "" : noLegend;
     if (isTable) {
         if (viewer) viewer.clear();
-        showTable(src, key);
+        if (layer?.kind === "mix") showMix(src, key, o, layer);
+        else showTable(src, key);
         return;
     }
     if (is2d) {
@@ -1081,6 +1087,76 @@ function renderLevels(levels, level) {
             .reverse()
             .map((i) => button(i, label(i), `Isolate level ${label(i)}; the other levels stay as outlines`))
             .join("");
+}
+
+// Unit mix view (mix_<name> column): a JSON per option drawn by unit-mix.js with the study's
+// "mix" settings from layers.json. The view choice (By tower / Tower × size, zones, units or
+// m²) stays while stepping through options; folded groups reset per option.
+const mixUi = { view: "tower", zones: false, measure: "units", closed: new Set() };
+const mixDocs = new Map(); // url -> promise of the parsed JSON
+let mixShown = null; // { doc, cfg, key } of the view on screen, for re-rendering on a control click
+
+const loadMix = (url) => {
+    if (!mixDocs.has(url)) {
+        const pending = fetch(url).then((r) => {
+            if (!r.ok) throw new Error(r.status + " " + r.statusText);
+            return r.json();
+        });
+        pending.catch(() => mixDocs.delete(url));
+        mixDocs.set(url, pending);
+    }
+    return mixDocs.get(url);
+};
+
+async function showMix(url, key, o, layer) {
+    $("previewTable").replaceChildren();
+    mixShown = null;
+    mixUi.closed.clear();
+    if (!url) return;
+    let doc;
+    try {
+        doc = await loadMix(url);
+    } catch (e) {
+        if (mediaKey === key) $("mediaStatus").textContent = "The unit mix didn't load.";
+        return;
+    }
+    if (mediaKey !== key) return; // another option or view was opened meanwhile
+    mixShown = { doc, cfg: mixConfig(entryForView(o.study, layer.col), doc), key };
+    renderMix();
+}
+
+function renderMix() {
+    if (!mixShown || mixShown.key !== mediaKey) return;
+    $("previewTable").innerHTML = `<div class="mix">${mixHtml(mixShown.doc, mixShown.cfg, mixUi, esc)}</div>`;
+}
+
+// Controls and foldable rows of the unit mix view (delegated: the view is re-rendered).
+function onMixEvent(e) {
+    if (!mixShown) return;
+    const t = e.target;
+    if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
+    const button = t.closest("button");
+    const row = t.closest("tr[data-mix-key]");
+    if (button?.dataset.mixView) mixUi.view = button.dataset.mixView;
+    else if (button?.dataset.mixZones) mixUi.zones = button.dataset.mixZones === "on";
+    else if (button?.dataset.mixMeasure) mixUi.measure = button.dataset.mixMeasure;
+    else if (button && "mixFold" in button.dataset) {
+        if (mixUi.closed.size) mixUi.closed.clear();
+        else mixGroupKeys(mixShown.doc, mixShown.cfg, mixUi).forEach((k) => mixUi.closed.add(k));
+    } else if (row) {
+        const k = row.dataset.mixKey;
+        if (mixUi.closed.has(k)) mixUi.closed.delete(k);
+        else mixUi.closed.add(k);
+    } else return;
+    if (e.type === "keydown") e.preventDefault();
+    if (button && !("mixFold" in button.dataset)) mixUi.closed.clear(); // new view or grouping: all open
+    // The view is re-rendered: give focus back to the same control or row (keyboard users).
+    const mark = button ? [...button.attributes].find((a) => a.name.startsWith("data-mix-")) : null;
+    const focus = row?.dataset.mixKey;
+    renderMix();
+    const box = $("previewTable");
+    if (mark) box.querySelector(`[${mark.name}="${CSS.escape(mark.value)}"]`)?.focus();
+    else if (focus) [...box.querySelectorAll("tr[data-mix-key]")].find((r) => r.dataset.mixKey === focus)?.focus();
 }
 
 // Table view: a small CSV per option (first row = header). Numeric cells are formatted like
@@ -1701,6 +1777,8 @@ function bindEvents() {
         else state.layersOn.delete(col);
         render();
     });
+    $("previewTable").addEventListener("click", onMixEvent);
+    $("previewTable").addEventListener("keydown", onMixEvent);
     $("levelPicker").addEventListener("click", (e) => {
         const b = e.target.closest("[data-level]");
         if (b && viewer) viewer.setLevel(b.dataset.level === "" ? null : +b.dataset.level);
