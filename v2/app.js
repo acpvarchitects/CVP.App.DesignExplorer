@@ -1006,7 +1006,7 @@ function showMedia(o) {
     const cell2d = state.mode === "analysis" && layer?.col ? (o.row[layer.col] || "").trim() : "";
     const is2d = /\.svg$/i.test(cell2d);
     const is3d = !is2d && (state.mode === "model" || state.mode === "analysis");
-    renderLayerToggles(is3d && !!layer?.composed);
+    renderLayerToggles(state.mode === "model" && is3d && !!layer?.composed); // 3D model only: the analyses keep their legend clear
     $("preview2d").hidden = !is2d;
     const parts = is3d && layer ? partsFor(o, layer) : null;
     const src = is3d ? parts : layer ? assetUrl(o, (o.row[layer.col] || "").trim()) : null;
@@ -1206,7 +1206,7 @@ function partsFor(o, layer, mode = state.mode) {
                 if (ANALYSIS_ONLY.has(g.col) || replaced.includes(g.col)) continue; // general view minus replaced layers
             } else if (analysisView ? GENERAL_ONLY.has(g.col) : ANALYSIS_ONLY.has(g.col)) continue;
             const opt = o.study?.optional?.get(g.col); // optional in THIS option's study only
-            if (opt && !state.layersOn.has(g.col)) continue; // switched off under Layers
+            if (opt && (analysisView || !state.layersOn.has(g.col))) continue; // 3D model only, and only when ticked under Layers
             const url = file(g.col);
             if (url) own.push(opt && (opt.opacity < 1 || opt.nodeOpacity) ? { url, kind: "geometry", opacity: opt.opacity, nodeOpacity: opt.nodeOpacity } : { url, kind: "geometry" });
         }
