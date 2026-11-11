@@ -69,9 +69,10 @@ Views (`GENERAL_ONLY`, `ANALYSIS_ONLY`, `OVER_GENERAL` in `app.js`):
   replace (pool / deck sun hours replace `pools` + `decks`).
 - The analysis material has a depth offset, so it draws in front of layers sharing its surfaces.
 - **ⓘ next to an optional layer:** when its `layers.json` entry has a `description`, the ⓘ beside its
-  checkbox opens the same "About" card as the analyses. For `spacing_zones` the card adds the
-  spacing-rule diagrams (long fronts and the gap(H) chart, gables, corners, rotated pairs, footprint
-  with balconies, zone colours) unless the export already names its own figures.
+  checkbox opens the same "About" card as the analyses. For a `spacing_zones` layer described with
+  the ZRCH rules of 10/11/2026 (its text names that date) the card adds the spacing-rule diagrams
+  (long fronts and the gap(H) chart, gables, corners, rotated pairs, footprint with balconies, zone
+  colours) unless the export already names its own figures; any other `spacing_zones` shows its text only.
 - **Optional layers:** a geometry layer whose `layers.json` entry has `"toggle": true` (e.g.
   `spacing_zones`, the minimum spacing zones between buildings) gets a checkbox under **Layers**,
   top left of the **3D model** (never in 3D analysis, which keeps its legend clear and its

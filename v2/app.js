@@ -26,12 +26,12 @@ import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=38";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml, comparisonViews } from "./comparison.js?v=39";
-import { ComparisonMedia } from "./comparison-media.js?v=7";
+import { ComparisonMedia } from "./comparison-media.js?v=8";
 import { mixConfig, mixGroupKeys, mixHtml } from "./unit-mix.js?v=3";
 import { ParallelChart } from "./parallel.js?v=39";
 import { paretoFront } from "./pareto.js?v=1";
 import { readGeneration, generationScope, scaleVectors, kmeans, representatives, clusterCountLimit, clampClusterCount } from "./clustering.js?v=3";
-import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=3";
+import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=4";
 import { PlanViewer } from "./plan2d.js?v=6";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";

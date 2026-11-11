@@ -4,7 +4,7 @@
 // In a text, lines starting with "- " are a bullet list; other lines are paragraphs.
 // A section may also name diagrams: figure: "spacing-gable" or ["…", "…"] (see about-figures.js).
 
-import { figureHtml, withFigures } from "./about-figures.js?v=1";
+import { figureHtml, withFigures } from "./about-figures.js?v=2";
 
 const esc = (s) =>
     String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);

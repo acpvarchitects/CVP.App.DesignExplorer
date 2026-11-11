@@ -2735,9 +2735,14 @@ code {
     margin: 10px 0 14px;
 }
 
+.about-fig {
+    overflow-x: auto; /* narrow screens: the drawing keeps a readable size and scrolls sideways */
+}
+
 .about-fig svg {
     display: block;
     width: 100%;
+    min-width: 460px;
     max-width: 560px;
     height: auto;
 }
@@ -2765,3 +2770,5 @@ code {
 .fig-zone-line { fill: none; stroke: rgb(20, 55, 100); stroke-width: 1.4; }
 .fig-clash-line { fill: none; stroke: rgb(220, 30, 30); stroke-width: 1.4; }
 .fig-clash { fill: rgb(220, 30, 30); fill-opacity: 0.85; }
+[class^="dark"] .fig-zone-line,
+[class*=" dark"] .fig-zone-line { stroke: rgb(140, 185, 240); }

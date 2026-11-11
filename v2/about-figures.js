@@ -100,7 +100,7 @@ const FIGURES = {
     },
     "spacing-ambiguous": {
         caption:
-            "Rotated buildings whose fronts face only partly: the pair is checked with the gap of the taller of the two.",
+            "Rotated buildings whose fronts face only partly: the pair is checked with the stricter rule of the two, in practice the long-front gap of the taller building.",
         html: () =>
             svg(
                 520,
@@ -114,7 +114,7 @@ const FIGURES = {
     },
     "spacing-footprint": {
         caption:
-            "Every distance is taken on the full footprint, balconies included. The footprint must stay inside the residential boundary; touching it is allowed.",
+            "Every distance is taken on the full footprint, balconies included, and the whole footprint must stay inside the residential boundary.",
         html: () =>
             svg(
                 520,
@@ -133,32 +133,40 @@ const FIGURES = {
     },
     "spacing-zones-colours": {
         caption:
-            "In the 3D view: blue is the no-build zone of each building (deeper where two zones overlap, darker outline per building); red is a zone another building enters, the overlap itself in solid red.",
+            "In the 3D view: blue is the no-build zone of each building, deeper where two zones overlap, with a darker outline per building. Red is a zone that another building's footprint enters (red outline); the part of that footprint inside the zone is solid red.",
         html: () =>
             svg(
                 520,
-                170,
-                `<rect class="fig-zone" x="30" y="20" width="250" height="130"/>
-                <rect class="fig-zone-line" x="30" y="20" width="250" height="130"/>
-                ${bld(80, 70, 150, 30, "A")}
-                <rect class="fig-zone" x="250" y="40" width="240" height="110"/>
-                <rect class="fig-clash-line" x="250" y="40" width="240" height="110"/>
-                <rect class="fig-clash" x="250" y="40" width="30" height="110"/>
-                ${bld(300, 80, 150, 30, "B")}
-                <text class="fig-note" x="40" y="164">zone of A</text>
-                <text class="fig-note" x="490" y="164" text-anchor="end">zone of B, entered by A's zone</text>`,
-                "Blue no-build zones and a red overlap where one zone enters the other"
+                180,
+                `<rect class="fig-zone" x="20" y="20" width="230" height="120"/>
+                <rect class="fig-zone-line" x="20" y="20" width="230" height="120"/>
+                <rect class="fig-zone" x="280" y="20" width="220" height="120"/>
+                <rect class="fig-clash-line" x="280" y="20" width="220" height="120"/>
+                ${bld(340, 65, 120, 30, "B")}
+                ${bld(110, 65, 200, 30, "A")}
+                <rect class="fig-clash" x="280" y="65" width="30" height="30"/>
+                <text class="fig-note" x="30" y="158">zone of A</text>
+                <text class="fig-note" x="500" y="158" text-anchor="end">zone of B, entered by building A</text>`,
+                "Blue no-build zones; building A's footprint enters the zone of B and that part is red"
             ),
     },
 };
 
-// The spacing zones of an export written before figures existed: show every spacing diagram.
+// The spacing zones of a ZRCH export of the 10/11/2026 rules written before figures existed: show
+// every spacing diagram. Only that rule set: the diagrams carry its numbers, and another project's
+// spacing_zones under other rules must not show them (it gets its text only, or names its own figures).
 const SPACING_DEFAULT = ["spacing-long-front", "spacing-gap-chart", "spacing-gable", "spacing-corner", "spacing-ambiguous", "spacing-footprint", "spacing-zones-colours"];
+
+let figureSeq = 0;
 
 export function figureHtml(names) {
     return [].concat(names || [])
         .filter((n) => FIGURES[n])
-        .map((n) => `<figure class="about-fig">${FIGURES[n].html()}<figcaption>${FIGURES[n].caption}</figcaption></figure>`)
+        .map((n) => {
+            const id = `fig-arrow-${++figureSeq}`; // one marker id per drawing: ids stay unique in the page
+            const html = FIGURES[n].html().replaceAll('id="fig-arrow"', `id="${id}"`).replaceAll("url(#fig-arrow)", `url(#${id})`);
+            return `<figure class="about-fig">${html}<figcaption>${FIGURES[n].caption}</figcaption></figure>`;
+        })
         .join("");
 }
 
@@ -166,6 +174,7 @@ export function figureHtml(names) {
 // export described the spacing zones without naming any figure.
 export function withFigures(entry) {
     const sections = entry?.description || [];
-    if (entry?.key !== "spacing_zones" || sections.some((s) => s.figure)) return sections;
+    const zrch1011 = entry?.key === "spacing_zones" && sections.some((s) => /10\/11\/2026/.test(s.text || ""));
+    if (!zrch1011 || sections.some((s) => s.figure)) return sections;
     return [...sections, { heading: "The rules in diagrams", text: "", figure: SPACING_DEFAULT }];
 }
