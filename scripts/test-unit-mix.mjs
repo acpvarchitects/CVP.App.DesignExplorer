@@ -47,6 +47,8 @@ const odd = { towers: [{ ...doc.towers[0], plate: ['220', '200'] }] };
 const oddCfg = mixConfig(entry, odd);
 assert.deepEqual(oddCfg.types.map(t => t.key), ['180', '220', '240', '300', '200']);
 assert.ok(mixCompareHtml(odd, oddCfg, esc).includes('<td>20</td>'), 'total 2 x 10 floors includes the unlisted type');
+assert.ok(mixHtml(odd, oddCfg, { view: 'tower', zones: false, measure: 'units', closed: new Set() }, esc).includes('200: not in the study'), 'the view says the unlisted size has no parking ratio');
+assert.ok(!mixHtml(doc, cfg, { view: 'tower', zones: false, measure: 'units', closed: new Set() }, esc).includes('not in the study'), 'no note when every size is listed');
 // Values from the JSON never reach the HTML unescaped: ids in data attributes, numbers, colours.
 const evil = { towers: [{ id: 'A" onfocus="x', floors: '<b>', base: 1, height_m: 3, plate: ['180'], zone: '"><i>', cores: 1 }] };
 const evilCfg = mixConfig({ mix: { types: [{ key: '180', label: '180', area_m2: 180, rgb: ['1);x:"', 0, 0] }] } }, evil);

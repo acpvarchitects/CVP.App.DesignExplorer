@@ -26,8 +26,8 @@ import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=38";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml, comparisonViews } from "./comparison.js?v=39";
-import { ComparisonMedia } from "./comparison-media.js?v=5";
-import { mixConfig, mixGroupKeys, mixHtml } from "./unit-mix.js?v=2";
+import { ComparisonMedia } from "./comparison-media.js?v=6";
+import { mixConfig, mixGroupKeys, mixHtml } from "./unit-mix.js?v=3";
 import { ParallelChart } from "./parallel.js?v=39";
 import { paretoFront } from "./pareto.js?v=1";
 import { readGeneration, generationScope, scaleVectors, kmeans, representatives, clusterCountLimit, clampClusterCount } from "./clustering.js?v=3";
@@ -141,7 +141,9 @@ function readSchema(columns, rows = []) {
         } else if (sep < 0 && prefix.startsWith("table_")) {
             schema.tables.push({ col, label: col.slice(6).replace(/_/g, " ") });
         } else if (sep < 0 && prefix.startsWith("mix_")) {
-            schema.tables.push({ col, label: "Unit mix", kind: "mix" }); // JSON per option, see unit-mix.js
+            // JSON per option, see unit-mix.js. mix_units is "Unit mix"; any other gets its own name.
+            const rest = col.slice(4).replace(/_/g, " ");
+            schema.tables.push({ col, label: rest === "units" ? "Unit mix" : `Unit mix · ${rest}`, kind: "mix" });
         } else if (sep < 0 && prefix === "context") {
             schema.context = { col };
         } else if (sep < 0 && prefix.startsWith("an_")) {

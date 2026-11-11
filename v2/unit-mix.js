@@ -33,7 +33,8 @@ export function mixConfig(entry, doc) {
     const extra = [...new Set((doc?.towers || []).flatMap((t) => (t.plate || []).map(String)))]
         .filter((k) => !known.has(k))
         .sort((a, b) => num(a) - num(b));
-    for (const key of extra) types.push({ key, label: `${key} m²`, area_m2: num(key), rgb: GREY, parking: 0 });
+    // Unlisted: area guessed from the size name, no parking ratio; the view says so (mixHtml note).
+    for (const key of extra) types.push({ key, label: `${key} m²`, area_m2: num(key), rgb: GREY, parking: 0, unlisted: true });
     const target = cfg.target || null;
     return {
         types,
@@ -202,7 +203,11 @@ export function mixHtml(doc, cfg, ui, esc) {
         (ui.view === "tower"
             ? seg("zones", ui.zones ? "on" : "off", [["off", "Towers"], ["on", "Zones › towers"]]) + `<button type="button" class="mix-fold" data-mix-fold>${ui.closed.size ? "Unfold all" : "Fold all"}</button>`
             : seg("measure", ui.measure, [["units", "Apartments"], ["area", "m²"]]));
-    const note = cfg.client?.note ? `<p class="mix-note">${esc(cfg.client.note)}</p>` : "";
+    const unlisted = cfg.types.filter((t) => t.unlisted && rows.some((r) => r.type === t));
+    const note =
+        (unlisted.length
+            ? `<p class="mix-note mix-off">${unlisted.map((t) => esc(t.key)).join(", ")}: not in the study's mix settings. Counted in grey, with the area taken from the size name and no parking ratio, so area and parking may be understated.</p>`
+            : "") + (cfg.client?.note ? `<p class="mix-note">${esc(cfg.client.note)}</p>` : "");
     return `${tiles(doc, cfg, rows, esc)}<div class="mix-controls">${controls}</div>
         <table class="mix-table">${ui.view === "matrix" ? matrix(doc, cfg, rows, ui, esc) : byTower(doc, cfg, rows, ui, esc)}</table>${note}`;
 }
