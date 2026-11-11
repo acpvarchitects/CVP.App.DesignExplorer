@@ -56,7 +56,14 @@ assert.deepEqual(urls({...zones, study: plainStudy}), ['roof.glb']);
 context.state.layersOn.add('roof');
 assert.deepEqual(JSON.parse(JSON.stringify(context.partsFor({...zones, study: optionalStudy}, {composed: true}, 'model'))),
     [{url: 'roof.glb', kind: 'geometry', opacity: 0.3, nodeOpacity: {roof_clash: 0.85}}]);
-console.log('PASS optional layers follow their own study and carry its opacity');
+// 3D model only: even ticked, an optional layer never joins a 3D analysis; a plain layer still does.
+context.data.schema.layers.push({col: 'zones'});
+const both = {row: {roof: 'roof.glb', zones: 'zones.glb', sun: 'sun.glb'}, study: {optional: new Map([['zones', {opacity: 0.3}]])}};
+context.state.layersOn.add('zones');
+const analysisUrls = JSON.parse(JSON.stringify(context.partsFor(both, {col: 'sun', composed: true}, 'analysis'))).map((p) => p.url);
+assert.ok(analysisUrls.includes('roof.glb') && !analysisUrls.includes('zones.glb'), 'optional layer left out of 3D analysis');
+assert.ok(JSON.parse(JSON.stringify(context.partsFor(both, {composed: true}, 'model'))).some((p) => p.url === 'zones.glb'), 'still drawn in 3D model');
+console.log('PASS optional layers follow their own study and carry its opacity, 3D model only');
 
 // Rebuilding the section detaches all WebGL canvases. A view-only change must update
 // existing slots directly, without invoking the full app/section render path.

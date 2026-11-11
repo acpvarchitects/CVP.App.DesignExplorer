@@ -70,7 +70,8 @@ Views (`GENERAL_ONLY`, `ANALYSIS_ONLY`, `OVER_GENERAL` in `app.js`):
 - The analysis material has a depth offset, so it draws in front of layers sharing its surfaces.
 - **Optional layers:** a geometry layer whose `layers.json` entry has `"toggle": true` (e.g.
   `spacing_zones`, the minimum spacing zones between buildings) gets a checkbox under **Layers**,
-  top left of both composed 3D views. It is drawn only while ticked (`"default_visible": true`
+  top left of the **3D model** (never in 3D analysis, which keeps its legend clear and its
+  analysis unobstructed). It is drawn only while ticked (`"default_visible": true`
   ticks it on load), with `"opacity"` (0-1) for a translucent overlay. The choice is kept while
   stepping through options and views, the comparison uses it when it next draws, and it is in the link
   (`layers=<col>,<col>`, `layers=none`; omitted when equal to the defaults).
