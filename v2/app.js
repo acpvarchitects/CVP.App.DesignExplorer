@@ -26,12 +26,12 @@ import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=38";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml, comparisonViews } from "./comparison.js?v=39";
-import { ComparisonMedia } from "./comparison-media.js?v=6";
+import { ComparisonMedia } from "./comparison-media.js?v=8";
 import { mixConfig, mixGroupKeys, mixHtml } from "./unit-mix.js?v=3";
 import { ParallelChart } from "./parallel.js?v=39";
 import { paretoFront } from "./pareto.js?v=1";
 import { readGeneration, generationScope, scaleVectors, kmeans, representatives, clusterCountLimit, clampClusterCount } from "./clustering.js?v=3";
-import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=2";
+import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=4";
 import { PlanViewer } from "./plan2d.js?v=6";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
@@ -1064,10 +1064,18 @@ function renderLayerToggles(composed) {
     const optional = data.schema.layers.filter((g) => g.toggle);
     box.hidden = !composed || !optional.length;
     if (box.hidden) return;
+    // ⓘ next to a layer the export described: opens the same "About" card as the analyses.
+    const info = (g) =>
+        described(shownStudies(), (st) => entryForView(st, g.col)).length
+            ? `<button type="button" class="layer-info" data-layer-info="${esc(g.col)}" aria-label="About ${esc(g.label)}" title="About ${esc(g.label)}">ⓘ</button>`
+            : "";
     box.innerHTML =
         `<span class="layer-toggles-title">Layers</span>` +
         optional
-            .map((g) => `<label title="${esc(g.description || g.label)}"><input type="checkbox" data-layer-toggle="${esc(g.col)}"${state.layersOn.has(g.col) ? " checked" : ""} /> ${esc(g.label)}</label>`)
+            .map(
+                (g) =>
+                    `<div class="layer-toggle-row"><label title="${esc(g.description || g.label)}"><input type="checkbox" data-layer-toggle="${esc(g.col)}"${state.layersOn.has(g.col) ? " checked" : ""} /> ${esc(g.label)}</label>${info(g)}</div>`
+            )
             .join("");
 }
 
@@ -1770,6 +1778,10 @@ function bindEvents() {
         if (o) openAbout(described([o.study], () => viewEntry(o)));
     });
     $("aboutClose").addEventListener("click", closeAbout);
+    $("layerToggles").addEventListener("click", (e) => {
+        const b = e.target.closest("[data-layer-info]");
+        if (b) openAbout(described(shownStudies(), (st) => entryForView(st, b.dataset.layerInfo)));
+    });
     $("layerToggles").addEventListener("change", (e) => {
         const col = e.target.dataset.layerToggle;
         if (!col) return;

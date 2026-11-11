@@ -2,7 +2,7 @@
 import { Viewer } from './viewer.js?v=38';
 import { PlanViewer } from './plan2d.js?v=6';
 import { mixCompareHtml, mixConfig } from './unit-mix.js?v=3';
-import { entryForView } from './about.js?v=2';
+import { entryForView } from './about.js?v=4';
 
 export class ComparisonMedia {
     constructor({ assetUrl, partsFor, parseCsv, esc, fmt, fadeContext, layersKey }) {

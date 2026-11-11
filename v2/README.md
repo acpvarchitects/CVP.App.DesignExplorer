@@ -68,6 +68,11 @@ Views (`GENERAL_ONLY`, `ANALYSIS_ONLY`, `OVER_GENERAL` in `app.js`):
 - Analyses listed in `OVER_GENERAL` start from the general view and hide only the layers they
   replace (pool / deck sun hours replace `pools` + `decks`).
 - The analysis material has a depth offset, so it draws in front of layers sharing its surfaces.
+- **ⓘ next to an optional layer:** when its `layers.json` entry has a `description`, the ⓘ beside its
+  checkbox opens the same "About" card as the analyses. For a `spacing_zones` layer described with
+  the ZRCH rules of 10/11/2026 (its text names that date) the card adds the spacing-rule diagrams
+  (long fronts and the gap(H) chart, gables, corners, rotated pairs, footprint with balconies, zone
+  colours) unless the export already names its own figures; any other `spacing_zones` shows its text only.
 - **Optional layers:** a geometry layer whose `layers.json` entry has `"toggle": true` (e.g.
   `spacing_zones`, the minimum spacing zones between buildings) gets a checkbox under **Layers**,
   top left of the **3D model** (never in 3D analysis, which keeps its legend clear and its
@@ -109,7 +114,7 @@ no score). Fields used:
 | `.value_column` | the `out:` column that is its score (links a chart axis to the description) |
 | `.label` | title of the "About" card |
 | `.score_label` | name of the score shown on the 3D analysis, e.g. `Average`, `Floor Efficiency` (default `Score`) |
-| `.description` | `[{heading, text}]`; lines starting with `- ` are bullets |
+| `.description` | `[{heading, text}]`; lines starting with `- ` are bullets. A section may add `figure`: one diagram name or a list of them, drawn under its text (names in `about-figures.js`; unknown names are skipped) |
 | `.toggle` / `.default_visible` / `.opacity` | geometry layers only: optional overlay with its own checkbox, initial state, transparency (see Views above) |
 | `.node_opacity` | `{glTF node name: opacity}`: overrides `.opacity` for those nodes of the layer, e.g. `{"spacing_zones_clash": 0.85}` keeps clash patches strong inside light zones |
 | `about` | `[{heading, text}]` common to all analyses, folded at the bottom of every card |
@@ -231,6 +236,7 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 | `app.js` | loading, state, filters, rendering, URL state, events |
 | `pareto.js` | Pareto front of a set of options on chosen goals |
 | `about.js` | "About" card content from `layers.json` (one block per study when texts differ) |
+| `about-figures.js` | diagrams for the "About" cards (`figure` in a description section); the spacing-rule set for `spacing_zones` |
 | `compare.js` | "about the same" and win rules |
 | `comparison.js` | the Compare options section (radar, strengths, values table) |
 | `comparison-media.js` | independent media and viewer lifecycle for the shared Compare view selector |

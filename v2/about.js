@@ -2,6 +2,9 @@
 //   layers[] / tables[]: { key, label, value_column, score_label, description: [{ heading, text }] }
 //   about: [{ heading, text }]  (common to every analysis, shown folded at the bottom)
 // In a text, lines starting with "- " are a bullet list; other lines are paragraphs.
+// A section may also name diagrams: figure: "spacing-gable" or ["…", "…"] (see about-figures.js).
+
+import { figureHtml, withFigures } from "./about-figures.js?v=2";
 
 const esc = (s) =>
     String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -36,7 +39,7 @@ function textHtml(text) {
 }
 
 export const sectionsHtml = (sections, headings) =>
-    sections.map((s) => (headings ? `<h3>${esc(s.heading)}</h3>` : "") + textHtml(s.text)).join("");
+    sections.map((s) => (headings ? `<h3>${esc(s.heading)}</h3>` : "") + textHtml(s.text) + figureHtml(s.figure)).join("");
 
 // Same text in every study: shown once. Different (rare: e.g. one batch computed with
 // reflections, one without): one block per group of studies, named with their colour dots.
@@ -64,7 +67,7 @@ function grouped(items, sectionsOf, headings = true) {
 
 // Body of the card: the description, then the common notes folded.
 export function aboutHtml(items) {
-    const body = grouped(items, (x) => x.entry.description);
+    const body = grouped(items, (x) => withFigures(x.entry));
     const common = grouped(items, (x) => x.study.manifest?.about, false); // its heading is the fold's title
     return body + (common ? `<details class="about-common"><summary>About these analyses</summary>${common}</details>` : "");
 }
