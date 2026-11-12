@@ -32,6 +32,10 @@ python -m http.server 8765 --bind 127.0.0.1
 Then open `http://127.0.0.1:8765/v2/?PROJECT=STUDY`. `v2/_test/` is gitignored and excluded
 from Docker (local test data).
 
+For live API studies from localhost, use `py -3 scripts/serve-local.py --port 8124`.
+This read-only development server proxies study assets on the same origin, avoiding API CORS
+restrictions. It rewrites the API URL in the served JavaScript only; production files stay unchanged.
+
 ## CSV conventions (everything is data-driven)
 
 | Column | Meaning |
@@ -289,7 +293,8 @@ Files of a 3D study (written by the Grasshopper "EXPORT | Full noise volume + De
    either expanded or collapsed. Previews follow that height instead of growing with their width.
    The compact header combines the title, shared view selector and back button; long strengths
    and expanded exact-value tables remain scrollable. Radar axis descriptions appear beside
-   their numbers at a fixed readable text size, wrapping independently of the chart. The
+   the vertices without extra numbering, at a fixed readable text size. Lines are balanced and
+   units stay with the preceding word. The
    best-found explanation sits with the expanded exact values.
 
 The URL keeps ticked methods, order, option, mode/layer, ranges, batch filter, shortlist and

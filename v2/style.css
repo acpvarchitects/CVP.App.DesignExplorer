@@ -2049,16 +2049,17 @@ button.cp-primary:hover:not(:disabled) {
 .cp-axis-label {
     --r: min(calc((100cqw - 216px) / 2), calc((100cqh - 72px) / 2));
     position: absolute;
-    left: calc(50% + var(--r) * var(--axis-x) * 1.1);
-    top: calc(50% + var(--r) * var(--axis-y) * 1.1);
-    width: min(150px, calc(50cqw - var(--r) * 1.1 - 16px));
+    left: calc(50% + var(--r) * var(--axis-x));
+    top: calc(50% + var(--r) * var(--axis-y));
+    width: min(180px, calc(50cqw - var(--r) - 10px));
     font-size: 11px;
     line-height: 1.3;
     overflow-wrap: anywhere;
+    text-wrap: balance;
     color: var(--text);
 }
-.cp-axis-left { transform: translate(calc(-100% - 10px), -50%); text-align: right; }
-.cp-axis-right { transform: translate(10px, -50%); }
+.cp-axis-left { transform: translate(calc(-100% - 6px), -50%); text-align: right; }
+.cp-axis-right { transform: translate(6px, -50%); }
 .cp-axis-top, .cp-axis-bottom { width: min(240px, 80cqw); text-align: center; }
 .cp-axis-top { transform: translate(-50%, -100%); }
 .cp-axis-bottom { transform: translate(-50%, 0); }
@@ -2091,6 +2092,9 @@ button.cp-primary:hover:not(:disabled) {
         aspect-ratio: auto;
         height: clamp(110px, calc((var(--snap-view) - 280px) * .4), 300px);
         min-height: 0;
+    }
+    .center-scroll.snap-on .cp-picks:has(small) .cp-media {
+        height: clamp(86px, calc((var(--snap-view) - 280px) * .4 - 24px), 276px);
     }
     .center-scroll.snap-on .cp-radar-layout { gap: 16px; align-items: start; }
     .center-scroll.snap-on .cp-radar-chart {

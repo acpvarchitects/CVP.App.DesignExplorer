@@ -25,7 +25,7 @@
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=46";
 import { rankGoals } from "./compare.js?v=37";
-import { comparisonHtml, comparisonViews } from "./comparison.js?v=41";
+import { comparisonHtml, comparisonViews } from "./comparison.js?v=42";
 import { ComparisonMedia } from "./comparison-media.js?v=16";
 import { Box3 as THREE_Box3, Vector3 as THREE_Vector3 } from "three";
 import { mixConfig, mixGroupKeys, mixHtml, mixUnits, programCount, programKey, programMatch, programTableHtml } from "./unit-mix.js?v=4";

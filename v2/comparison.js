@@ -161,7 +161,7 @@ function radarSvg(goals, rows, chosen, esc) {
         return r.m.dir < 0 ? (r.max - v) / (r.max - r.min) : (v - r.min) / (r.max - r.min);
     };
     const rings = [0.25, 0.5, 0.75, 1]
-        .map((f) => `<polygon points="${ring(f)}" fill="none" stroke="#dce4dd" ${f === 1 ? 'stroke-dasharray="5 4"' : ""}/>`)
+        .map((f) => `<polygon points="${ring(f)}" fill="none" stroke="#cbd4cd" ${f === 1 ? 'stroke-dasharray="5 4"' : ""}/>`)
         .join("");
     const labels = [];
     const axes = goals
@@ -170,8 +170,9 @@ function radarSvg(goals, rows, chosen, esc) {
             const angle = i * 2 * Math.PI / n - Math.PI / 2;
             const x = Math.cos(angle), y = Math.sin(angle);
             const side = Math.abs(x) < .1 ? (y < 0 ? 'top' : 'bottom') : x < 0 ? 'left' : 'right';
-            labels.push(`<span class="cp-axis-label cp-axis-${side}" style="--axis-x:${x};--axis-y:${y}" title="${esc(m.label)}">${i + 1}. ${esc(m.label)}</span>`);
-            return `<line x1="${cx}" y1="${cy}" x2="${p[0]}" y2="${p[1]}" stroke="#e1e7e1"/>`;
+            const text = m.label.replace(/\s+(\[[^\]]+\])$/, '\u00a0$1');
+            labels.push(`<span class="cp-axis-label cp-axis-${side}" style="--axis-x:${x};--axis-y:${y}" title="${esc(m.label)}">${esc(text)}</span>`);
+            return `<line x1="${cx}" y1="${cy}" x2="${p[0]}" y2="${p[1]}" stroke="#d0d8d1"/>`;
         })
         .join("");
     const shapes = chosen
