@@ -1039,33 +1039,65 @@ html.nav-collapsed .left-panel .drawer {
     margin-bottom: 20px;
 }
 
-.preview-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px;
-}
-
-.preview-head h2 {
-    font-size: 20px;
-    margin-top: 2px;
-}
-
-.preview-actions {
-    display: flex;
-    gap: 8px;
-}
-
-.preview-controls {
+/* One row: the option's name, what to look at, and the window's commands (previous, next,
+   full height / compact, close) as one group at the right. */
+.preview-bar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 10px;
-    margin: 14px 0;
+    gap: 8px 12px;
+    margin-bottom: 12px;
 }
 
-#nextOption {
+.preview-title {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+    margin-right: 4px;
+}
+
+.preview-title h2 {
+    font-size: 18px;
+    margin: 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.preview-title p {
+    margin: 0;
+    max-width: 32ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.preview-title p:empty {
+    display: none;
+}
+
+.preview-nav {
     margin-left: auto;
+}
+
+.preview-nav button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    padding: 6px 10px;
+}
+
+.preview-nav svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .media {
@@ -2295,8 +2327,7 @@ code {
         grid-template-columns: 1fr;
     }
 
-    .preview-controls .seg {
-        order: -1;
+    .preview-bar #modeButtons {
         flex-basis: 100%;
     }
 
@@ -2773,6 +2804,29 @@ code {
 [class^="dark"] .fig-zone-line,
 [class*=" dark"] .fig-zone-line { stroke: rgb(140, 185, 240); }
 
+/* ---- Section snapping (scroll-snap.js): a section rests 12px under the top of the card's view,
+   and those 12px are empty (the gap above it), so nothing of the section before shows. The open
+   option fills the view unless it was made compact (.snap-on and --snap-view are set on the card
+   by the script). ---- */
+.preview,
+.result-toolbar,
+.comparison { scroll-margin-top: 12px; }
+.center-scroll.snap-on .results { padding-top: 12px; }
+.center-scroll.snap-on .preview.expanded:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(var(--snap-view, 100vh) - 24px);
+    margin-bottom: 12px;
+}
+/* The image fills what is left of the view. Under 1100px "Where this option stands" sits under it,
+   inside the same card: the image then keeps about one view of height and the card grows. */
+.center-scroll.snap-on .preview.expanded .preview-body {
+    flex: 1 0 max(300px, calc(var(--snap-view, 100vh) - 160px));
+    min-height: 0;
+    display: flex;
+}
+.center-scroll.snap-on .preview.expanded .media { flex: 1; height: auto; min-width: 0; }
+
 .about-inline { font-size: 18px; padding: 2px 6px; }
 .about-inline[hidden] { display: none; }
 
@@ -3004,3 +3058,5 @@ code {
     touch-action: none;
     cursor: crosshair;
 }
+/* Compare options is a snap section too: at least one view high, so its top can always be aligned. */
+.center-scroll.snap-on .comparison:not([hidden]) { min-height: calc(var(--snap-view, 100vh) - 36px); }
