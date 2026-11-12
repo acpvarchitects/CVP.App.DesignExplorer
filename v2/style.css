@@ -2151,6 +2151,10 @@ button.cp-primary:hover:not(:disabled) {
 .cp-strength.cp-muted { opacity: .55; }
 .cp-picks article.cp-active { outline: 1px solid var(--slot-color); outline-offset: 1px; }
 .cp-radar-shape.cp-muted { fill: none; stroke: #a9afb1; stroke-width: 1; }
+.cp-radar-shape { pointer-events: none; }
+.cp-radar-line-hover .cp-radar-chart svg { cursor: pointer; }
+.cp-radar-shape:focus-visible { stroke-width: 3.5; stroke-dasharray: 4 2; }
+.cp-radar-chart svg > polygon, .cp-radar-chart svg > line { pointer-events: none; }
 .cp-preselect .cp-radar-shape.cp-active { fill-opacity: .16; stroke-width: 3.5; }
 
 .cp-strength strong {

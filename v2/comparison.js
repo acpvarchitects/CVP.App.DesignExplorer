@@ -179,8 +179,8 @@ function radarSvg(goals, rows, chosen, esc) {
     const shapes = chosen
         .map(
             (o, j) =>
-                `<polygon class="cp-radar-shape" data-cp-option="${o.index}" data-cp-order="${j}" points="${goalRows.map((r, i) => point(i, score(o, r)).join(",")).join(" ")}" fill="${SLOT_COLORS[j]}" fill-opacity=".06" stroke="${SLOT_COLORS[j]}" stroke-width="2.5"/>`
+                `<polygon class="cp-radar-shape" data-cp-option="${o.index}" data-cp-focus="${o.index}" data-cp-order="${j}" tabindex="0" role="button" aria-pressed="false" aria-label="Highlight option ${slotName(j)} · ${esc(o.name)}" points="${goalRows.map((r, i) => point(i, score(o, r)).join(",")).join(" ")}" fill="${SLOT_COLORS[j]}" fill-opacity=".06" stroke="${SLOT_COLORS[j]}" stroke-width="2.5"/>`
         )
         .join("");
-    return `<div class="cp-radar-chart"><svg viewBox="0 0 360 360" role="img" aria-label="Radar chart: the outer edge is the best found for each measurement, the centre the worst.">${rings}<g class="cp-radar-shapes">${shapes}</g>${axes}</svg>${labels.join('')}</div>`;
+    return `<div class="cp-radar-chart"><svg viewBox="0 0 360 360" role="group" aria-label="Radar chart: the outer edge is the best found for each measurement, the centre the worst.">${rings}<g class="cp-radar-shapes">${shapes}</g>${axes}</svg>${labels.join('')}</div>`;
 }
