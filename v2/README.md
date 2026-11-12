@@ -296,6 +296,12 @@ Files of a 3D study (written by the Grasshopper "EXPORT | Full noise volume + De
    the vertices without extra numbering, at a fixed readable text size. Lines are balanced and
    units stay with the preceding word. The
    best-found explanation sits with the expanded exact values.
+   Hover a slot letter A–D or its coloured top band to preview its radar region; click to keep
+   that option coloured while the others become muted cards and thin grey radar outlines.
+   Hovering another slot temporarily previews it, then restores the pinned option. Click the
+   pinned option again or press Escape to restore all colours. The controls also work with
+   Tab and Enter/Space. Emphasis follows the option across redraws and clears if it is removed;
+   it never reloads the comparison media.
 
 The URL keeps ticked methods, order, option, mode/layer, ranges, batch filter, shortlist and
 "Show inputs", so the address bar shares the current view. "Copy link" copies the home page
@@ -312,6 +318,7 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 | `about-figures.js` | diagrams for the "About" cards (`figure` in a description section); the spacing-rule set for `spacing_zones` |
 | `compare.js` | "about the same" and win rules |
 | `comparison.js` | the Compare options section (radar, strengths, values table) |
+| `comparison-focus.js` | hover preview and pinned option emphasis, without rebuilding media |
 | `comparison-media.js` | independent media and viewer lifecycle for the shared Compare view selector |
 | `parallel.js` | parallel-coordinates chart (d3) |
 | `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera, picking and emphasis (Program tab). Draws a frame only when the camera moves or something changes; the pieces of a layer that share a material are merged at load into one mesh (a layer used to be one draw call per glTF primitive), and the Program tab draws the apartments in one mesh per state |

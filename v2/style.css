@@ -1939,6 +1939,8 @@ button.cp-primary:hover:not(:disabled) {
 }
 
 .cp-picks article {
+    --option: var(--slot-color);
+    position: relative;
     flex: 1 1 260px;
     min-width: 0;
     display: flex;
@@ -1981,7 +1983,7 @@ button.cp-primary:hover:not(:disabled) {
     border-radius: var(--acpv-sys-corner-small);
 }
 
-.cp-thumb b {
+.cp-picks article .cp-select-letter {
     position: absolute;
     top: 8px;
     left: 8px;
@@ -1991,8 +1993,27 @@ button.cp-primary:hover:not(:disabled) {
     font-size: 16px;
     line-height: 24px;
     color: #fff;
+    border: 0;
     background: var(--option);
     border-radius: var(--acpv-sys-corner-small);
+}
+.cp-picks article .cp-select-band {
+    position: absolute;
+    top: -3px;
+    left: 0;
+    width: 100%;
+    height: 6px;
+    min-height: 0;
+    min-block-size: 0;
+    z-index: 2;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: var(--option);
+}
+.cp-select-letter:focus-visible, .cp-select-band:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
 }
 
 .cp-controls {
@@ -2117,11 +2138,19 @@ button.cp-primary:hover:not(:disabled) {
 }
 
 .cp-strength {
+    --option: var(--slot-color);
     margin: 0 0 12px;
     padding: 12px 15px;
     background: var(--soft);
     border-left: 3px solid var(--option);
 }
+.cp-option-heading { color: var(--option, var(--slot-color)); }
+.comparison .cp-muted { --option: #9ca3a5; }
+.cp-muted .cp-media { filter: grayscale(1); opacity: .5; }
+.cp-strength.cp-muted { opacity: .55; }
+.cp-picks article.cp-active { outline: 1px solid var(--slot-color); outline-offset: 1px; }
+.cp-radar-shape.cp-muted { fill: none; stroke: #a9afb1; stroke-width: 1; }
+.cp-preselect .cp-radar-shape.cp-active { fill-opacity: .16; stroke-width: 3.5; }
 
 .cp-strength strong {
     color: var(--option);

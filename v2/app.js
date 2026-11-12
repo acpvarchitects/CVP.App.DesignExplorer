@@ -25,7 +25,8 @@
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
 import { Viewer } from "./viewer.js?v=46";
 import { rankGoals } from "./compare.js?v=37";
-import { comparisonHtml, comparisonViews } from "./comparison.js?v=42";
+import { comparisonHtml, comparisonViews } from "./comparison.js?v=43";
+import { ComparisonFocus } from "./comparison-focus.js?v=1";
 import { ComparisonMedia } from "./comparison-media.js?v=16";
 import { Box3 as THREE_Box3, Vector3 as THREE_Vector3 } from "three";
 import { mixConfig, mixGroupKeys, mixHtml, mixUnits, programCount, programKey, programMatch, programTableHtml } from "./unit-mix.js?v=4";
@@ -93,6 +94,7 @@ let viewer;
 let plan2d; // 2D plan viewer (an analysis cell holding an .svg)
 let chart;
 let comparisonMedia;
+let comparisonFocus;
 let mediaKey = null; // what the preview media currently shows, to avoid reloading 3D
 let lastView = null; // the view of the latest render (for chart callbacks)
 const cards = new Map(); // option index -> gallery card element
@@ -1595,6 +1597,8 @@ function renderComparison() {
     const selected = views.find(v => v.key === state.compareView) || views[0];
     state.compareView = selected?.key || '';
     box.innerHTML = box.hidden ? "" : comparisonHtml({ data, chosen, esc, fmt, thumbUrl, maxOptions: MAX_SHORTLIST, views, selectedView: state.compareView });
+    comparisonFocus ||= new ComparisonFocus(box);
+    comparisonFocus.sync(box.hidden ? [] : chosen.map(o => o.index));
     if (box.hidden) comparisonMedia?.clear();
     else {
         comparisonMedia ||= new ComparisonMedia({ assetUrl, partsFor, parseCsv: csvParse, esc, fmt,

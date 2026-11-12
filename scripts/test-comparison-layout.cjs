@@ -61,6 +61,53 @@ let browser;
             await page.screenshot({path: path.join(os.tmpdir(), `comparison-${viewport.width}x${viewport.height}-${collapsed ? 'rail' : 'drawer'}.png`)});
         }
     }
+    // Hover previews a region; click pins it. These changes preserve media DOM/viewers.
+    const letters = page.locator('#comparison .cp-select-letter');
+    const bands = page.locator('#comparison .cp-select-band');
+    const box = page.locator('#comparison');
+    const state = () => box.evaluate(el => ({selected:el.dataset.cpSelected ?? null,
+        active:[...el.querySelectorAll('.cp-radar-shape.cp-active')].map(p=>p.dataset.cpOption),
+        muted:[...el.querySelectorAll('.cp-radar-shape.cp-muted')].map(p=>({id:p.dataset.cpOption,
+            fill:getComputedStyle(p).fill,stroke:getComputedStyle(p).stroke,width:getComputedStyle(p).strokeWidth})),
+        pressed:[...el.querySelectorAll('[data-cp-focus][aria-pressed="true"]')].map(b=>b.dataset.cpFocus)}));
+    const ids = await letters.evaluateAll(elements => elements.map(el=>el.dataset.cpFocus));
+    await page.evaluate(()=>{window.comparisonMediaBefore=document.querySelector('#comparison .cp-media')});
+    await letters.nth(0).hover();
+    assert.deepEqual((await state()).active,[ids[0]]);
+    assert.equal((await state()).selected,null);
+    assert.equal((await state()).muted.length,0,'hover previews without committing isolation');
+    await page.locator('#comparison h2').hover();
+    assert.equal((await state()).muted.length,0);
+    await letters.nth(1).click();
+    await page.locator('#comparison h2').hover();
+    let emphasis = await state();
+    assert.equal(emphasis.selected,ids[1]);
+    assert.deepEqual(emphasis.active,[ids[1]]);
+    assert.deepEqual(emphasis.pressed,[ids[1],ids[1]]);
+    assert.ok(emphasis.muted.every(p=>p.fill==='none' && p.stroke==='rgb(169, 175, 177)' && p.width==='1px'));
+    await page.screenshot({path:path.join(os.tmpdir(),'comparison-selected.png')});
+    await bands.nth(2).hover();
+    assert.deepEqual((await state()).active,[ids[2]]);
+    assert.equal((await state()).selected,ids[1]);
+    await page.locator('#comparison h2').hover();
+    assert.deepEqual((await state()).active,[ids[1]]);
+    await bands.nth(0).click();
+    assert.equal((await state()).selected,ids[0]);
+    await letters.nth(0).click();
+    assert.equal((await state()).selected,null);
+    assert.equal((await state()).muted.length,0);
+    await letters.nth(1).focus();
+    assert.deepEqual((await state()).active,[ids[1]]);
+    await page.keyboard.press('Enter');
+    assert.equal((await state()).selected,ids[1]);
+    await page.keyboard.press('Escape');
+    assert.equal((await state()).selected,null);
+    assert.equal(await page.evaluate(()=>window.comparisonMediaBefore===document.querySelector('#comparison .cp-media')),true);
+    await letters.nth(1).click();
+    await page.locator('#comparison select[data-slot="0"]').selectOption('3');
+    assert.equal((await state()).selected,ids[1], 'emphasis survives a different option changing');
+    await page.locator('#comparison select[data-slot="1"]').selectOption('0');
+    assert.equal((await state()).selected,null,'replacing the highlighted option clears stale emphasis');
     // Expanding exact values keeps the last row reachable inside the comparison.
     await page.locator('#comparison details summary').click();
     await page.locator('#comparison .cp-table tbody tr:last-child').scrollIntoViewIfNeeded();
