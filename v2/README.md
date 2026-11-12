@@ -299,7 +299,9 @@ Files of a 3D study (written by the Grasshopper "EXPORT | Full noise volume + De
    Hover a slot letter A–D or its coloured top band to preview its radar region; click to keep
    that option coloured while the others become muted cards and thin grey radar outlines.
    Hovering another slot temporarily previews it, then restores the pinned option. Click the
-   pinned option again or press Escape to restore all colours. The controls also work with
+   pinned option again, click anywhere outside the letters/bands, or press Escape to restore
+   all colours. The top line keeps its original 3px thickness with a larger invisible hit area
+   for hover and clicking. The controls also work with
    Tab and Enter/Space. Emphasis follows the option across redraws and clears if it is removed;
    it never reloads the comparison media.
 

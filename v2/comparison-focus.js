@@ -34,13 +34,21 @@ export class ComparisonFocus {
             this.hovered = this.focused = null;
             this.apply();
         });
+        root.ownerDocument.addEventListener('click', e => {
+            if (root.contains(e.target) && control(e.target)) return;
+            if (this.selected !== null || this.hovered !== null || this.focused !== null) this.clear();
+        });
         root.addEventListener('keydown', e => {
             if (e.key !== 'Escape' || (!this.selected && !this.hovered && !this.focused)) return;
             e.preventDefault();
             e.stopPropagation();
-            this.selected = this.hovered = this.focused = null;
-            this.apply();
+            this.clear();
         });
+    }
+
+    clear() {
+        this.selected = this.hovered = this.focused = null;
+        this.apply();
     }
 
     sync(optionIds) {

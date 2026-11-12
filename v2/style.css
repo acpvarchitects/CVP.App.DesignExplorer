@@ -1999,17 +1999,18 @@ button.cp-primary:hover:not(:disabled) {
 }
 .cp-picks article .cp-select-band {
     position: absolute;
-    top: -3px;
+    top: -9px;
     left: 0;
     width: 100%;
-    height: 6px;
+    height: 18px;
     min-height: 0;
     min-block-size: 0;
     z-index: 2;
     padding: 0;
     border: 0;
     border-radius: 0;
-    background: var(--option);
+    background: transparent;
+    box-shadow: none;
 }
 .cp-select-letter:focus-visible, .cp-select-band:focus-visible {
     outline: 2px solid var(--text);

@@ -96,6 +96,23 @@ let browser;
     await letters.nth(0).click();
     assert.equal((await state()).selected,null);
     assert.equal((await state()).muted.length,0);
+    const bandStyle = await bands.nth(0).evaluate(el => ({height:el.getBoundingClientRect().height,
+        background:getComputedStyle(el).backgroundColor,border:getComputedStyle(el.closest('article')).borderTopWidth}));
+    assert.equal(bandStyle.height,18);
+    assert.equal(bandStyle.background,'rgba(0, 0, 0, 0)');
+    assert.equal(bandStyle.border,'3px');
+    // The invisible target extends above the thin visible border.
+    await bands.nth(0).click({position:{x:20,y:2}});
+    assert.equal((await state()).selected,ids[0]);
+    await page.locator('#comparison h2').click();
+    assert.equal((await state()).selected,null,'clicking elsewhere inside comparison clears selection');
+    assert.equal((await state()).muted.length,0);
+    await letters.nth(1).click();
+    await page.locator('#projectName').click();
+    assert.equal((await state()).selected,null,'clicking outside comparison clears selection');
+    await letters.nth(1).click();
+    await page.locator('#comparison .cp-radar-chart').click({position:{x:4,y:4}});
+    assert.equal((await state()).selected,null,'clicking blank chart space clears selection');
     await letters.nth(1).focus();
     assert.deepEqual((await state()).active,[ids[1]]);
     await page.keyboard.press('Enter');
