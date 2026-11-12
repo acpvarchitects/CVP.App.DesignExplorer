@@ -2772,3 +2772,65 @@ code {
 .fig-clash { fill: rgb(220, 30, 30); fill-opacity: 0.85; }
 [class^="dark"] .fig-zone-line,
 [class*=" dark"] .fig-zone-line { stroke: rgb(140, 185, 240); }
+
+/* ---- Program tab: the unit-mix table over the 3D (float) or beside it (docked) ---- */
+.media.program { --prog-dock: clamp(420px, 48%, 600px); }
+.media.program .media-foot { right: auto; left: 12px; }
+.program-panel {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    width: min(460px, calc(100% - 24px));
+    max-height: calc(100% - 64px);
+    display: flex;
+    flex-direction: column;
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--acpv-sys-shadow-3);
+    font-size: 12px;
+    overflow: hidden;
+}
+.program-panel[hidden] { display: none; }
+.program-panel.folded .prog-tools,
+.program-panel.folded .prog-body { display: none; }
+.prog-head,
+.prog-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 6px 10px; }
+.prog-head { border-bottom: 1px solid var(--line); }
+.prog-count { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: auto; }
+.program-panel button { font: inherit; border: 1px solid var(--line-strong); border-radius: var(--radius-button); background: var(--card); color: var(--text); padding: 3px 10px; cursor: pointer; }
+.program-panel .mix-seg button { border: 0; border-radius: 0; }
+.program-panel button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.prog-floors { display: flex; align-items: center; gap: 6px; margin-left: auto; color: var(--muted); }
+.prog-floors input { width: 110px; }
+.prog-floors output { min-width: 34px; font-variant-numeric: tabular-nums; }
+.prog-body { overflow: auto; padding: 0 10px 8px; min-height: 0; }
+.prog-body .mix-note { margin: 6px 0 0; color: var(--muted); font-size: 11px; }
+.prog-table th, .prog-table td { padding: 4px 6px; }
+.prog-table th { top: 0; }
+.prog-table [data-prog-key] { cursor: pointer; }
+.prog-table [data-prog-key]:hover { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.prog-table [data-prog-key]:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.prog-table .prog-on { box-shadow: inset 0 0 0 2px var(--accent); font-weight: 700; }
+.prog-table td.mix-cell { position: relative; }
+.program-tip {
+    position: absolute;
+    transform: translate(12px, -28px);
+    padding: 3px 8px;
+    font-size: 12px;
+    background: var(--text);
+    color: var(--card);
+    border-radius: var(--radius);
+    white-space: nowrap;
+    pointer-events: none;
+}
+.program-tip[hidden] { display: none; }
+/* Docked: the 3D keeps the left part, the table takes the right one over the full height. */
+.media.program-docked .media-3d { right: var(--prog-dock); }
+.media.program-docked .media-top { right: calc(var(--prog-dock) + 12px); }
+.media.program-docked .program-panel { top: 0; right: 0; bottom: 0; width: var(--prog-dock); max-height: none; border-radius: 0; box-shadow: none; border-left: 1px solid var(--line); }
+@media (max-width: 700px) {
+    .program-panel { max-height: 55%; }
+    .media.program-docked .media-3d { right: 0; bottom: 50%; }
+    .media.program-docked .media-top { right: 12px; }
+    .media.program-docked .program-panel { top: 50%; width: auto; left: 0; border-left: 0; border-top: 1px solid var(--line); }
+}

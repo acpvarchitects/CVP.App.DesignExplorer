@@ -18,7 +18,7 @@ export function comparisonViews({ schema, studies }) {
         }
         return layer.label;
     };
-    return [['image', schema.images], ['model', schema.models], ['analysis', schema.analyses], ['table', schema.tables]]
+    return [['image', schema.images], ['model', schema.models], ['analysis', schema.analyses.concat(schema.programs || [])], ['table', schema.tables]]
         .flatMap(([mode, layers]) => layers.map((layer, i) => ({
             key: `${mode}:${layer.col || i}`, mode, layer,
             label: mode === 'model' ? (layers.length === 1 ? '3D model' : `3D model · ${layer.label}`)

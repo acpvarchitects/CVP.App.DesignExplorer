@@ -20,10 +20,15 @@ const HALFTONE = new THREE.LineBasicMaterial({ color: 0x8c8c8c, transparent: tru
 export class Viewer {
     // onLevels(levels, level): after every composition, the levels of the shown analysis
     // (base heights, lowest first; empty when it is not made of whole floors) and the isolated one.
-    constructor(container, onStatus, { onLevels } = {}) {
+    // onPick(mesh | null, event) / onHover(mesh | null, event | null): a click (press and release
+    // without a drag) or the pointer on one of the meshes listed in `pickable` (null = no picking).
+    constructor(container, onStatus, { onLevels, onPick, onHover } = {}) {
         this.container = container;
         this.onStatus = onStatus || (() => {});
         this.onLevels = onLevels || (() => {});
+        this.onPick = onPick || (() => {});
+        this.onHover = onHover || (() => {});
+        this.pickable = null;
         this.level = null; // isolated level index, kept from option to option; null = all
         this.levels = [];
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -41,6 +46,24 @@ export class Viewer {
         this.camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100000);
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
+
+        const canvas = this.renderer.domElement;
+        let down = null;
+        let frame = 0;
+        canvas.addEventListener("pointerdown", (e) => (down = [e.clientX, e.clientY]));
+        canvas.addEventListener("pointerup", (e) => {
+            const still = down && Math.hypot(e.clientX - down[0], e.clientY - down[1]) < 4;
+            down = null;
+            if (still && this.pickable) this.onPick(this.hit(e), e);
+        });
+        canvas.addEventListener("pointermove", (e) => {
+            if (!this.pickable || e.buttons || frame) return;
+            frame = requestAnimationFrame(() => {
+                frame = 0;
+                if (this.pickable) this.onHover(this.hit(e), e);
+            });
+        });
+        canvas.addEventListener("pointerleave", () => this.pickable && this.onHover(null, null));
 
         this.cache = new Map(); // "kind|url" -> Promise<Object3D>
         this.shown = new Set(); // objects currently in the scene
@@ -74,7 +97,8 @@ export class Viewer {
 
     // Shows exactly these layers. The camera is kept between calls, so every
     // option is seen from the same point of view.
-    async compose(parts, { fadeContext = false } = {}) {
+    // levels: false skips the level isolation (a view that handles floors itself).
+    async compose(parts, { fadeContext = false, levels = true } = {}) {
         const request = ++this.request;
         this.onStatus("Loading 3D model…");
         const loaded = await Promise.allSettled(parts.map((p) => this.load(p.url, p.kind)));
@@ -97,7 +121,7 @@ export class Viewer {
         }
         if (objects.length && !this.centred) this.centre(objects);
         if (objects.length && !this.framed) this.resetView();
-        this.levels = findLevels(objects.find((o) => o.userData.kind === "analysis"));
+        this.levels = levels ? findLevels(objects.find((o) => o.userData.kind === "analysis")) : [];
         // an analysis without levels keeps the choice for the next one that has them
         if (this.levels.length && this.level != null && this.level >= this.levels.length) this.level = null;
         this.applyLevel();
@@ -128,7 +152,7 @@ export class Viewer {
                 if (node.geometry) geometries.add(node.geometry);
                 if (node.userData.baseGeometry) geometries.add(node.userData.baseGeometry);
                 for (const g of node.userData.levelGeometries || []) if (g) geometries.add(g);
-                for (const m of [node.material].flat().filter(Boolean)) {
+                for (const m of [node.material, node.userData.baseMaterial].flat().filter(Boolean)) {
                     if (m !== HALFTONE && m !== edgeLines.colored && m !== edgeLines.plain) materials.add(m);
                 }
             });
@@ -172,6 +196,43 @@ export class Viewer {
         this.onLevels(this.levels, level);
     }
 
+    // The analysis object on screen, or null.
+    analysisRoot() {
+        return [...this.shown].find((o) => o.userData.kind === "analysis") || null;
+    }
+
+    // Emphasis inside the shown analysis: classify(mesh) returns "dim" (pushed back: almost
+    // transparent) or "hide"; anything else leaves the mesh as loaded. null resets every mesh.
+    // others: what happens to the option's other layers (cores, roofs…) meanwhile: "dim", "hide"
+    // or null (as loaded). The context is left alone.
+    emphasise(classify, others = null) {
+        const root = this.analysisRoot();
+        for (const o of this.shown) {
+            if (o.userData.kind !== "geometry") continue;
+            o.visible = others !== "hide";
+            setOpacity(o, others === "dim" ? DIM_OPACITY : 1);
+        }
+        if (!root) return;
+        root.traverse((node) => {
+            if (!node.isMesh) return;
+            node.userData.baseMaterial ||= node.material;
+            const how = classify ? classify(node) : null;
+            node.visible = how !== "hide";
+            node.material = how === "dim" ? dimmed(node.userData.baseMaterial) : node.userData.baseMaterial;
+            node.renderOrder = how === "dim" ? 1 : 0; // after the opaque ones
+        });
+        this.renderer.render(this.scene, this.camera);
+    }
+
+    // The pickable mesh under the pointer, or null.
+    hit(event) {
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        if (!rect.width || !rect.height) return null;
+        POINTER.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+        RAY.setFromCamera(POINTER, this.camera);
+        return RAY.intersectObjects(this.pickable.filter((m) => m.visible), false)[0]?.object || null;
+    }
+
     // Shift everything by the centre of the context (or of the first layer), once.
     centre(objects) {
         const ref = objects.find((o) => o.userData.kind === "context") || objects[0];
@@ -192,7 +253,9 @@ export class Viewer {
         if (box.isEmpty()) return;
         const center = box.getCenter(new THREE.Vector3());
         const radius = box.getSize(new THREE.Vector3()).length() / 2;
-        const distance = radius / Math.sin(THREE.MathUtils.degToRad(this.camera.fov / 2));
+        // the narrower of the two half angles, so a tall, narrow view (table docked beside it) still fits
+        const half = THREE.MathUtils.degToRad(this.camera.fov / 2);
+        const distance = radius / Math.sin(Math.min(half, Math.atan(Math.tan(half) * this.camera.aspect)));
         const direction = new THREE.Vector3(1, 0.9, 1).normalize();
         this.camera.position.copy(center).addScaledVector(direction, distance * 0.62);
         this.camera.near = distance / 100;
@@ -486,6 +549,22 @@ function setOverlayOpacity(root, { opacity = 1, nodeOpacity = null }) {
             mesh.material.depthWrite = value >= 1;
         });
     });
+}
+
+const RAY = new THREE.Raycaster();
+const POINTER = new THREE.Vector2();
+const DIM_OPACITY = 0.1;
+
+// The pushed-back twin of a material (see Viewer.emphasise), made once per material.
+function dimmed(material) {
+    if (!material.userData.dimmed) {
+        const m = material.clone();
+        m.transparent = true;
+        m.opacity = DIM_OPACITY;
+        m.depthWrite = false;
+        material.userData.dimmed = m;
+    }
+    return material.userData.dimmed;
 }
 
 function setOpacity(root, opacity) {

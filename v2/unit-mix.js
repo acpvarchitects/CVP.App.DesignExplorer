@@ -9,8 +9,11 @@
 //   types: [{ key, label, area_m2, rgb: [r, g, b], parking }]   (order = column order)
 //   target: { <type key>: count }, client: { units, area_m2, note }, parking_client_per_unit,
 //   zones: [{ key, label }]   (order = zone order; tower.zone picks one)
-// Two views (Cristiano, 10/11): A "By tower" (tower rows with their sizes, optional zone level)
-// and C "Tower × size" (matrix with totals, target and gap). Compare shows the totals only.
+// Two views (Cristiano, 10/11): A "By tower" (tower rows with their sizes) and C "Tower × size"
+// (matrix with totals, target and gap). Compare shows the totals only. One table for every tower:
+// no zone level and no hotel mark (Cristiano, 12/11); `hotel` and `zone` in the JSON are ignored.
+// The Program tab (app.js) shows the matrix next to the unit-mix 3D, with selectable cells:
+// programTableHtml() and mixUnits(), the apartments in the order of the 3D file.
 
 const nf = (v) => Math.round(v).toLocaleString("en-GB");
 const f1 = (v) => (Number.isFinite(v) ? v.toLocaleString("en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : "–");
@@ -75,7 +78,6 @@ function chips(plate, cfg, esc) {
         .join("")}</span>`;
 }
 const swatch = (t) => `<span class="mix-sw" style="background:${colour(t)}"></span>`;
-const hotelPill = (t) => (t.hotel ? `<span class="mix-pill">hotel</span>` : "");
 
 function tiles(doc, cfg, rows, esc) {
     const U = sum(rows, "units");
@@ -115,7 +117,7 @@ function towerBlock(tower, rows, U, cfg, closed, esc) {
     const sub = rows.filter((r) => r.tower === tower);
     const su = sum(sub, "units");
     const key = "t:" + tower.id;
-    const label = `${esc(tower.id)}${hotelPill(tower)}${chips(tower.plate, cfg, esc)}${num(tower.length_m) ? `<span class="mix-meta">${f1(num(tower.length_m))} m</span>` : ""}`;
+    const label = `${esc(tower.id)}${chips(tower.plate, cfg, esc)}${num(tower.length_m) ? `<span class="mix-meta">${f1(num(tower.length_m))} m</span>` : ""}`;
     let h = group(
         key,
         "mix-group",
@@ -137,25 +139,8 @@ function towerBlock(tower, rows, U, cfg, closed, esc) {
 function byTower(doc, cfg, rows, ui, esc) {
     const U = sum(rows, "units");
     const towers = doc.towers || [];
-    let h = `<thead><tr><th class="mix-txt">${ui.zones ? "Zone / tower / size" : "Tower / size"}</th><th>Per floor</th><th>Floors</th><th>H m</th><th>Apartments</th><th>Area m²</th><th>% apts</th><th>Parking</th></tr></thead><tbody>`;
-    if (ui.zones) {
-        const known = cfg.zones.map((z) => z.key);
-        const keys = [...new Set([...known, ...towers.map((t) => t.zone)])].filter((k) => towers.some((t) => t.zone === k));
-        for (const z of keys) {
-            const ts = towers.filter((t) => t.zone === z);
-            const zr = rows.filter((r) => ts.includes(r.tower));
-            const key = "z:" + z;
-            const label = esc(cfg.zones.find((x) => x.key === z)?.label || z || "Other");
-            h += group(
-                key,
-                "mix-zone",
-                `${label} <span class="mix-dim">(${ts.length})</span>`,
-                `<td>${sum(zr, "per")}</td><td></td><td></td><td>${nf(sum(zr, "units"))}</td><td>${nf(sum(zr, "area"))}</td><td>${pct(sum(zr, "units"), U)}</td><td>${nf(sum(zr, "park"))}</td>`,
-                ui.closed
-            );
-            if (!ui.closed.has(key)) for (const t of ts) h += towerBlock(t, rows, U, cfg, ui.closed, esc);
-        }
-    } else for (const t of towers) h += towerBlock(t, rows, U, cfg, ui.closed, esc);
+    let h = `<thead><tr><th class="mix-txt">Tower / size</th><th>Per floor</th><th>Floors</th><th>H m</th><th>Apartments</th><th>Area m²</th><th>% apts</th><th>Parking</th></tr></thead><tbody>`;
+    for (const t of towers) h += towerBlock(t, rows, U, cfg, ui.closed, esc);
     h += `</tbody><tfoot><tr class="mix-total"><td class="mix-txt">Option total</td><td>${sum(rows, "per")}</td><td></td><td></td><td>${nf(U)}</td><td>${nf(sum(rows, "area"))}</td><td>100.0%</td><td>${nf(sum(rows, "park"))}</td></tr>`;
     if (cfg.targetUnits != null) h += `<tr class="mix-target"><td class="mix-txt">Target</td><td></td><td></td><td></td><td>${nf(cfg.targetUnits)}</td><td>${nf(cfg.targetArea)}</td><td></td><td></td></tr>`;
     return h + "</tfoot>";
@@ -170,7 +155,7 @@ function matrix(doc, cfg, rows, ui, esc) {
     let h = `<thead><tr><th class="mix-txt">Tower${m === "area" ? " (m²)" : ""}</th>${cfg.types.map((t) => `<th>${swatch(t)} ${esc(t.label)}</th>`).join("")}<th>Total</th><th>Floors</th><th class="mix-txt">Typical floor</th></tr></thead><tbody>`;
     for (const t of towers) {
         const total = cfg.types.reduce((a, type) => a + val(t, type), 0);
-        h += `<tr><td class="mix-txt">${esc(t.id)}${hotelPill(t)}</td>` +
+        h += `<tr><td class="mix-txt">${esc(t.id)}</td>` +
             cfg.types.map((type) => {
                 const v = val(t, type);
                 return `<td class="mix-cell" style="--c:${colour(type)};--o:${v ? (0.12 + (0.38 * v) / max).toFixed(2) : 0}">${v ? nf(v) : '<span class="mix-zero">·</span>'}</td>`;
@@ -194,14 +179,14 @@ const seg = (name, value, options) =>
         .map(([v, label]) => `<button type="button" data-mix-${name}="${v}" aria-pressed="${String(v === value)}">${label}</button>`)
         .join("")}</span>`;
 
-// The whole view. ui: { view: "tower" | "matrix", zones: bool, measure: "units" | "area", closed: Set }.
+// The whole view. ui: { view: "tower" | "matrix", measure: "units" | "area", closed: Set }.
 export function mixHtml(doc, cfg, ui, esc) {
     const rows = rowsOf(doc, cfg);
     if (!rows.length) return `<p class="mix-empty">No apartments in this option.</p>`;
     const controls =
         seg("view", ui.view, [["tower", "By tower"], ["matrix", "Tower × size"]]) +
         (ui.view === "tower"
-            ? seg("zones", ui.zones ? "on" : "off", [["off", "Towers"], ["on", "Zones › towers"]]) + `<button type="button" class="mix-fold" data-mix-fold>${ui.closed.size ? "Unfold all" : "Fold all"}</button>`
+            ? `<button type="button" class="mix-fold" data-mix-fold>${ui.closed.size ? "Unfold all" : "Fold all"}</button>`
             : seg("measure", ui.measure, [["units", "Apartments"], ["area", "m²"]]));
     const unlisted = cfg.types.filter((t) => t.unlisted && rows.some((r) => r.type === t));
     const note =
@@ -213,9 +198,71 @@ export function mixHtml(doc, cfg, ui, esc) {
 }
 
 // Keys of every foldable row of the current view (for "Fold all").
-export function mixGroupKeys(doc, cfg, ui) {
+export function mixGroupKeys(doc) {
+    return (doc.towers || []).map((t) => "t:" + t.id);
+}
+
+// ---- Program tab: the matrix with selectable cells, linked to the unit-mix 3D ----
+
+// Every apartment of the option, in the order the export writes them in the 3D file: tower by
+// tower, floor by floor (0 = first residential floor), then along the typical floor.
+export function mixUnits(doc) {
+    const out = [];
+    for (const tower of doc.towers || []) {
+        for (let floor = 0; floor < num(tower.floors); floor++) {
+            for (const u of tower.plate || []) out.push({ tower: String(tower.id), floor, type: String(u) });
+        }
+    }
+    return out;
+}
+
+// A selection key: a whole tower ["t", id], a size everywhere ["s", type] or one cell ["c", id, type].
+export const programKey = (kind, a, b) => JSON.stringify(b == null ? [kind, String(a)] : [kind, String(a), String(b)]);
+export const programMatch = (key, unit) => {
+    const [kind, a, b] = JSON.parse(key);
+    return kind === "t" ? unit.tower === a : kind === "s" ? unit.type === a : unit.tower === a && unit.type === b;
+};
+
+// Tower × size with totals, target and gap. Tower names, size headers and filled cells carry
+// data-prog-key and act as buttons; the coloured headers are the legend of the 3D.
+export function programTableHtml(doc, cfg, measure, esc) {
+    const rows = rowsOf(doc, cfg);
+    if (!rows.length) return `<p class="mix-empty">No apartments in this option.</p>`;
+    const m = measure === "area" ? "area" : "units";
     const towers = doc.towers || [];
-    return [...(ui.zones ? [...new Set(towers.map((t) => "z:" + t.zone))] : []), ...towers.map((t) => "t:" + t.id)];
+    const val = (t, type) => rows.find((r) => r.tower === t && r.type === type)?.[m] || 0;
+    const max = Math.max(1, ...towers.flatMap((t) => cfg.types.map((type) => val(t, type))));
+    const pick = (key, label) => `tabindex="0" role="button" aria-pressed="false" data-prog-key="${attr(key)}" title="${attr(label)}"`;
+    let h = `<table class="mix-table prog-table"><thead><tr><th class="mix-txt">Tower${m === "area" ? " (m²)" : ""}</th>${cfg.types
+        .map((t) => `<th ${pick(programKey("s", t.key), `Every ${t.label} apartment`)}>${swatch(t)} ${esc(t.label)}</th>`)
+        .join("")}<th>Total</th><th>Floors</th></tr></thead><tbody>`;
+    for (const t of towers) {
+        const total = cfg.types.reduce((a, type) => a + val(t, type), 0);
+        h += `<tr><td class="mix-txt" ${pick(programKey("t", t.id), `Tower ${t.id}`)}>${esc(t.id)}</td>` +
+            cfg.types.map((type) => {
+                const v = val(t, type);
+                return v
+                    ? `<td class="mix-cell" style="--c:${colour(type)};--o:${(0.12 + (0.38 * v) / max).toFixed(2)}" ${pick(programKey("c", t.id, type.key), `${t.id}, ${type.label}`)}>${nf(v)}</td>`
+                    : `<td class="mix-cell"><span class="mix-zero">·</span></td>`;
+            }).join("") +
+            `<td>${nf(total)}</td><td>${num(t.floors)}<span class="mix-dim">+${num(t.base)}</span></td></tr>`;
+    }
+    const col = (type) => sum(rows.filter((r) => r.type === type), m);
+    const all = sum(rows, m);
+    h += `</tbody><tfoot><tr class="mix-total"><td class="mix-txt">Total</td>${cfg.types.map((t) => `<td>${nf(col(t))}</td>`).join("")}<td>${nf(all)}</td><td></td></tr>`;
+    if (cfg.target) {
+        const goal = (t) => (cfg.target[t.key] || 0) * (m === "area" ? t.area_m2 || 0 : 1);
+        const goalAll = cfg.types.reduce((a, t) => a + goal(t), 0);
+        h += `<tr class="mix-target"><td class="mix-txt">Target</td>${cfg.types.map((t) => `<td>${nf(goal(t))}</td>`).join("")}<td>${nf(goalAll)}</td><td></td></tr>` +
+            `<tr class="mix-target"><td class="mix-txt">Gap</td>${cfg.types.map((t) => `<td class="${gapClass(col(t) - goal(t))}">${signed(col(t) - goal(t))}</td>`).join("")}<td class="${gapClass(all - goalAll)}">${signed(all - goalAll)}</td><td></td></tr>`;
+    }
+    return h + "</tfoot></table>";
+}
+
+// "64 apartments · 14,080 m²" for a list of mixUnits() items.
+export function programCount(units, cfg) {
+    const area = new Map(cfg.types.map((t) => [t.key, t.area_m2 || 0]));
+    return `${nf(units.length)} apartment${units.length === 1 ? "" : "s"} · ${nf(units.reduce((a, u) => a + (area.get(u.type) || 0), 0))} m²`;
 }
 
 // Compare options: the totals of one option (count and gap per size, total, area, parking).
