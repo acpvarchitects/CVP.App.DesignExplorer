@@ -76,14 +76,17 @@ export class Viewer {
 
         this.resizeObserver = new ResizeObserver(() => this.resize());
         this.resizeObserver.observe(container);
-        // A frame is drawn only when the camera moves (update() is true, damping included) or
-        // something changed (this.dirty, see the methods below): a still view costs nothing.
+        // A frame is drawn only when the camera moved (the controls' "change" event: the wheel
+        // zoom updates the camera inside its own handler, so update() here would not report it)
+        // or something else changed (this.dirty, see the methods below): a still view costs nothing.
         this.dirty = true;
+        this.controls.addEventListener("change", () => (this.dirty = true));
         this.renderer.setAnimationLoop(() => {
             if (!this.container.offsetParent) return; // hidden: skip rendering
             const rect = this.container.getBoundingClientRect();
             if (rect.bottom < 0 || rect.top > window.innerHeight) return;
-            if (!this.controls.update() && !this.dirty) return;
+            this.controls.update(); // damping: keeps moving, and says so with "change"
+            if (!this.dirty) return;
             this.dirty = false;
             this.renderer.render(this.scene, this.camera);
         });
