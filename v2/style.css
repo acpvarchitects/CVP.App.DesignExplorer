@@ -2667,7 +2667,7 @@ code {
 }
 
 /* ---- Unit mix view (unit-mix.js): tiles, A "By tower", C "Tower × size", Compare totals ---- */
-.mix { max-width: 1100px; margin: 0 auto; padding-top: 36px; font-size: 13px; } /* clear of the About button */
+.mix { max-width: 1100px; margin: 0 auto; font-size: 13px; }
 .mix-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 12px; }
 .mix-tile { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; }
 .mix-k { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
@@ -2773,6 +2773,9 @@ code {
 [class^="dark"] .fig-zone-line,
 [class*=" dark"] .fig-zone-line { stroke: rgb(140, 185, 240); }
 
+.about-inline { font-size: 18px; padding: 2px 6px; }
+.about-inline[hidden] { display: none; }
+
 /* ---- Program tab: the unit-mix table over the 3D (float) or beside it (docked) ---- */
 .media.program { --prog-dock: clamp(420px, 48%, 600px); }
 .media.program .media-foot { right: auto; left: 12px; }
@@ -2826,17 +2829,14 @@ code {
 .program-tip[hidden] { display: none; }
 /* Docked: the 3D keeps the left part, the table takes the right one over the full height. */
 .media.program-docked .media-3d { right: var(--prog-dock); }
-.media.program-docked .media-top { right: calc(var(--prog-dock) + 12px); }
 .media.program-docked .program-panel { top: 0; right: 0; bottom: 0; width: var(--prog-dock); max-height: none; border-radius: 0; box-shadow: none; border-left: 1px solid var(--line); }
 /* Docked and folded: only the title bar stays, top right, and the 3D takes the full width. */
 .media.program-docked.program-folded .media-3d { right: 0; }
 .media.program-docked.program-folded .program-panel { bottom: auto; border-left: 0; border-radius: 0 0 0 var(--radius); box-shadow: var(--acpv-sys-shadow-3); }
-.media.program-docked.program-folded .media-top { top: 56px; right: 12px; }
 @media (max-width: 700px) {
     .media.program-docked.program-folded .media-3d { bottom: 0; }
     .media.program-docked.program-folded .program-panel { top: auto; bottom: 0; border-radius: 0; }
     .program-panel { max-height: 55%; }
     .media.program-docked .media-3d { right: 0; bottom: 50%; }
-    .media.program-docked .media-top { right: 12px; }
     .media.program-docked .program-panel { top: 50%; width: auto; left: 0; border-left: 0; border-top: 1px solid var(--line); }
 }

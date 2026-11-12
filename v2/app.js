@@ -927,7 +927,12 @@ function viewEntry(o) {
 // Top right of the 3D analysis: its score for this option ("Average 41.2 dB(A)") and "About".
 function renderViewInfo(o) {
     const entry = viewEntry(o);
-    $("aboutView").hidden = !entry?.description?.length;
+    // Over a 3D analysis: the "About" chip, top right. Tables and the Program tab fill the
+    // frame with their own content, so there it is a small ⓘ in the controls row instead.
+    const hasText = !!entry?.description?.length;
+    const inRow = state.mode === "table" || state.mode === "program";
+    $("aboutView").hidden = !hasText || inRow;
+    $("aboutInline").hidden = !hasText || !inRow;
     const m = state.mode === "analysis" && entry?.value_column ? outputByCol(entry.value_column) : null;
     const v = m ? o.values[m.col] : NaN;
     const score = $("viewScore");
@@ -2043,10 +2048,12 @@ function bindEvents() {
     $("resetView").addEventListener("click", () => ($("preview2d").hidden ? viewer && viewer.resetView() : plan2d && plan2d.reset()));
     $("shareBtn").addEventListener("click", copyLink);
     $("homeLink").href = homeUrl(); // the logo reloads the study from scratch: nothing open, no filters
-    $("aboutView").addEventListener("click", () => {
-        const o = state.sel != null ? data.options[state.sel] : null;
-        if (o) openAbout(described([o.study], () => viewEntry(o)));
-    });
+    for (const id of ["aboutView", "aboutInline"]) {
+        $(id).addEventListener("click", () => {
+            const o = state.sel != null ? data.options[state.sel] : null;
+            if (o) openAbout(described([o.study], () => viewEntry(o)));
+        });
+    }
     $("aboutClose").addEventListener("click", closeAbout);
     $("layerToggles").addEventListener("click", (e) => {
         const b = e.target.closest("[data-layer-info]");
