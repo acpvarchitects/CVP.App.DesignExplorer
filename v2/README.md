@@ -265,7 +265,7 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 | `comparison.js` | the Compare options section (radar, strengths, values table) |
 | `comparison-media.js` | independent media and viewer lifecycle for the shared Compare view selector |
 | `parallel.js` | parallel-coordinates chart (d3) |
-| `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera, picking and emphasis (Program tab). Draws a frame only when the camera moves or something changes |
+| `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera, picking and emphasis (Program tab). Draws a frame only when the camera moves or something changes; the pieces of a layer that share a material are merged at load into one mesh (a layer used to be one draw call per glTF primitive), and the Program tab draws the apartments in one mesh per state |
 | `plan2d.js` | 2D plan viewer (SVG layers, pan / zoom by viewBox, room hover) and `legendColor()` |
 | `analysis.html` / `analysis.js` | single-analysis page: the 2D analyses of one study, level by level |
 | `pdfexport.js` | "Export view" on the analysis page: vector PDF (A3 landscape) of the plan as framed, with legend, rooms, score and a graphic scale; loads jsPDF 2.5.1 + svg2pdf.js 2.2.3 from jsdelivr on first use |

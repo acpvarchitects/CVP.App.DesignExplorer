@@ -189,6 +189,7 @@ export class Viewer {
         for (const o of this.shown) {
             if (o.userData.kind === "context") continue;
             o.traverse((node) => {
+                if (node.userData.batch) return; // drawn by emphasise() only
                 if (node.userData.outlineLevel != null) {
                     // outer outline of every other level; nothing when no level is isolated
                     node.visible = level != null && node.userData.outlineLevel !== level;
@@ -221,13 +222,23 @@ export class Viewer {
         this.dirty = true;
         if (!classify) this.clipLines(null);
         if (!root) return;
+        // One draw call per state instead of one per apartment (see buildBatch); the meshes
+        // themselves stay in the scene, invisible, for picking. Without a batch: mesh by mesh.
+        if (classify && root.userData.batch === undefined) root.userData.batch = buildBatch(root);
+        const batch = root.userData.batch || null;
         root.traverse((node) => {
             if (!node.isMesh) return;
+            if (node.userData.batch) {
+                if (!classify) node.visible = false;
+                return;
+            }
             node.userData.baseMaterial ||= node.material;
-            const how = classify ? classify(node) : null;
-            node.visible = how !== "hide";
-            node.material = how === "dim" ? GHOST : node.userData.baseMaterial;
+            const how = classify ? classify(node) || "on" : null;
+            node.userData.emphasis = how;
+            node.visible = batch && classify ? false : how !== "hide";
+            node.material = how === "dim" && !batch ? GHOST : node.userData.baseMaterial;
         });
+        if (batch && classify) fillBatch(batch);
         this.renderer.render(this.scene, this.camera);
     }
 
@@ -308,7 +319,8 @@ export class Viewer {
         if (!rect.width || !rect.height) return null;
         POINTER.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
         RAY.setFromCamera(POINTER, this.camera);
-        return RAY.intersectObjects(this.pickable.filter((m) => m.visible), false)[0]?.object || null;
+        const shown = (m) => (m.userData.emphasis ? m.userData.emphasis !== "hide" : m.visible);
+        return RAY.intersectObjects(this.pickable.filter(shown), false)[0]?.object || null;
     }
 
     // Shift everything by the centre of the context (or of the first layer), once.
@@ -548,7 +560,133 @@ function prepare(root, kind) {
         const colored = toLinearColors(node.geometry);
         if (colored || kind !== "geometry") node.material = materials[colored] ||= make(colored);
     });
+    if (kind !== "analysis") mergeSiblings(root); // analyses keep their meshes apart (levels, picking)
     return root;
+}
+
+// Vertex buffers of several geometries end to end (position, plus normal and color when all of
+// them have it), with one index over the whole: ranges[k] = [start, count] of geometry k in it.
+function joinGeometries(list) {
+    const names = ["position", "normal", "color"].filter((n) => list.every((g) => g.getAttribute(n)));
+    if (!names.includes("position")) return null;
+    const size = Object.fromEntries(names.map((n) => [n, list[0].getAttribute(n).itemSize]));
+    if (names.some((n) => list.some((g) => g.getAttribute(n).itemSize !== size[n]))) return null;
+    let vertices = 0;
+    let indices = 0;
+    for (const g of list) {
+        vertices += g.getAttribute("position").count;
+        indices += g.index ? g.index.count : g.getAttribute("position").count;
+    }
+    const arrays = Object.fromEntries(names.map((n) => [n, new Float32Array(vertices * size[n])]));
+    const index = new Uint32Array(indices);
+    const ranges = [];
+    let v = 0;
+    let i = 0;
+    for (const g of list) {
+        const count = g.getAttribute("position").count;
+        for (const n of names) {
+            const a = g.getAttribute(n);
+            const s = size[n];
+            if (a.array instanceof Float32Array && !a.isInterleavedBufferAttribute) arrays[n].set(a.array.subarray(0, count * s), v * s);
+            else for (let k = 0; k < count; k++) for (let c = 0; c < s; c++) arrays[n][(v + k) * s + c] = a.getComponent(k, c);
+        }
+        const start = i;
+        if (g.index) for (let k = 0; k < g.index.count; k++) index[i++] = v + g.index.getX(k);
+        else for (let k = 0; k < count; k++) index[i++] = v + k;
+        ranges.push([start, i - start]);
+        v += count;
+    }
+    const attributes = Object.fromEntries(names.map((n) => [n, new THREE.BufferAttribute(arrays[n], size[n])]));
+    return { attributes, index, ranges, colored: names.includes("color") };
+}
+
+function joinedGeometry(joined, index) {
+    const g = new THREE.BufferGeometry();
+    for (const [name, attribute] of Object.entries(joined.attributes)) g.setAttribute(name, attribute);
+    g.setIndex(new THREE.BufferAttribute(index, 1));
+    if (joined.colored) g.userData.linearColors = true; // copied from already converted colours
+    return g;
+}
+
+const unmoved = (o) => o.position.lengthSq() === 0 && o.quaternion.x === 0 && o.quaternion.y === 0 && o.quaternion.z === 0 && o.scale.x === 1 && o.scale.y === 1 && o.scale.z === 1;
+
+// A glTF mesh with many primitives loads as one object per primitive: thousands of draw calls
+// for a layer that is one thing (1,600 apartments and balconies, 300 core pieces…). The sibling
+// meshes that share a material and the same attributes become one mesh under the same parent,
+// which keeps the glTF node name for the per-node settings (overlay opacity).
+function mergeSiblings(root) {
+    const parents = new Map();
+    root.traverse((n) => {
+        if (!n.isMesh || !n.parent || Array.isArray(n.material) || n.material.map || n.isSkinnedMesh || n.isInstancedMesh) return;
+        if (!unmoved(n) || n.children.length || !n.geometry.getAttribute("position")) return;
+        if (!parents.has(n.parent)) parents.set(n.parent, new Map());
+        const key = n.material.uuid + "|" + ["normal", "color"].map((a) => n.geometry.getAttribute(a)?.itemSize || 0).join(",");
+        const groups = parents.get(n.parent);
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(n);
+    });
+    for (const [parent, groups] of parents) {
+        for (const meshes of groups.values()) {
+            if (meshes.length < 2) continue;
+            const joined = joinGeometries(meshes.map((m) => m.geometry));
+            if (!joined) continue;
+            const mesh = new THREE.Mesh(joinedGeometry(joined, joined.index), meshes[0].material);
+            mesh.name = parent.name;
+            parent.add(mesh);
+            for (const m of meshes) {
+                parent.remove(m);
+                m.geometry.dispose();
+            }
+        }
+    }
+}
+
+// Program tab: every mesh of the analysis in shared vertex buffers, drawn by one mesh per
+// original material ("as loaded") and one ghost mesh, each with the index ranges of the meshes
+// in that state (fillBatch). null when the file is not made for it.
+function buildBatch(root) {
+    const meshes = [];
+    let plain = true;
+    root.traverse((n) => {
+        if (!n.isMesh) return;
+        meshes.push(n);
+        for (let o = n; o && o !== root; o = o.parent) plain &&= unmoved(o);
+    });
+    if (!plain || meshes.length < 2 || meshes.some((m) => !m.geometry.getAttribute("normal"))) return null;
+    const joined = joinGeometries(meshes.map((m) => m.geometry));
+    if (!joined) return null;
+    const make = (material) => {
+        const mesh = new THREE.Mesh(joinedGeometry(joined, new Uint32Array(joined.index.length)), material);
+        mesh.frustumCulled = false; // its extent changes with every selection
+        mesh.userData.batch = true;
+        mesh.visible = false;
+        root.add(mesh);
+        return mesh;
+    };
+    const on = new Map();
+    const items = meshes.map((mesh, k) => {
+        const material = mesh.userData.baseMaterial || mesh.material;
+        if (!on.has(material)) on.set(material, make(material));
+        return { mesh, material, start: joined.ranges[k][0], count: joined.ranges[k][1] };
+    });
+    return { items, index: joined.index, on, ghost: make(GHOST) };
+}
+
+function fillBatch(batch) {
+    const drawn = [...batch.on.values(), batch.ghost];
+    for (const mesh of drawn) mesh.userData.filled = 0;
+    for (const item of batch.items) {
+        const how = item.mesh.userData.emphasis;
+        const target = how === "hide" ? null : how === "dim" ? batch.ghost : batch.on.get(item.material);
+        if (!target) continue;
+        target.geometry.index.array.set(batch.index.subarray(item.start, item.start + item.count), target.userData.filled);
+        target.userData.filled += item.count;
+    }
+    for (const mesh of drawn) {
+        mesh.geometry.index.needsUpdate = true;
+        mesh.geometry.setDrawRange(0, mesh.userData.filled);
+        mesh.visible = mesh.userData.filled > 0;
+    }
 }
 
 // Edge lines of an analysis (the unit outlines) lie exactly on its faces, which the offset

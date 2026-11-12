@@ -23,10 +23,10 @@
 // Page sections, top to bottom: method tabs + chart, measurement filters,
 // preview (only after clicking an option), gallery, Compare methods, Compare options.
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
-import { Viewer } from "./viewer.js?v=44";
+import { Viewer } from "./viewer.js?v=45";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml, comparisonViews } from "./comparison.js?v=40";
-import { ComparisonMedia } from "./comparison-media.js?v=14";
+import { ComparisonMedia } from "./comparison-media.js?v=15";
 import { Box3 as THREE_Box3, Vector3 as THREE_Vector3 } from "three";
 import { mixConfig, mixGroupKeys, mixHtml, mixUnits, programCount, programKey, programMatch, programTableHtml } from "./unit-mix.js?v=4";
 import { ParallelChart } from "./parallel.js?v=39";
@@ -1244,7 +1244,7 @@ function linkProgram(units, col) {
     if (root.userData.programLink !== undefined) return root.userData.programLink?.length === units.length ? root.userData.programLink : null;
     const groups = new Map();
     root.traverse((n) => {
-        if (!n.isMesh) return;
+        if (!n.isMesh || n.userData.batch) return;
         if (!groups.has(n.parent)) groups.set(n.parent, []);
         groups.get(n.parent).push(n);
     });
