@@ -83,7 +83,7 @@ let browser;
     let emphasis = await state();
     assert.equal(emphasis.selected,ids[1]);
     assert.deepEqual(emphasis.active,[ids[1]]);
-    assert.deepEqual(emphasis.pressed,[ids[1],ids[1]]);
+    assert.deepEqual(emphasis.pressed,[ids[1],ids[1],ids[1]]);
     assert.ok(emphasis.muted.every(p=>p.fill==='none' && p.stroke==='rgb(169, 175, 177)' && p.width==='1px'));
     await page.screenshot({path:path.join(os.tmpdir(),'comparison-selected.png')});
     await bands.nth(2).hover();
@@ -119,6 +119,52 @@ let browser;
     assert.equal((await state()).selected,ids[1]);
     await page.keyboard.press('Escape');
     assert.equal((await state()).selected,null);
+    await page.locator('#comparison h2').click();
+    // Locate a contour sample and a genuinely interior sample independently of SVG hit targets.
+    const samples = await page.locator('#comparison .cp-radar-chart svg').evaluate((svg,targetId) => {
+        const shapes=[...svg.querySelectorAll('.cp-radar-shape')].map(el=>{
+            const m=el.getScreenCTM();
+            return {id:el.dataset.cpOption,points:[...el.points].map(p=>({x:m.a*p.x+m.c*p.y+m.e,y:m.b*p.x+m.d*p.y+m.f}))};
+        });
+        const distance=(p,pts)=>Math.min(...pts.map((a,i)=>{
+            const b=pts[(i+1)%pts.length],dx=b.x-a.x,dy=b.y-a.y,d=dx*dx+dy*dy;
+            const t=d?Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/d)):0;
+            return Math.hypot(p.x-a.x-t*dx,p.y-a.y-t*dy);
+        }));
+        const inside=(p,pts)=>{let yes=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){
+            const a=pts[i],b=pts[j];if((a.y>p.y)!=(b.y>p.y)&&p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x)yes=!yes;
+        }return yes;};
+        const b=svg.getBoundingClientRect();let outline=null,interior=null;
+        for(let y=b.top+.5;y<b.bottom;y+=.75)for(let x=b.left+.5;x<b.right;x+=.75){
+            const p={x,y};const ranked=shapes.map(s=>({s,d:distance(p,s.points)})).sort((a,b)=>a.d-b.d);
+            if(!outline&&ranked[0].s.id===targetId&&ranked[0].d<1.5&&ranked[1].d-ranked[0].d>.05)outline=p;
+            if(!interior&&ranked[0].d>8&&shapes.some(s=>inside(p,s.points)))interior=p;
+            if(outline&&interior)return {outline,interior};
+        }
+        return {outline,interior};
+    },ids[2]);
+    assert.ok(samples.outline && samples.interior,'both contour and filled-interior samples exist');
+    const point=samples.outline;
+    await page.mouse.move(point.x,point.y);
+    assert.deepEqual((await state()).active,[ids[2]]);
+    await page.mouse.click(point.x,point.y);
+    assert.equal((await state()).selected,ids[2],'clicking the outer contour pins its option');
+    assert.equal((await state()).muted.length,2);
+    await page.mouse.click(point.x,point.y);
+    assert.equal((await state()).selected,null,'second click on the contour restores all colours');
+    await page.mouse.move(samples.interior.x,samples.interior.y);
+    assert.deepEqual((await state()).active,[],'the interior is not a hover selection target');
+    await page.mouse.click(point.x,point.y);
+    await page.mouse.click(samples.interior.x,samples.interior.y);
+    assert.equal((await state()).selected,null,'clicking the interior clears rather than selects');
+    const shapeA=page.locator(`#comparison .cp-radar-shape[data-cp-option="${ids[0]}"]`);
+    await page.locator('#comparison h2').hover();
+    await shapeA.focus();
+    await page.keyboard.press('Enter');
+    assert.equal((await state()).selected,ids[0]);
+    await page.keyboard.press('Space');
+    assert.equal((await state()).selected,null);
+    assert.equal(await shapeA.evaluate(el=>document.activeElement===el),true,'SVG keyboard focus survives toggling');
     assert.equal(await page.evaluate(()=>window.comparisonMediaBefore===document.querySelector('#comparison .cp-media')),true);
     await letters.nth(1).click();
     await page.locator('#comparison select[data-slot="0"]').selectOption('3');

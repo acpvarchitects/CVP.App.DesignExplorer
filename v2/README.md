@@ -296,14 +296,17 @@ Files of a 3D study (written by the Grasshopper "EXPORT | Full noise volume + De
    the vertices without extra numbering, at a fixed readable text size. Lines are balanced and
    units stay with the preceding word. The
    best-found explanation sits with the expanded exact values.
-   Hover a slot letter A–D or its coloured top band to preview its radar region; click to keep
+   Hover a slot letter A–D, its coloured top band or the outer contour of its radar region
+   to preview it; click to keep
    that option coloured while the others become muted cards and thin grey radar outlines.
    Hovering another slot temporarily previews it, then restores the pinned option. Click the
-   pinned option again, click anywhere outside the letters/bands, or press Escape to restore
+   pinned option again, click anywhere outside the letters/bands/radar contours, or press Escape to restore
    all colours. The top line keeps its original 3px thickness with a larger invisible hit area
    for hover and clicking. The controls also work with
    Tab and Enter/Space. Emphasis follows the option across redraws and clears if it is removed;
    it never reloads the comparison media.
+   Radar picking uses the nearest contour within 5 screen pixels, independently of fill and
+   drawing order. Clicking inside a region away from its boundary clears the selection.
 
 The URL keeps ticked methods, order, option, mode/layer, ranges, batch filter, shortlist and
 "Show inputs", so the address bar shares the current view. "Copy link" copies the home page
