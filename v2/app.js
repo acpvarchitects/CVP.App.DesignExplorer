@@ -23,11 +23,12 @@
 // Page sections, top to bottom: method tabs + chart, measurement filters,
 // preview (only after clicking an option), gallery, Compare methods, Compare options.
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
-import { Viewer } from "./viewer.js?v=38";
+import { Viewer } from "./viewer.js?v=46";
 import { rankGoals } from "./compare.js?v=37";
-import { comparisonHtml, comparisonViews } from "./comparison.js?v=39";
-import { ComparisonMedia } from "./comparison-media.js?v=8";
-import { mixConfig, mixGroupKeys, mixHtml } from "./unit-mix.js?v=3";
+import { comparisonHtml, comparisonViews } from "./comparison.js?v=40";
+import { ComparisonMedia } from "./comparison-media.js?v=16";
+import { Box3 as THREE_Box3, Vector3 as THREE_Vector3 } from "three";
+import { mixConfig, mixGroupKeys, mixHtml, mixUnits, programCount, programKey, programMatch, programTableHtml } from "./unit-mix.js?v=4";
 import { ParallelChart } from "./parallel.js?v=39";
 import { paretoFront } from "./pareto.js?v=1";
 import { readGeneration, generationScope, scaleVectors, kmeans, representatives, clusterCountLimit, clampClusterCount } from "./clustering.js?v=3";
@@ -51,6 +52,7 @@ const MODES = [
     { key: "image", label: "Image", layers: "images" },
     { key: "model", label: "3D model", layers: "models" },
     { key: "analysis", label: "3D analysis", layers: "analyses" },
+    { key: "program", label: "Program", layers: "programs" },
     { key: "table", label: "Table", layers: "tables" },
 ];
 
@@ -74,7 +76,7 @@ const state = {
     order: "", // result column that orders the gallery
     sel: null, // option index shown in the preview; null = preview closed
     mode: "image",
-    layer: { image: 0, model: 0, analysis: 0, table: 0 },
+    layer: { image: 0, model: 0, analysis: 0, program: 0, table: 0 },
     thumb: 0, // image column used as thumbnail in the gallery and the comparison
     expanded: false,
     shortlist: [], // option indexes, in the order they were picked
@@ -117,7 +119,7 @@ function resolveStudies() {
 
 // `rows` (optional) tells which unprefixed columns hold 3D files (geometry layers).
 function readSchema(columns, rows = []) {
-    const schema = { inputs: [], outputs: [], images: [], models: [], analyses: [], layers: [], tables: [], context: null };
+    const schema = { inputs: [], outputs: [], images: [], models: [], analyses: [], programs: [], layers: [], tables: [], context: null };
     const holds3d = (col) => rows.some((r) => /\.(glb|gltf)$/i.test((r[col] || "").trim()));
     const targets = new Map(); // result name (arrow removed) -> target column
     const bare = (name) => name.replace(/^[↑↓]/, "").trim();
@@ -163,6 +165,11 @@ function readSchema(columns, rows = []) {
               : null;
         if (a) a.legendCol = col;
     }
+    // "Program": the unit-mix 3D (an_unit_mix) with its table (mix_units, or the first unit-mix
+    // table) has its own tab, instead of sitting among the 3D analyses.
+    const mixTable = schema.tables.find((t) => t.col === "mix_units") || schema.tables.find((t) => t.kind === "mix");
+    const unitMix = schema.analyses.findIndex((a) => a.col === "an_unit_mix");
+    if (mixTable && unitMix >= 0) schema.programs.push({ ...schema.analyses.splice(unitMix, 1)[0], label: "Unit mix", mixCol: mixTable.col });
     // Layered export: "3D model" shows the general view made of the geometry layers.
     if (schema.layers.length) schema.models.push({ col: null, label: "General view", composed: true });
     return schema;
@@ -913,14 +920,19 @@ const unitOf = (m) => (m.label.match(/\[([^\]]+)\]\s*$/) || [])[1] || "";
 // The manifest entry of the 3D analysis / table shown for option `o`, if the export described it.
 function viewEntry(o) {
     const layer = layersOf()[state.layer[state.mode]];
-    if (!layer?.col || (state.mode !== "analysis" && state.mode !== "table")) return null;
+    if (!layer?.col || (state.mode !== "analysis" && state.mode !== "table" && state.mode !== "program")) return null;
     return entryForView(o.study, layer.col);
 }
 
 // Top right of the 3D analysis: its score for this option ("Average 41.2 dB(A)") and "About".
 function renderViewInfo(o) {
     const entry = viewEntry(o);
-    $("aboutView").hidden = !entry?.description?.length;
+    // Over a 3D analysis: the "About" chip, top right. Tables and the Program tab fill the
+    // frame with their own content, so there it is a small ⓘ in the controls row instead.
+    const hasText = !!entry?.description?.length;
+    const inRow = state.mode === "table" || state.mode === "program";
+    $("aboutView").hidden = !hasText || inRow;
+    $("aboutInline").hidden = !hasText || !inRow;
     const m = state.mode === "analysis" && entry?.value_column ? outputByCol(entry.value_column) : null;
     const v = m ? o.values[m.col] : NaN;
     const score = $("viewScore");
@@ -1002,10 +1014,12 @@ function showMedia(o) {
     mediaKey = key;
     const layer = layersOf()[state.layer[state.mode]];
     const isTable = state.mode === "table";
+    const isProgram = state.mode === "program";
+    if (!isProgram) hideProgram();
     // A 2D analysis: the cell holds an .svg plan (vector, pan and zoom), see plan2d.js.
     const cell2d = state.mode === "analysis" && layer?.col ? (o.row[layer.col] || "").trim() : "";
     const is2d = /\.svg$/i.test(cell2d);
-    const is3d = !is2d && (state.mode === "model" || state.mode === "analysis");
+    const is3d = !is2d && (state.mode === "model" || state.mode === "analysis" || isProgram);
     renderLayerToggles(state.mode === "model" && is3d && !!layer?.composed); // 3D model only: the analyses keep their legend clear
     $("preview2d").hidden = !is2d;
     const parts = is3d && layer ? partsFor(o, layer) : null;
@@ -1051,9 +1065,15 @@ function showMedia(o) {
         else $("previewImage").removeAttribute("src");
         return;
     }
-    if (!viewer) viewer = new Viewer($("preview3d"), (text) => ($("mediaStatus").textContent = text), { onLevels: renderLevels });
-    if (parts) viewer.compose(parts, { fadeContext: state.mode === "analysis" && !OVER_GENERAL[layer.col] });
-    else viewer.clear();
+    if (!viewer) {
+        viewer = new Viewer($("preview3d"), (text) => ($("mediaStatus").textContent = text), { onLevels: renderLevels, onPick: pickProgram, onHover: hoverProgram });
+    }
+    viewer.pickable = null;
+    viewer.fitWidth = isProgram;
+    if (isProgram) viewer.emphasise(null); // the option on screen goes back to its cache as loaded
+    const composed = parts ? viewer.compose(parts, { fadeContext: isProgram || (state.mode === "analysis" && !OVER_GENERAL[layer.col]), levels: !isProgram }) : null;
+    if (!parts) viewer.clear();
+    if (isProgram) showProgram(o, layer, key, composed);
 }
 
 // Top left of a composed 3D view: one checkbox per optional geometry layer (layers.json
@@ -1100,7 +1120,7 @@ function renderLevels(levels, level) {
 // Unit mix view (mix_<name> column): a JSON per option drawn by unit-mix.js with the study's
 // "mix" settings from layers.json. The view choice (By tower / Tower × size, zones, units or
 // m²) stays while stepping through options; folded groups reset per option.
-const mixUi = { view: "tower", zones: false, measure: "units", closed: new Set() };
+const mixUi = { view: "tower", measure: "units", closed: new Set() };
 const mixDocs = new Map(); // url -> promise of the parsed JSON
 let mixShown = null; // { doc, cfg, key } of the view on screen, for re-rendering on a control click
 
@@ -1146,11 +1166,10 @@ function onMixEvent(e) {
     const button = t.closest("button");
     const row = t.closest("tr[data-mix-key]");
     if (button?.dataset.mixView) mixUi.view = button.dataset.mixView;
-    else if (button?.dataset.mixZones) mixUi.zones = button.dataset.mixZones === "on";
     else if (button?.dataset.mixMeasure) mixUi.measure = button.dataset.mixMeasure;
     else if (button && "mixFold" in button.dataset) {
         if (mixUi.closed.size) mixUi.closed.clear();
-        else mixGroupKeys(mixShown.doc, mixShown.cfg, mixUi).forEach((k) => mixUi.closed.add(k));
+        else mixGroupKeys(mixShown.doc).forEach((k) => mixUi.closed.add(k));
     } else if (row) {
         const k = row.dataset.mixKey;
         if (mixUi.closed.has(k)) mixUi.closed.delete(k);
@@ -1165,6 +1184,250 @@ function onMixEvent(e) {
     const box = $("previewTable");
     if (mark) box.querySelector(`[${mark.name}="${CSS.escape(mark.value)}"]`)?.focus();
     else if (focus) [...box.querySelectorAll("tr[data-mix-key]")].find((r) => r.dataset.mixKey === focus)?.focus();
+}
+
+// ---- Program tab: the unit-mix 3D with its table (Tower × size), linked both ways ----
+// A click on a tower name, a size header or a cell selects those apartments (Ctrl/⌘ adds): they
+// keep their colour in the 3D and the rest is pushed back, or hidden with "Isolate". A click on an
+// apartment in the 3D selects its cell. The link needs no extra data: the 3D file holds one mesh
+// per apartment in the order of the table's JSON (unit-mix.js mixUnits), checked in linkProgram.
+const progUi = { sel: new Set(), hover: null, isolate: false, floors: null, measure: "units", docked: false, folded: false };
+let progShown = null; // { key, doc, cfg, units, meshes: [mesh per unit] | null }
+
+function hideProgram() {
+    progShown = null;
+    progUi.hover = null;
+    $("programPanel").hidden = true;
+    $("programTip").hidden = true;
+    $("programPanel").closest(".media").classList.remove("program", "program-docked", "program-folded");
+    if (viewer) {
+        viewer.pickable = null;
+        viewer.emphasise(null);
+    }
+}
+
+async function showProgram(o, layer, key, composed) {
+    const media = $("programPanel").closest(".media");
+    media.classList.add("program");
+    media.classList.toggle("program-docked", progUi.docked);
+    progShown = null;
+    progUi.hover = null;
+    $("programTip").hidden = true;
+    $("programPanel").hidden = true;
+    const url = assetUrl(o, (o.row[layer.mixCol] || "").trim());
+    let doc = null;
+    try {
+        if (url) doc = await loadMix(url);
+    } catch (e) {
+        doc = null;
+    }
+    await composed;
+    if (mediaKey !== key) return; // another option or view was opened meanwhile
+    if (!doc) {
+        $("mediaNote").textContent = "The unit mix table didn't load.";
+        return;
+    }
+    const cfg = mixConfig(entryForView(o.study, layer.mixCol), doc);
+    const units = mixUnits(doc);
+    progShown = { key, doc, cfg, units, meshes: linkProgram(units, layer.col) };
+    // keep only the selection that still means something in this option
+    const towers = new Set(units.map((u) => u.tower));
+    for (const k of [...progUi.sel]) if (!units.some((u) => programMatch(k, u))) progUi.sel.delete(k);
+    const top = Math.max(1, ...(doc.towers || []).map((t) => Number(t.floors) || 0));
+    if (progUi.floors != null && progUi.floors >= top) progUi.floors = null;
+    viewer.pickable = progShown.meshes;
+    renderProgram();
+}
+
+// One mesh per apartment, in the order of `units`: the group of the 3D file named after the
+// column (or the only one with as many meshes as apartments). The order is checked on the
+// heights: same floor = same base, next floor = higher. Every other mesh of the file (balcony
+// slabs) follows its nearest apartment. null = no reliable link: the table still shows.
+function linkProgram(units, col) {
+    const root = viewer?.analysisRoot();
+    if (!root || !units.length) return null;
+    if (root.userData.programLink !== undefined) return root.userData.programLink?.length === units.length ? root.userData.programLink : null;
+    const groups = new Map();
+    root.traverse((n) => {
+        if (!n.isMesh || n.userData.batch) return;
+        if (!groups.has(n.parent)) groups.set(n.parent, []);
+        groups.get(n.parent).push(n);
+    });
+    const fits = [...groups].filter(([, list]) => list.length === units.length);
+    const main = (fits.find(([parent]) => parent.name === col) || fits[0])?.[1] || null;
+    const box = (m) => m.geometry.boundingBox || (m.geometry.computeBoundingBox(), m.geometry.boundingBox);
+    let ok = !!main;
+    for (let i = 1; ok && i < units.length; i++) {
+        if (units[i].tower !== units[i - 1].tower) continue;
+        const rise = box(main[i]).min.y - box(main[i - 1]).min.y;
+        ok = units[i].floor === units[i - 1].floor ? Math.abs(rise) < 0.05 : rise > 0.5;
+    }
+    root.userData.programLink = ok ? main : null;
+    if (!ok) return null;
+    main.forEach((m, i) => (m.userData.unit = i));
+    // per tower: its extent in plan and the top height of each floor (for the floors cut)
+    const towers = new Map();
+    main.forEach((m, i) => {
+        const u = units[i];
+        if (!towers.has(u.tower)) towers.set(u.tower, { box: new THREE_Box3(), tops: [] });
+        const t = towers.get(u.tower);
+        t.box.union(box(m));
+        t.tops[u.floor] = Math.max(t.tops[u.floor] ?? -Infinity, box(m).max.y);
+    });
+    root.userData.programTowers = [...towers.values()];
+    const centre = new THREE_Vector3();
+    for (const [, list] of groups) {
+        if (list === main) continue;
+        for (const m of list) {
+            box(m).getCenter(centre);
+            let best = -1;
+            let near = 3; // metres: further than this it belongs to no apartment
+            for (let i = 0; i < main.length; i++) {
+                const d = box(main[i]).distanceToPoint(centre);
+                if (d < near) {
+                    near = d;
+                    best = i;
+                }
+            }
+            m.userData.unit = best;
+        }
+    }
+    return main;
+}
+
+// The apartments the selection (or the row under the pointer) means; all of them when empty.
+function programActive() {
+    const keys = progUi.hover ? [progUi.hover] : [...progUi.sel];
+    return { keys, on: progShown.units.map((u) => !keys.length || keys.some((k) => programMatch(k, u))) };
+}
+
+function applyProgram() {
+    if (!progShown || progShown.key !== mediaKey) return;
+    const { units, cfg, meshes } = progShown;
+    const { keys, on } = programActive();
+    const cut = (u) => progUi.floors != null && u.floor >= progUi.floors;
+    const away = progUi.isolate ? "hide" : "dim";
+    if (viewer && meshes) {
+        // cores, roofs and base floors go with a cut (they would stick out of it) and with Isolate
+        const hideOthers = progUi.floors != null || (keys.length > 0 && progUi.isolate);
+        viewer.emphasise((mesh) => {
+            const i = mesh.userData.unit;
+            if (i == null) return null;
+            if (i < 0) return keys.length ? away : null;
+            return cut(units[i]) ? "hide" : on[i] ? null : away;
+        }, hideOthers);
+        // the outlines of the cut floors go with them
+        const towers = viewer.analysisRoot()?.userData.programTowers;
+        const n = progUi.floors;
+        viewer.clipLines(n == null || !towers ? null : towers.map((t) => ({ box: t.box, top: t.tops.length > n ? t.tops[n - 1] : null })));
+    }
+    const chosen = units.filter((u, i) => on[i] && !cut(u));
+    const count = $("progCount");
+    if (count) count.textContent = (keys.length ? "Selected: " : "") + programCount(chosen, cfg);
+    for (const el of $("programPanel").querySelectorAll("[data-prog-key]")) {
+        const picked = progUi.sel.has(el.dataset.progKey);
+        el.classList.toggle("prog-on", picked);
+        el.setAttribute("aria-pressed", String(picked));
+    }
+}
+
+function renderProgram() {
+    const p = progShown;
+    const box = $("programPanel");
+    if (!p || p.key !== mediaKey) return;
+    const top = Math.max(1, ...(p.doc.towers || []).map((t) => Number(t.floors) || 0));
+    const press = (name, on, label, title) => `<button type="button" data-prog="${name}" aria-pressed="${on}" title="${title}">${label}</button>`;
+    box.classList.toggle("folded", progUi.folded);
+    box.closest(".media").classList.toggle("program-folded", progUi.folded); // docked: the 3D takes the width back
+    box.innerHTML = `<div class="prog-head">
+            <strong>Unit mix</strong><span id="progCount" class="prog-count"></span>
+            ${press("dock", progUi.docked, progUi.docked ? "Float" : "Side panel", progUi.docked ? "Back to a panel over the 3D" : "Table beside the 3D")}
+            <button type="button" data-prog="fold" aria-expanded="${!progUi.folded}" title="${progUi.folded ? "Show the table" : "Hide the table"}">${progUi.folded ? "▸" : "▾"}</button>
+        </div>
+        <div class="prog-tools">
+            <span class="mix-seg" role="group">${press("units", progUi.measure === "units", "Apartments", "Count apartments")}${press("area", progUi.measure === "area", "m²", "Apartment area")}</span>
+            ${press("isolate", progUi.isolate, "Isolate", "Hide the apartments that are not selected instead of fading them")}
+            <button type="button" data-prog="clear" title="Clear the selection">Clear</button>
+            <label class="prog-floors" title="Cut the towers from the top">Floors <input id="progFloors" type="range" min="1" max="${top}" value="${progUi.floors ?? top}" /> <output id="progFloorsOut">${progUi.floors == null ? "all" : "1–" + progUi.floors}</output></label>
+        </div>
+        <div class="prog-body">${programTableHtml(p.doc, p.cfg, progUi.measure, esc)}
+            ${p.meshes ? `<p class="mix-note">Click a tower, a size or a cell to select it in the 3D; Ctrl or ⌘ adds to the selection. Click an apartment in the 3D to select its cell.</p>` : `<p class="mix-note mix-off">The 3D file of this option does not list one piece per apartment in the table's order, so the selection cannot reach the 3D.</p>`}
+        </div>`;
+    box.hidden = false;
+    applyProgram();
+}
+
+function toggleProgram(key, add) {
+    if (add) {
+        if (progUi.sel.has(key)) progUi.sel.delete(key);
+        else progUi.sel.add(key);
+    } else progUi.sel = progUi.sel.size === 1 && progUi.sel.has(key) ? new Set() : new Set([key]);
+    progUi.hover = null;
+    applyProgram();
+    saveUrl();
+}
+
+// Clicks, keys, the floors slider and the row under the pointer (delegated on the panel).
+function onProgramEvent(e) {
+    if (!progShown) return;
+    if (e.type === "input") {
+        if (e.target.id !== "progFloors") return;
+        const top = +e.target.max;
+        progUi.floors = +e.target.value >= top ? null : +e.target.value;
+        $("progFloorsOut").textContent = progUi.floors == null ? "all" : "1–" + progUi.floors;
+        return applyProgram();
+    }
+    if (e.type === "mouseover" || e.type === "mouseleave") {
+        const key = e.type === "mouseover" ? e.target.closest("[data-prog-key]")?.dataset.progKey || null : null;
+        if (key === progUi.hover) return;
+        progUi.hover = key;
+        return applyProgram();
+    }
+    if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
+    const cell = e.target.closest("[data-prog-key]");
+    const button = e.target.closest("button[data-prog]");
+    if (!cell && !button) return;
+    if (e.type === "keydown") e.preventDefault();
+    if (cell) return toggleProgram(cell.dataset.progKey, e.ctrlKey || e.metaKey);
+    const what = button.dataset.prog;
+    if (what === "clear") {
+        progUi.sel = new Set();
+        applyProgram();
+        return saveUrl();
+    }
+    if (what === "isolate") progUi.isolate = !progUi.isolate;
+    else if (what === "units" || what === "area") progUi.measure = what;
+    else if (what === "fold") progUi.folded = !progUi.folded;
+    else if (what === "dock") {
+        progUi.docked = !progUi.docked;
+        progUi.folded = false;
+        $("programPanel").closest(".media").classList.toggle("program-docked", progUi.docked);
+    }
+    renderProgram();
+    if (viewer && (what === "dock" || (what === "fold" && progUi.docked))) {
+        viewer.resize(); // the 3D just changed width: frame the option again, or its sides are cut
+        viewer.resetView();
+    }
+    $("programPanel").querySelector(`button[data-prog="${what === "units" || what === "area" ? progUi.measure : what}"]`)?.focus();
+    saveUrl();
+}
+
+// 3D: a click on an apartment selects its cell; the pointer on one names it.
+function pickProgram(mesh, e) {
+    const u = progShown?.units[mesh?.userData.unit];
+    if (u) toggleProgram(programKey("c", u.tower, u.type), e.ctrlKey || e.metaKey);
+}
+
+function hoverProgram(mesh, e) {
+    const tip = $("programTip");
+    const u = e && progShown?.units[mesh?.userData.unit];
+    tip.hidden = !u;
+    if (!u) return;
+    const type = progShown.cfg.types.find((t) => t.key === u.type);
+    tip.textContent = `${u.tower} · floor ${u.floor + 1} · ${type?.label || u.type}`;
+    const rect = tip.parentElement.getBoundingClientRect();
+    tip.style.left = e.clientX - rect.left + "px";
+    tip.style.top = e.clientY - rect.top + "px";
 }
 
 // Table view: a small CSV per option (first row = header). Numeric cells are formatted like
@@ -1202,7 +1465,7 @@ async function showTable(url, key) {
 // Empty cells mean "no such layer for this option" (for example no pools) and are skipped.
 function partsFor(o, layer, mode = state.mode) {
     const file = (col) => (col ? assetUrl(o, (o.row[col] || "").trim()) : null);
-    const analysisView = mode === "analysis";
+    const analysisView = mode === "analysis" || mode === "program";
     const own = [];
     if (!layer.composed) {
         const url = file(layer.col);
@@ -1442,6 +1705,10 @@ function saveUrl() {
     set("option",state.sel != null ? state.sel + 1 : "");
     set("mode", state.sel != null ? state.mode : "");
     set("layer", state.sel != null && state.layer[state.mode] ? state.layer[state.mode] + 1 : "");
+    // Program tab: the selection (towers, sizes, cells) and the table beside the 3D
+    const program = state.sel != null && state.mode === "program";
+    set("psel", program && progUi.sel.size ? JSON.stringify([...progUi.sel].map((k) => JSON.parse(k))) : "");
+    set("pdock", program && progUi.docked ? "1" : "");
     set("compare", state.shortlist.map((i) => i + 1).join(","));
     set("compareview", state.shortlist.length >= 2 ? state.compareView : '');
     set("inputs", state.showInputs ? "1" : "");
@@ -1490,6 +1757,14 @@ function loadUrlState() {
         .map((n) => parseInt(n, 10) - 1)
         .filter((i, k, all) => i >= 0 && i < data.options.length && all.indexOf(i) === k)
         .slice(0, MAX_SHORTLIST);
+    try {
+        const picked = JSON.parse(params.get("psel") || "[]");
+        const valid = (k) => Array.isArray(k) && ["t", "s", "c"].includes(k[0]) && k.length === (k[0] === "c" ? 3 : 2) && k.slice(1).every((v) => typeof v === "string");
+        progUi.sel = new Set((Array.isArray(picked) ? picked : []).filter(valid).map((k) => programKey(...k)));
+    } catch (e) {
+        progUi.sel = new Set();
+    }
+    progUi.docked = params.get("pdock") === "1";
     state.compareView = params.get('compareview') || '';
     state.showInputs = params.get("inputs") === "1";
     const on = params.get("layers");
@@ -1773,10 +2048,12 @@ function bindEvents() {
     $("resetView").addEventListener("click", () => ($("preview2d").hidden ? viewer && viewer.resetView() : plan2d && plan2d.reset()));
     $("shareBtn").addEventListener("click", copyLink);
     $("homeLink").href = homeUrl(); // the logo reloads the study from scratch: nothing open, no filters
-    $("aboutView").addEventListener("click", () => {
-        const o = state.sel != null ? data.options[state.sel] : null;
-        if (o) openAbout(described([o.study], () => viewEntry(o)));
-    });
+    for (const id of ["aboutView", "aboutInline"]) {
+        $(id).addEventListener("click", () => {
+            const o = state.sel != null ? data.options[state.sel] : null;
+            if (o) openAbout(described([o.study], () => viewEntry(o)));
+        });
+    }
     $("aboutClose").addEventListener("click", closeAbout);
     $("layerToggles").addEventListener("click", (e) => {
         const b = e.target.closest("[data-layer-info]");
@@ -1791,6 +2068,7 @@ function bindEvents() {
     });
     $("previewTable").addEventListener("click", onMixEvent);
     $("previewTable").addEventListener("keydown", onMixEvent);
+    for (const type of ["click", "keydown", "input", "mouseover", "mouseleave"]) $("programPanel").addEventListener(type, onProgramEvent);
     $("levelPicker").addEventListener("click", (e) => {
         const b = e.target.closest("[data-level]");
         if (b && viewer) viewer.setLevel(b.dataset.level === "" ? null : +b.dataset.level);

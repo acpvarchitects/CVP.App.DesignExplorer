@@ -44,7 +44,7 @@ from Docker (local test data).
 | `analysis:<name>` | 3D analysis mesh with vertex colors (`.glb`), or a 2D plan analysis (`.svg`, see below) |
 | `target:<result>` | optional target of the `out:` column with that name (arrow optional), e.g. `target:SUL (75% GFA) [m²]`; drawn as a red dot with its value on that result's axis in the parallel chart and on its bar in "Where this option stands", plus "% of target" |
 | `table_<name>` | small table per option (`.csv`, first row = header) shown in the **Table** view; numbers are formatted, a first cell `Total` marks the totals row |
-| `mix_<name>` | unit mix per option (`.json`, see "Unit mix" below), shown as **Table · Unit mix** and in Compare options |
+| `mix_<name>` | unit mix per option (`.json`, see "Unit mix" below), shown as **Table · Unit mix**, in the **Program** tab and in Compare options |
 
 Labels are the column names as written (arrow removed). File names are relative to the
 option's own study folder. Several studies are merged by column name.
@@ -81,6 +81,29 @@ Views (`GENERAL_ONLY`, `ANALYSIS_ONLY`, `OVER_GENERAL` in `app.js`):
   stepping through options and views, the comparison uses it when it next draws, and it is in the link
   (`layers=<col>,<col>`, `layers=none`; omitted when equal to the defaults).
 
+### Program tab (`an_unit_mix` + `mix_units`)
+
+When a study has both the unit-mix 3D (`an_unit_mix`) and a unit-mix table (`mix_units`, or the
+first `mix_<name>` column), the 3D leaves the **3D analysis** list and gets its own tab,
+**Program**, next to it. The tab shows the 3D coloured by apartment size with the **Tower × size**
+table in a panel over it (bottom right); **Side panel** docks the table beside the 3D, **Float**
+puts it back, the arrow folds it to its title bar in both layouts (docked: the 3D takes the full width again). The coloured size headers are the legend.
+
+- **Table → 3D:** a click on a tower name selects the tower, on a size header that size in every
+  tower, on a cell that tower × size; Ctrl / ⌘ adds to the selection. The selected apartments keep
+  their colour, the other apartments turn plain light grey, or are hidden with **Isolate**
+  (cores, roofs and base floors too). Moving over the table previews the same. **Floors** cuts every tower from the top, outlines included.
+- **3D → table:** a click on an apartment selects its cell; the pointer on one names it
+  (`T05 · floor 12 · 220 m²`).
+- The count next to the title is the selection (apartments and m²), or the whole option.
+- The link (`psel`, `pdock`) keeps the selection and the docked table.
+
+No extra export data: the 3D file has one mesh per apartment in the order of the table's JSON
+(tower by tower, floor by floor, along the typical floor). The viewer checks it (as many meshes as
+apartments in the group named after the column; same floor = same base height, next floor =
+higher); balcony slabs follow their nearest apartment. If the check fails the table still shows,
+with a note that the selection cannot reach the 3D. Compare options still lists the unit-mix 3D.
+
 ### Unit mix (`mix_<name>`, `unit-mix.js`)
 
 The cell holds one JSON per option: `{version: 1, towers: [{id, floors, base, height_m, plate,
@@ -88,8 +111,9 @@ length_m, cores, hotel, zone}]}`. `plate` lists the unit types of one typical re
 plan order; it repeats `floors` times and the `base` floors carry no apartments. The view has
 tiles (apartments, area, one per size with a meter against the target, parking) and two tables:
 **By tower** (tower rows with plate chips, slab length, floors + base, height, apartments, m², %,
-parking, then one row per size; optional **Zones › towers** level; rows fold and unfold) and
-**Tower × size** (matrix tinted by value, totals, target and gap, apartments or m²). Compare options
+parking, then one row per size; rows fold and unfold) and
+**Tower × size** (matrix tinted by value, totals, target and gap, apartments or m²). One table for
+every tower: `hotel` and `zone` in the JSON are no longer shown. Compare options
 shows each option's totals per size against the target. Settings come from the column's
 `layers.json` `tables[]` entry, under `mix`:
 
@@ -241,7 +265,7 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 | `comparison.js` | the Compare options section (radar, strengths, values table) |
 | `comparison-media.js` | independent media and viewer lifecycle for the shared Compare view selector |
 | `parallel.js` | parallel-coordinates chart (d3) |
-| `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera |
+| `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera, picking and emphasis (Program tab). Draws a frame only when the camera moves or something changes; the pieces of a layer that share a material are merged at load into one mesh (a layer used to be one draw call per glTF primitive), and the Program tab draws the apartments in one mesh per state |
 | `plan2d.js` | 2D plan viewer (SVG layers, pan / zoom by viewBox, room hover) and `legendColor()` |
 | `analysis.html` / `analysis.js` | single-analysis page: the 2D analyses of one study, level by level |
 | `pdfexport.js` | "Export view" on the analysis page: vector PDF (A3 landscape) of the plan as framed, with legend, rooms, score and a graphic scale; loads jsPDF 2.5.1 + svg2pdf.js 2.2.3 from jsdelivr on first use |
