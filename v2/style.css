@@ -1878,11 +1878,12 @@ html.nav-collapsed .left-panel .drawer {
     margin: 12px 0 24px;
     padding: 24px;
     scroll-margin-top: 16px;
+    container-type: inline-size;
 }
 
 .comparison h2 {
-    font-size: 24px;
-    margin: 5px 0;
+    font-size: 20px;
+    margin: 0;
 }
 
 .comparison h3 {
@@ -1923,9 +1924,11 @@ button.cp-primary:hover:not(:disabled) {
 .cp-head {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     gap: 15px;
 }
+.cp-head-tools { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px 16px; }
+.cp-head-tools .cp-primary { align-self: center; }
 
 .cp-picks {
     display: flex;
@@ -1936,6 +1939,8 @@ button.cp-primary:hover:not(:disabled) {
 }
 
 .cp-picks article {
+    --option: var(--slot-color);
+    position: relative;
     flex: 1 1 260px;
     min-width: 0;
     display: flex;
@@ -1952,7 +1957,7 @@ button.cp-primary:hover:not(:disabled) {
     position: relative;
 }
 
-.cp-view-control { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 14px; flex-wrap: wrap; font-size: 13px; }
+.cp-view-control { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin: 0; font-size: 13px; }
 .cp-view-control select { max-width: 100%; min-width: 180px; }
 .cp-media { position: relative; width: 100%; aspect-ratio: 16 / 10; min-height: 220px; background: var(--card); overflow: hidden; }
 .cp-media [hidden] { display: none !important; }
@@ -1978,7 +1983,7 @@ button.cp-primary:hover:not(:disabled) {
     border-radius: var(--acpv-sys-corner-small);
 }
 
-.cp-thumb b {
+.cp-picks article .cp-select-letter {
     position: absolute;
     top: 8px;
     left: 8px;
@@ -1988,8 +1993,28 @@ button.cp-primary:hover:not(:disabled) {
     font-size: 16px;
     line-height: 24px;
     color: #fff;
+    border: 0;
     background: var(--option);
     border-radius: var(--acpv-sys-corner-small);
+}
+.cp-picks article .cp-select-band {
+    position: absolute;
+    top: -9px;
+    left: 0;
+    width: 100%;
+    height: 18px;
+    min-height: 0;
+    min-block-size: 0;
+    z-index: 2;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+.cp-select-letter:focus-visible, .cp-select-band:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
 }
 
 .cp-controls {
@@ -2029,9 +2054,12 @@ button.cp-primary:hover:not(:disabled) {
     gap: 28px;
 }
 
-.cp-radar svg {
-    width: 100%;
-    max-height: 400px;
+.cp-radar-chart { position: relative; height: 320px; container-type: size; }
+.cp-radar-chart svg {
+    position: absolute;
+    inset: 36px 108px;
+    width: calc(100% - 216px);
+    height: calc(100% - 72px);
 }
 
 .cp-radar p {
@@ -2040,18 +2068,90 @@ button.cp-primary:hover:not(:disabled) {
     color: var(--muted);
 }
 
-.cp-radar ol {
-    columns: 2;
+.cp-axis-label {
+    --r: min(calc((100cqw - 216px) / 2), calc((100cqh - 72px) / 2));
+    position: absolute;
+    left: calc(50% + var(--r) * var(--axis-x));
+    top: calc(50% + var(--r) * var(--axis-y));
+    width: min(180px, calc(50cqw - var(--r) - 10px));
     font-size: 11px;
-    line-height: 1.8;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+    color: var(--text);
+}
+.cp-axis-left { transform: translate(calc(-100% - 6px), -50%); text-align: right; }
+.cp-axis-right { transform: translate(6px, -50%); }
+.cp-axis-top, .cp-axis-bottom { width: min(240px, 80cqw); text-align: center; }
+.cp-axis-top { transform: translate(-50%, -100%); }
+.cp-axis-bottom { transform: translate(-50%, 0); }
+.cp-radar, .cp-strengths { min-width: 0; }
+.cp-content { min-height: 0; }
+
+/* Use the same measured centre-card height as the full-height option view. The
+   comparison keeps its header in view; unusually long results remain scrollable. */
+@media (min-width: 851px) {
+    .center-scroll.snap-on .comparison:not([hidden]) {
+        height: calc(var(--snap-view, 100dvh) - 24px);
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        padding: 16px;
+        margin-bottom: 12px;
+    }
+    .center-scroll.snap-on .comparison .cp-head { flex: none; }
+    .center-scroll.snap-on .comparison h2 { font-size: 20px; }
+    .center-scroll.snap-on .comparison .cp-head p { margin: 3px 0; }
+    .center-scroll.snap-on .cp-content {
+        flex: 1;
+        overflow: auto;
+        scrollbar-gutter: stable;
+        padding-right: 4px;
+    }
+    .center-scroll.snap-on .cp-picks { flex-wrap: nowrap; margin: 10px 0; gap: 8px; }
+    .center-scroll.snap-on .cp-picks article { flex: 1 1 0; padding: 8px; gap: 5px; }
+    .center-scroll.snap-on .cp-media {
+        aspect-ratio: auto;
+        height: clamp(110px, calc((var(--snap-view) - 280px) * .4), 300px);
+        min-height: 0;
+    }
+    .center-scroll.snap-on .cp-picks:has(small) .cp-media {
+        height: clamp(86px, calc((var(--snap-view) - 280px) * .4 - 24px), 276px);
+    }
+    .center-scroll.snap-on .cp-radar-layout { gap: 16px; align-items: start; }
+    .center-scroll.snap-on .cp-radar-chart {
+        height: clamp(200px, calc((var(--snap-view) - 280px) * .65), 400px);
+    }
+    .center-scroll.snap-on .cp-radar p { margin: 2px 0 8px; }
+    .center-scroll.snap-on .cp-strengths {
+        max-height: clamp(200px, calc((var(--snap-view) - 280px) * .65), 400px);
+        overflow: auto;
+    }
+    .center-scroll.snap-on .cp-strength { padding: 7px 10px; margin-bottom: 8px; }
+    .center-scroll.snap-on .cp-strength p { line-height: 1.4; }
+    .center-scroll.snap-on .cp-note { margin-top: 8px; }
+}
+
+@container (max-width: 700px) {
+    .cp-radar-layout { grid-template-columns: 1fr; }
+    .center-scroll.snap-on .cp-picks { flex-wrap: wrap; }
+    .center-scroll.snap-on .cp-picks article { flex-basis: 180px; }
 }
 
 .cp-strength {
+    --option: var(--slot-color);
     margin: 0 0 12px;
     padding: 12px 15px;
     background: var(--soft);
     border-left: 3px solid var(--option);
 }
+.cp-option-heading { color: var(--option, var(--slot-color)); }
+.comparison .cp-muted { --option: #9ca3a5; }
+.cp-muted .cp-media { filter: grayscale(1); opacity: .5; }
+.cp-strength.cp-muted { opacity: .55; }
+.cp-picks article.cp-active { outline: 1px solid var(--slot-color); outline-offset: 1px; }
+.cp-radar-shape.cp-muted { fill: none; stroke: #a9afb1; stroke-width: 1; }
+.cp-preselect .cp-radar-shape.cp-active { fill-opacity: .16; stroke-width: 3.5; }
 
 .cp-strength strong {
     color: var(--option);

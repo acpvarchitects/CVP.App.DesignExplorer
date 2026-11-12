@@ -32,6 +32,10 @@ python -m http.server 8765 --bind 127.0.0.1
 Then open `http://127.0.0.1:8765/v2/?PROJECT=STUDY`. `v2/_test/` is gitignored and excluded
 from Docker (local test data).
 
+For live API studies from localhost, use `py -3 scripts/serve-local.py --port 8124`.
+This read-only development server proxies study assets on the same origin, avoiding API CORS
+restrictions. It rewrites the API URL in the served JavaScript only; production files stay unchanged.
+
 ## CSV conventions (everything is data-driven)
 
 | Column | Meaning |
@@ -285,6 +289,21 @@ Files of a 3D study (written by the Grasshopper "EXPORT | Full noise volume + De
    This avoids detaching active WebGL canvases, which could leave Chrome displaying an
    older analysis while its HTML legend changed. Compositions also commit a frame immediately;
    offscreen detection uses current bounds rather than observer state across reparenting.
+   On desktop, comparison uses the centre card's measured viewport height, with the sidebar
+   either expanded or collapsed. Previews follow that height instead of growing with their width.
+   The compact header combines the title, shared view selector and back button; long strengths
+   and expanded exact-value tables remain scrollable. Radar axis descriptions appear beside
+   the vertices without extra numbering, at a fixed readable text size. Lines are balanced and
+   units stay with the preceding word. The
+   best-found explanation sits with the expanded exact values.
+   Hover a slot letter A–D or its coloured top band to preview its radar region; click to keep
+   that option coloured while the others become muted cards and thin grey radar outlines.
+   Hovering another slot temporarily previews it, then restores the pinned option. Click the
+   pinned option again, click anywhere outside the letters/bands, or press Escape to restore
+   all colours. The top line keeps its original 3px thickness with a larger invisible hit area
+   for hover and clicking. The controls also work with
+   Tab and Enter/Space. Emphasis follows the option across redraws and clears if it is removed;
+   it never reloads the comparison media.
 
 The URL keeps ticked methods, order, option, mode/layer, ranges, batch filter, shortlist and
 "Show inputs", so the address bar shares the current view. "Copy link" copies the home page
@@ -301,6 +320,7 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 | `about-figures.js` | diagrams for the "About" cards (`figure` in a description section); the spacing-rule set for `spacing_zones` |
 | `compare.js` | "about the same" and win rules |
 | `comparison.js` | the Compare options section (radar, strengths, values table) |
+| `comparison-focus.js` | hover preview and pinned option emphasis, without rebuilding media |
 | `comparison-media.js` | independent media and viewer lifecycle for the shared Compare view selector |
 | `parallel.js` | parallel-coordinates chart (d3) |
 | `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera, picking and emphasis (Program tab). Draws a frame only when the camera moves or something changes; the pieces of a layer that share a material are merged at load into one mesh (a layer used to be one draw call per glTF primitive), and the Program tab draws the apartments in one mesh per state |

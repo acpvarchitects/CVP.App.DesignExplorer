@@ -33,27 +33,26 @@ export function comparisonHtml({ data, chosen, esc, fmt, thumbUrl, maxOptions, v
     const rows = data.schema.outputs.map((m) => resultRow(m, chosen, all));
     const label = (o) => o.name;
 
+    const viewControl = views.length ? `<label class="cp-view-control">View
+        <select data-compare-view aria-label="View for all compared options">${views.map(v =>
+            `<option value="${esc(v.key)}"${v.key === selectedView ? ' selected' : ''}>${esc(v.label)}</option>`).join('')}</select>
+    </label>` : '';
     const head = `<header class="cp-head">
         <div>
-            <span class="eyebrow">Compare options</span>
-            <h2>Which trade-offs work for you?</h2>
+            <h2>Compare options</h2>
             <p class="muted small">${chosen.length} selected · reference: all ${all.length} options${
                 data.studies.length > 1 ? ` across ${data.studies.length} methods` : ""
             }</p>
         </div>
-        <button type="button" class="cp-primary" data-back>Back to options ↑</button>
+        <div class="cp-head-tools">${viewControl}<button type="button" class="cp-primary" data-back>Back to options ↑</button></div>
     </header>`;
-
-    const viewControl = views.length ? `<label class="cp-view-control">View for all compared options
-        <select data-compare-view aria-label="View for all compared options">${views.map(v =>
-            `<option value="${esc(v.key)}"${v.key === selectedView ? ' selected' : ''}>${esc(v.label)}</option>`).join('')}</select>
-    </label>` : '';
     const picks = `<div class="cp-picks">${chosen
         .map(
-            (o, i) => `<article style="--option:${SLOT_COLORS[i]}">
+            (o, i) => `<article data-cp-option="${o.index}" style="--slot-color:${SLOT_COLORS[i]}">
+                <button type="button" class="cp-select-band" data-cp-focus="${o.index}" aria-pressed="false" aria-label="Highlight option ${slotName(i)} · ${esc(label(o))}"></button>
                 <div class="cp-thumb">
                     <div class="cp-media" data-cp-media="${i}"></div>
-                    <b>${slotName(i)}</b>
+                    <button type="button" class="cp-select-letter" data-cp-focus="${o.index}" aria-pressed="false" aria-label="Highlight option ${slotName(i)} · ${esc(label(o))}">${slotName(i)}</button>
                 </div>
                 <div class="cp-controls">
                     <select data-slot="${i}" aria-label="Option ${slotName(i)}">${data.studies
@@ -75,7 +74,7 @@ export function comparisonHtml({ data, chosen, esc, fmt, thumbUrl, maxOptions, v
         .map((o, i) => {
             const leads = rows.filter((r) => r.leaders.length === 1 && r.leaders[0] === o).map((r) => r.m.label);
             const close = rows.filter((r) => r.leaders.length > 1 && r.leaders.includes(o)).map((r) => r.m.label);
-            return `<article class="cp-strength" style="--option:${SLOT_COLORS[i]}">
+            return `<article class="cp-strength" data-cp-option="${o.index}" style="--slot-color:${SLOT_COLORS[i]}">
                 <strong>${slotName(i)} · ${esc(label(o))}</strong>
                 <p>${leads.length ? "Leads on " + leads.map(esc).join(", ") + "." : "No sole lead on these measurements."}</p>
                 ${close.length ? `<small>Close to the lead: ${close.map(esc).join(", ")}.</small>` : ""}
@@ -85,7 +84,7 @@ export function comparisonHtml({ data, chosen, esc, fmt, thumbUrl, maxOptions, v
 
     const table = `<div class="cp-table-wrap"><table class="cp-table">
         <thead><tr><th>Measurement</th>${chosen
-            .map((o, i) => `<th style="color:${SLOT_COLORS[i]}">${slotName(i)} · ${esc(label(o))}</th>`)
+            .map((o, i) => `<th class="cp-option-heading" data-cp-option="${o.index}" style="--slot-color:${SLOT_COLORS[i]}">${slotName(i)} · ${esc(label(o))}</th>`)
             .join("")}<th class="cp-reference">Best found¹</th></tr></thead>
         <tbody>${rows
             .map(
@@ -100,23 +99,21 @@ export function comparisonHtml({ data, chosen, esc, fmt, thumbUrl, maxOptions, v
             .join("")}</tbody>
     </table></div>`;
 
+    const foot = `<footer class="cp-note">¹ Best found is the best value of each measurement across all loaded options: it is not one buildable option, and filters don't change it. Close results count as about the same: under 2% apart, or within 1 dB for noise.</footer>`;
     const body = `<div class="cp-radar-layout">
         <div class="cp-radar">
-            ${radarSvg(goals, rows, chosen)}
+            ${radarSvg(goals, rows, chosen, esc)}
             <p>Outward = better · dashed edge = best found¹</p>
-            <ol>${goals.map((m) => `<li>${esc(m.label)}</li>`).join("")}</ol>
         </div>
-        <div>
+        <div class="cp-strengths">
             <h3>What each option does better</h3>
             ${strengths}
             <p class="cp-note">Axes are scaled across all loaded options, from worst to best. Shape area is not an overall score.</p>
         </div>
     </div>
-    <details><summary>See exact values and best-found reference</summary>${table}</details>`;
+    <details><summary>See exact values and best-found reference</summary>${table}${foot}</details>`;
 
-    const foot = `<footer class="cp-note">¹ Best found is the best value of each measurement across all loaded options: it is not one buildable option, and filters don't change it. Close results count as about the same: under 2% apart, or within 1 dB for noise.</footer>`;
-
-    return head + viewControl + picks + body + foot;
+    return head + `<div class="cp-content" tabindex="0" aria-label="Comparison views and results">${picks}${body}</div>`;
 }
 
 // One result across the chosen options: ranking, leaders (best plus anything about the
@@ -149,12 +146,12 @@ function gap(o, r, fmt) {
 }
 
 // Radar: one axis per goal, worst (centre) to best (edge) across all loaded options.
-function radarSvg(goals, rows, chosen) {
+function radarSvg(goals, rows, chosen, esc) {
     if (goals.length < 3) return `<p class="muted">The radar needs at least three results with a better direction.</p>`;
     const n = goals.length;
-    const cx = 240;
-    const cy = 215;
-    const R = 155;
+    const cx = 180;
+    const cy = 180;
+    const R = 170;
     const point = (i, f) => [cx + Math.cos((i * 2 * Math.PI) / n - Math.PI / 2) * R * f, cy + Math.sin((i * 2 * Math.PI) / n - Math.PI / 2) * R * f];
     const ring = (f) => goals.map((m, i) => point(i, f).join(",")).join(" ");
     const goalRows = rows.filter((r) => r.m.dir);
@@ -165,20 +162,25 @@ function radarSvg(goals, rows, chosen) {
         return r.m.dir < 0 ? (r.max - v) / (r.max - r.min) : (v - r.min) / (r.max - r.min);
     };
     const rings = [0.25, 0.5, 0.75, 1]
-        .map((f) => `<polygon points="${ring(f)}" fill="none" stroke="#dce4dd" ${f === 1 ? 'stroke-dasharray="5 4"' : ""}/>`)
+        .map((f) => `<polygon points="${ring(f)}" fill="none" stroke="#cbd4cd" ${f === 1 ? 'stroke-dasharray="5 4"' : ""}/>`)
         .join("");
+    const labels = [];
     const axes = goals
         .map((m, i) => {
             const p = point(i, 1);
-            const t = point(i, 1.16);
-            return `<line x1="${cx}" y1="${cy}" x2="${p[0]}" y2="${p[1]}" stroke="#e1e7e1"/><text x="${t[0]}" y="${t[1]}" text-anchor="middle" font-size="12" fill="#516054">${i + 1}</text>`;
+            const angle = i * 2 * Math.PI / n - Math.PI / 2;
+            const x = Math.cos(angle), y = Math.sin(angle);
+            const side = Math.abs(x) < .1 ? (y < 0 ? 'top' : 'bottom') : x < 0 ? 'left' : 'right';
+            const text = m.label.replace(/\s+(\[[^\]]+\])$/, '\u00a0$1');
+            labels.push(`<span class="cp-axis-label cp-axis-${side}" style="--axis-x:${x};--axis-y:${y}" title="${esc(m.label)}">${esc(text)}</span>`);
+            return `<line x1="${cx}" y1="${cy}" x2="${p[0]}" y2="${p[1]}" stroke="#d0d8d1"/>`;
         })
         .join("");
     const shapes = chosen
         .map(
             (o, j) =>
-                `<polygon points="${goalRows.map((r, i) => point(i, score(o, r)).join(",")).join(" ")}" fill="${SLOT_COLORS[j]}" fill-opacity=".06" stroke="${SLOT_COLORS[j]}" stroke-width="2.5"/>`
+                `<polygon class="cp-radar-shape" data-cp-option="${o.index}" data-cp-order="${j}" points="${goalRows.map((r, i) => point(i, score(o, r)).join(",")).join(" ")}" fill="${SLOT_COLORS[j]}" fill-opacity=".06" stroke="${SLOT_COLORS[j]}" stroke-width="2.5"/>`
         )
         .join("");
-    return `<svg viewBox="0 0 480 440" role="img" aria-label="Radar chart: the outer edge is the best found for each measurement, the centre the worst.">${rings}${axes}${shapes}</svg>`;
+    return `<div class="cp-radar-chart"><svg viewBox="0 0 360 360" role="img" aria-label="Radar chart: the outer edge is the best found for each measurement, the centre the worst.">${rings}<g class="cp-radar-shapes">${shapes}</g>${axes}</svg>${labels.join('')}</div>`;
 }

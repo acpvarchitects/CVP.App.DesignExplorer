@@ -6,7 +6,7 @@ const moduleUrl = source => 'data:text/javascript;base64,' + Buffer.from(source)
 const rules = moduleUrl(await readFile(new URL('../v2/compare.js', import.meta.url), 'utf8'));
 const source = (await readFile(new URL('../v2/comparison.js', import.meta.url), 'utf8'))
     .replace('./compare.js?v=37', rules);
-const { comparisonViews } = await import(moduleUrl(source));
+const { comparisonViews, comparisonHtml } = await import(moduleUrl(source));
 const schema = {
     images: [{col: 'img', label: 'Image'}, {col: 'img:Axonometric', label: 'Axonometric'}],
     models: [{composed: true, label: 'Model'}],
@@ -86,3 +86,21 @@ assert.deepEqual(Array.from(calls[0][1]), ['a', 'b']);
 assert.equal(calls[0][2], activeView);
 assert.equal(calls[1], 'saved');
 console.log('PASS repeated comparison view changes preserve connected viewer canvases');
+
+// Axis labels carry the full escaped description without redundant numbering.
+// Units stay with the preceding word; exact values remain available.
+const esc = s => String(s).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+const radarGoals = ['Horizontal View [%]', 'Hotel sun lost [h/day]', 'Unsafe <tag> & label', 'A'.repeat(55)]
+    .map((label, i) => ({col: `goal${i}`, label, dir: 1}));
+const study = {name: 'Study'};
+const radarOptions = [0, 1].map(index => ({index, name: `Option ${index}`, study,
+    values: Object.fromEntries(radarGoals.map((g, i) => [g.col, index + i]))}));
+const html = comparisonHtml({data: {schema: {outputs: radarGoals}, studies: [study], options: radarOptions},
+    chosen: radarOptions, esc, fmt: String, maxOptions: 4});
+assert.equal((html.match(/class="cp-axis-label /g) || []).length, radarGoals.length);
+assert.ok(html.includes('Horizontal View\u00a0[%]'));
+assert.ok(!html.includes('>1. Horizontal'));
+assert.ok(html.includes('Unsafe &lt;tag&gt; &amp; label'));
+assert.ok(!html.includes('<ol>') && !html.includes('<tag>'));
+assert.ok(html.includes('Comparison views and results') && html.includes('See exact values'));
+console.log('PASS radar descriptions are inline, wrapped and escaped; exact values retained');
