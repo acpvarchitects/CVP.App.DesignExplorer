@@ -23,11 +23,11 @@
 // Page sections, top to bottom: method tabs + chart, measurement filters,
 // preview (only after clicking an option), gallery, Compare methods, Compare options.
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
-import { Viewer } from "./viewer.js?v=43";
+import { Viewer } from "./viewer.js?v=44";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml, comparisonViews } from "./comparison.js?v=40";
-import { ComparisonMedia } from "./comparison-media.js?v=13";
-import { Vector3 as THREE_Vector3 } from "three";
+import { ComparisonMedia } from "./comparison-media.js?v=14";
+import { Box3 as THREE_Box3, Vector3 as THREE_Vector3 } from "three";
 import { mixConfig, mixGroupKeys, mixHtml, mixUnits, programCount, programKey, programMatch, programTableHtml } from "./unit-mix.js?v=4";
 import { ParallelChart } from "./parallel.js?v=39";
 import { paretoFront } from "./pareto.js?v=1";
@@ -1260,6 +1260,16 @@ function linkProgram(units, col) {
     root.userData.programLink = ok ? main : null;
     if (!ok) return null;
     main.forEach((m, i) => (m.userData.unit = i));
+    // per tower: its extent in plan and the top height of each floor (for the floors cut)
+    const towers = new Map();
+    main.forEach((m, i) => {
+        const u = units[i];
+        if (!towers.has(u.tower)) towers.set(u.tower, { box: new THREE_Box3(), tops: [] });
+        const t = towers.get(u.tower);
+        t.box.union(box(m));
+        t.tops[u.floor] = Math.max(t.tops[u.floor] ?? -Infinity, box(m).max.y);
+    });
+    root.userData.programTowers = [...towers.values()];
     const centre = new THREE_Vector3();
     for (const [, list] of groups) {
         if (list === main) continue;
@@ -1301,6 +1311,10 @@ function applyProgram() {
             if (i < 0) return keys.length ? away : null;
             return cut(units[i]) ? "hide" : on[i] ? null : away;
         }, hideOthers);
+        // the outlines of the cut floors go with them
+        const towers = viewer.analysisRoot()?.userData.programTowers;
+        const n = progUi.floors;
+        viewer.clipLines(n == null || !towers ? null : towers.map((t) => ({ box: t.box, top: t.tops.length > n ? t.tops[n - 1] : null })));
     }
     const chosen = units.filter((u, i) => on[i] && !cut(u));
     const count = $("progCount");

@@ -57,10 +57,12 @@ export class Viewer {
             down = null;
             if (still && this.pickable) this.onPick(this.hit(e), e);
         });
+        let last = 0;
         canvas.addEventListener("pointermove", (e) => {
-            if (!this.pickable || e.buttons || frame) return;
+            if (!this.pickable || e.buttons || frame || performance.now() - last < 70) return;
             frame = requestAnimationFrame(() => {
                 frame = 0;
+                last = performance.now();
                 if (this.pickable) this.onHover(this.hit(e), e);
             });
         });
@@ -74,11 +76,15 @@ export class Viewer {
 
         this.resizeObserver = new ResizeObserver(() => this.resize());
         this.resizeObserver.observe(container);
+        // A frame is drawn only when the camera moves (update() is true, damping included) or
+        // something changed (this.dirty, see the methods below): a still view costs nothing.
+        this.dirty = true;
         this.renderer.setAnimationLoop(() => {
             if (!this.container.offsetParent) return; // hidden: skip rendering
             const rect = this.container.getBoundingClientRect();
             if (rect.bottom < 0 || rect.top > window.innerHeight) return;
-            this.controls.update();
+            if (!this.controls.update() && !this.dirty) return;
+            this.dirty = false;
             this.renderer.render(this.scene, this.camera);
         });
     }
@@ -89,6 +95,7 @@ export class Viewer {
         this.renderer.setSize(w, h, false);
         this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
+        this.dirty = true;
     }
 
     // One file on its own (legacy studies, single-file analysis).
@@ -137,6 +144,7 @@ export class Viewer {
         this.request++;
         for (const o of this.shown) this.root.remove(o);
         this.shown.clear();
+        this.dirty = true;
         this.levels = [];
         this.onLevels([], this.level);
         this.onStatus("");
@@ -194,6 +202,7 @@ export class Viewer {
                 }
             });
         }
+        this.dirty = true;
         this.onLevels(this.levels, level);
     }
 
@@ -209,6 +218,8 @@ export class Viewer {
     emphasise(classify, hideOthers = false) {
         const root = this.analysisRoot();
         for (const o of this.shown) if (o.userData.kind === "geometry") o.visible = !hideOthers;
+        this.dirty = true;
+        if (!classify) this.clipLines(null);
         if (!root) return;
         root.traverse((node) => {
             if (!node.isMesh) return;
@@ -218,6 +229,77 @@ export class Viewer {
             node.material = how === "dim" ? GHOST : node.userData.baseMaterial;
         });
         this.renderer.render(this.scene, this.camera);
+    }
+
+    // Cut the analysis' outline lines above a height, region by region: regions = [{ box, top }]
+    // (box: Box3, its x and z are used; top: a height, or null for no cut there). Every segment
+    // follows the region nearest to its middle; one that crosses the top is shortened to it.
+    // null puts the lines back as loaded.
+    clipLines(regions) {
+        const root = this.analysisRoot();
+        if (!root) return;
+        const active = !!regions && regions.some((r) => r.top != null);
+        root.traverse((node) => {
+            if (!node.isLineSegments || node.userData.outlineLevel != null) return;
+            node.userData.baseGeometry ||= node.geometry;
+            const base = node.userData.baseGeometry;
+            if (node.userData.clipGeometry) {
+                node.userData.clipGeometry.dispose();
+                node.userData.clipGeometry = null;
+            }
+            if (!active) {
+                node.geometry = base;
+                return;
+            }
+            const pos = base.getAttribute("position");
+            const col = base.getAttribute("color");
+            const at = (i) => (base.index ? base.index.getX(i) : i);
+            const n = base.index ? base.index.count : pos.count;
+            let owner = node.userData.clipOwner;
+            if (!owner || owner.regions !== regions.length) {
+                const of = new Int16Array(n >> 1);
+                for (let k = 0; k + 1 < n; k += 2) {
+                    const a = at(k);
+                    const b = at(k + 1);
+                    const x = (pos.getX(a) + pos.getX(b)) / 2;
+                    const z = (pos.getZ(a) + pos.getZ(b)) / 2;
+                    let near = Infinity;
+                    regions.forEach((r, i) => {
+                        const dx = Math.max(r.box.min.x - x, 0, x - r.box.max.x);
+                        const dz = Math.max(r.box.min.z - z, 0, z - r.box.max.z);
+                        if (dx * dx + dz * dz < near) {
+                            near = dx * dx + dz * dz;
+                            of[k >> 1] = i;
+                        }
+                    });
+                }
+                owner = node.userData.clipOwner = { regions: regions.length, of };
+            }
+            const P = [];
+            const C = [];
+            for (let k = 0; k + 1 < n; k += 2) {
+                const a = at(k);
+                const b = at(k + 1);
+                const top = regions[owner.of[k >> 1]].top;
+                let ya = pos.getY(a);
+                let yb = pos.getY(b);
+                if (top != null) {
+                    // above the cut, or rising from it: gone; the outline lying on the cut stays
+                    if (Math.max(ya, yb) > top + LEVEL_EPS && Math.min(ya, yb) > top - LEVEL_EPS) continue;
+                    ya = Math.min(ya, top);
+                    yb = Math.min(yb, top);
+                }
+                P.push(pos.getX(a), ya, pos.getZ(a), pos.getX(b), yb, pos.getZ(b));
+                if (col) for (const i of [a, b]) for (let c = 0; c < col.itemSize; c++) C.push(col.array[i * col.itemSize + c]);
+            }
+            const cut = new THREE.BufferGeometry();
+            cut.setAttribute("position", new THREE.Float32BufferAttribute(P, 3));
+            if (col) cut.setAttribute("color", new THREE.Float32BufferAttribute(C, col.itemSize));
+            cut.userData.linearColors = true; // copied from the already converted colours
+            node.userData.clipGeometry = cut;
+            node.geometry = cut;
+        });
+        this.dirty = true;
     }
 
     // The pickable mesh under the pointer, or null.
@@ -260,6 +342,7 @@ export class Viewer {
         this.camera.updateProjectionMatrix();
         this.controls.target.copy(center);
         this.controls.update();
+        this.dirty = true;
         this.framed = true;
     }
 

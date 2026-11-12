@@ -92,7 +92,7 @@ puts it back, the arrow folds it. The coloured size headers are the legend.
 - **Table → 3D:** a click on a tower name selects the tower, on a size header that size in every
   tower, on a cell that tower × size; Ctrl / ⌘ adds to the selection. The selected apartments keep
   their colour, the other apartments turn plain light grey, or are hidden with **Isolate**
-  (cores, roofs and base floors too). Moving over the table previews the same. **Floors** cuts every tower from the top.
+  (cores, roofs and base floors too). Moving over the table previews the same. **Floors** cuts every tower from the top, outlines included.
 - **3D → table:** a click on an apartment selects its cell; the pointer on one names it
   (`T05 · floor 12 · 220 m²`).
 - The count next to the title is the selection (apartments and m²), or the whole option.
@@ -265,7 +265,7 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 | `comparison.js` | the Compare options section (radar, strengths, values table) |
 | `comparison-media.js` | independent media and viewer lifecycle for the shared Compare view selector |
 | `parallel.js` | parallel-coordinates chart (d3) |
-| `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera, picking and emphasis (Program tab) |
+| `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera, picking and emphasis (Program tab). Draws a frame only when the camera moves or something changes |
 | `plan2d.js` | 2D plan viewer (SVG layers, pan / zoom by viewBox, room hover) and `legendColor()` |
 | `analysis.html` / `analysis.js` | single-analysis page: the 2D analyses of one study, level by level |
 | `pdfexport.js` | "Export view" on the analysis page: vector PDF (A3 landscape) of the plan as framed, with legend, rooms, score and a graphic scale; loads jsPDF 2.5.1 + svg2pdf.js 2.2.3 from jsdelivr on first use |
