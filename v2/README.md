@@ -91,8 +91,8 @@ puts it back, the arrow folds it. The coloured size headers are the legend.
 
 - **Table → 3D:** a click on a tower name selects the tower, on a size header that size in every
   tower, on a cell that tower × size; Ctrl / ⌘ adds to the selection. The selected apartments keep
-  their colour, the rest (cores, roofs and base floors included) is pushed back, or hidden with
-  **Isolate**. Moving over the table previews the same. **Floors** cuts every tower from the top.
+  their colour, the other apartments turn plain light grey, or are hidden with **Isolate**
+  (cores, roofs and base floors too). Moving over the table previews the same. **Floors** cuts every tower from the top.
 - **3D → table:** a click on an apartment selects its cell; the pointer on one names it
   (`T05 · floor 12 · 220 m²`).
 - The count next to the title is the selection (apartments and m²), or the whole option.

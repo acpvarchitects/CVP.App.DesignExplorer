@@ -23,10 +23,10 @@
 // Page sections, top to bottom: method tabs + chart, measurement filters,
 // preview (only after clicking an option), gallery, Compare methods, Compare options.
 import { csvParse } from "https://cdn.jsdelivr.net/npm/d3-dsv@3/+esm";
-import { Viewer } from "./viewer.js?v=41";
+import { Viewer } from "./viewer.js?v=43";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml, comparisonViews } from "./comparison.js?v=40";
-import { ComparisonMedia } from "./comparison-media.js?v=11";
+import { ComparisonMedia } from "./comparison-media.js?v=13";
 import { Vector3 as THREE_Vector3 } from "three";
 import { mixConfig, mixGroupKeys, mixHtml, mixUnits, programCount, programKey, programMatch, programTableHtml } from "./unit-mix.js?v=4";
 import { ParallelChart } from "./parallel.js?v=39";
@@ -1064,7 +1064,8 @@ function showMedia(o) {
         viewer = new Viewer($("preview3d"), (text) => ($("mediaStatus").textContent = text), { onLevels: renderLevels, onPick: pickProgram, onHover: hoverProgram });
     }
     viewer.pickable = null;
-    if (isProgram) viewer.emphasise(null, null); // the option on screen goes back to its cache as loaded
+    viewer.fitWidth = isProgram;
+    if (isProgram) viewer.emphasise(null); // the option on screen goes back to its cache as loaded
     const composed = parts ? viewer.compose(parts, { fadeContext: isProgram || (state.mode === "analysis" && !OVER_GENERAL[layer.col]), levels: !isProgram }) : null;
     if (!parts) viewer.clear();
     if (isProgram) showProgram(o, layer, key, composed);
@@ -1196,7 +1197,7 @@ function hideProgram() {
     $("programPanel").closest(".media").classList.remove("program", "program-docked");
     if (viewer) {
         viewer.pickable = null;
-        viewer.emphasise(null, null);
+        viewer.emphasise(null);
     }
 }
 
@@ -1292,14 +1293,14 @@ function applyProgram() {
     const cut = (u) => progUi.floors != null && u.floor >= progUi.floors;
     const away = progUi.isolate ? "hide" : "dim";
     if (viewer && meshes) {
-        // with a selection or a cut, the cores, roofs and base floors step back with the rest
-        const partial = keys.length > 0 || progUi.floors != null;
+        // cores, roofs and base floors go with a cut (they would stick out of it) and with Isolate
+        const hideOthers = progUi.floors != null || (keys.length > 0 && progUi.isolate);
         viewer.emphasise((mesh) => {
             const i = mesh.userData.unit;
             if (i == null) return null;
             if (i < 0) return keys.length ? away : null;
             return cut(units[i]) ? "hide" : on[i] ? null : away;
-        }, partial ? away : null);
+        }, hideOthers);
     }
     const chosen = units.filter((u, i) => on[i] && !cut(u));
     const count = $("progCount");

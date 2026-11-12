@@ -29,6 +29,7 @@ export class Viewer {
         this.onPick = onPick || (() => {});
         this.onHover = onHover || (() => {});
         this.pickable = null;
+        this.fitWidth = false; // see resetView
         this.level = null; // isolated level index, kept from option to option; null = all
         this.levels = [];
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -153,7 +154,7 @@ export class Viewer {
                 if (node.userData.baseGeometry) geometries.add(node.userData.baseGeometry);
                 for (const g of node.userData.levelGeometries || []) if (g) geometries.add(g);
                 for (const m of [node.material, node.userData.baseMaterial].flat().filter(Boolean)) {
-                    if (m !== HALFTONE && m !== edgeLines.colored && m !== edgeLines.plain) materials.add(m);
+                    if (m !== HALFTONE && m !== GHOST && m !== edgeLines.colored && m !== edgeLines.plain) materials.add(m);
                 }
             });
             geometries.forEach(g => g.dispose());
@@ -201,25 +202,20 @@ export class Viewer {
         return [...this.shown].find((o) => o.userData.kind === "analysis") || null;
     }
 
-    // Emphasis inside the shown analysis: classify(mesh) returns "dim" (pushed back: almost
-    // transparent) or "hide"; anything else leaves the mesh as loaded. null resets every mesh.
-    // others: what happens to the option's other layers (cores, roofs…) meanwhile: "dim", "hide"
-    // or null (as loaded). The context is left alone.
-    emphasise(classify, others = null) {
+    // Emphasis inside the shown analysis: classify(mesh) returns "dim" (pushed back: plain light
+    // grey, opaque, so stacked floors and towers behind each other do not add up into a smear of
+    // their colours) or "hide"; anything else leaves the mesh as loaded. null resets every mesh.
+    // hideOthers: also hide the option's other layers (cores, roofs…). The context is left alone.
+    emphasise(classify, hideOthers = false) {
         const root = this.analysisRoot();
-        for (const o of this.shown) {
-            if (o.userData.kind !== "geometry") continue;
-            o.visible = others !== "hide";
-            setOpacity(o, others === "dim" ? DIM_OPACITY : 1);
-        }
+        for (const o of this.shown) if (o.userData.kind === "geometry") o.visible = !hideOthers;
         if (!root) return;
         root.traverse((node) => {
             if (!node.isMesh) return;
             node.userData.baseMaterial ||= node.material;
             const how = classify ? classify(node) : null;
             node.visible = how !== "hide";
-            node.material = how === "dim" ? dimmed(node.userData.baseMaterial) : node.userData.baseMaterial;
-            node.renderOrder = how === "dim" ? 1 : 0; // after the opaque ones
+            node.material = how === "dim" ? GHOST : node.userData.baseMaterial;
         });
         this.renderer.render(this.scene, this.camera);
     }
@@ -253,9 +249,10 @@ export class Viewer {
         if (box.isEmpty()) return;
         const center = box.getCenter(new THREE.Vector3());
         const radius = box.getSize(new THREE.Vector3()).length() / 2;
-        // the narrower of the two half angles, so a tall, narrow view (table docked beside it) still fits
+        // fitWidth (Program tab): the narrower of the two half angles, so a tall, narrow view (table
+        // docked beside the 3D) still shows the whole option. Every other view frames as before.
         const half = THREE.MathUtils.degToRad(this.camera.fov / 2);
-        const distance = radius / Math.sin(Math.min(half, Math.atan(Math.tan(half) * this.camera.aspect)));
+        const distance = radius / Math.sin(this.fitWidth ? Math.min(half, Math.atan(Math.tan(half) * this.camera.aspect)) : half);
         const direction = new THREE.Vector3(1, 0.9, 1).normalize();
         this.camera.position.copy(center).addScaledVector(direction, distance * 0.62);
         this.camera.near = distance / 100;
@@ -553,19 +550,8 @@ function setOverlayOpacity(root, { opacity = 1, nodeOpacity = null }) {
 
 const RAY = new THREE.Raycaster();
 const POINTER = new THREE.Vector2();
-const DIM_OPACITY = 0.1;
-
-// The pushed-back twin of a material (see Viewer.emphasise), made once per material.
-function dimmed(material) {
-    if (!material.userData.dimmed) {
-        const m = material.clone();
-        m.transparent = true;
-        m.opacity = DIM_OPACITY;
-        m.depthWrite = false;
-        material.userData.dimmed = m;
-    }
-    return material.userData.dimmed;
-}
+// Pushed-back meshes (see Viewer.emphasise): lit light grey, with the analysis' depth offset.
+const GHOST = new THREE.MeshLambertMaterial({ color: 0xdfe2df, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
 
 function setOpacity(root, opacity) {
     root.traverse((node) => {

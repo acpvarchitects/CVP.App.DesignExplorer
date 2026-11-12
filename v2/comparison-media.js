@@ -1,5 +1,5 @@
 // Independent media for the comparison slots. Existing canvases survive page redraws.
-import { Viewer } from './viewer.js?v=41';
+import { Viewer } from './viewer.js?v=43';
 import { PlanViewer } from './plan2d.js?v=6';
 import { mixCompareHtml, mixConfig } from './unit-mix.js?v=4';
 import { entryForView } from './about.js?v=4';
