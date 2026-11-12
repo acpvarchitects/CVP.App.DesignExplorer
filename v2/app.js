@@ -1194,7 +1194,7 @@ function hideProgram() {
     progUi.hover = null;
     $("programPanel").hidden = true;
     $("programTip").hidden = true;
-    $("programPanel").closest(".media").classList.remove("program", "program-docked");
+    $("programPanel").closest(".media").classList.remove("program", "program-docked", "program-folded");
     if (viewer) {
         viewer.pickable = null;
         viewer.emphasise(null);
@@ -1333,10 +1333,11 @@ function renderProgram() {
     const top = Math.max(1, ...(p.doc.towers || []).map((t) => Number(t.floors) || 0));
     const press = (name, on, label, title) => `<button type="button" data-prog="${name}" aria-pressed="${on}" title="${title}">${label}</button>`;
     box.classList.toggle("folded", progUi.folded);
+    box.closest(".media").classList.toggle("program-folded", progUi.folded); // docked: the 3D takes the width back
     box.innerHTML = `<div class="prog-head">
             <strong>Unit mix</strong><span id="progCount" class="prog-count"></span>
             ${press("dock", progUi.docked, progUi.docked ? "Float" : "Side panel", progUi.docked ? "Back to a panel over the 3D" : "Table beside the 3D")}
-            ${progUi.docked ? "" : `<button type="button" data-prog="fold" aria-expanded="${!progUi.folded}" title="${progUi.folded ? "Show the table" : "Hide the table"}">${progUi.folded ? "▸" : "▾"}</button>`}
+            <button type="button" data-prog="fold" aria-expanded="${!progUi.folded}" title="${progUi.folded ? "Show the table" : "Hide the table"}">${progUi.folded ? "▸" : "▾"}</button>
         </div>
         <div class="prog-tools">
             <span class="mix-seg" role="group">${press("units", progUi.measure === "units", "Apartments", "Count apartments")}${press("area", progUi.measure === "area", "m²", "Apartment area")}</span>
@@ -1396,12 +1397,12 @@ function onProgramEvent(e) {
         progUi.docked = !progUi.docked;
         progUi.folded = false;
         $("programPanel").closest(".media").classList.toggle("program-docked", progUi.docked);
-        if (viewer) {
-            viewer.resize(); // the 3D just changed width: frame the option again, or its sides are cut
-            viewer.resetView();
-        }
     }
     renderProgram();
+    if (viewer && (what === "dock" || (what === "fold" && progUi.docked))) {
+        viewer.resize(); // the 3D just changed width: frame the option again, or its sides are cut
+        viewer.resetView();
+    }
     $("programPanel").querySelector(`button[data-prog="${what === "units" || what === "area" ? progUi.measure : what}"]`)?.focus();
     saveUrl();
 }

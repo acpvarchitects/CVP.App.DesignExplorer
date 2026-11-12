@@ -2828,7 +2828,13 @@ code {
 .media.program-docked .media-3d { right: var(--prog-dock); }
 .media.program-docked .media-top { right: calc(var(--prog-dock) + 12px); }
 .media.program-docked .program-panel { top: 0; right: 0; bottom: 0; width: var(--prog-dock); max-height: none; border-radius: 0; box-shadow: none; border-left: 1px solid var(--line); }
+/* Docked and folded: only the title bar stays, top right, and the 3D takes the full width. */
+.media.program-docked.program-folded .media-3d { right: 0; }
+.media.program-docked.program-folded .program-panel { bottom: auto; border-left: 0; border-radius: 0 0 0 var(--radius); box-shadow: var(--acpv-sys-shadow-3); }
+.media.program-docked.program-folded .media-top { top: 56px; right: 12px; }
 @media (max-width: 700px) {
+    .media.program-docked.program-folded .media-3d { bottom: 0; }
+    .media.program-docked.program-folded .program-panel { top: auto; bottom: 0; border-radius: 0; }
     .program-panel { max-height: 55%; }
     .media.program-docked .media-3d { right: 0; bottom: 50%; }
     .media.program-docked .media-top { right: 12px; }

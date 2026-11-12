@@ -87,7 +87,7 @@ When a study has both the unit-mix 3D (`an_unit_mix`) and a unit-mix table (`mix
 first `mix_<name>` column), the 3D leaves the **3D analysis** list and gets its own tab,
 **Program**, next to it. The tab shows the 3D coloured by apartment size with the **Tower × size**
 table in a panel over it (bottom right); **Side panel** docks the table beside the 3D, **Float**
-puts it back, the arrow folds it. The coloured size headers are the legend.
+puts it back, the arrow folds it to its title bar in both layouts (docked: the 3D takes the full width again). The coloured size headers are the legend.
 
 - **Table → 3D:** a click on a tower name selects the tower, on a size header that size in every
   tower, on a cell that tower × size; Ctrl / ⌘ adds to the selection. The selected apartments keep
