@@ -45,6 +45,7 @@ from Docker (local test data).
 | `target:<result>` | optional target of the `out:` column with that name (arrow optional), e.g. `target:SUL (75% GFA) [m²]`; drawn as a red dot with its value on that result's axis in the parallel chart and on its bar in "Where this option stands", plus "% of target" |
 | `table_<name>` | small table per option (`.csv`, first row = header) shown in the **Table** view; numbers are formatted, a first cell `Total` marks the totals row |
 | `mix_<name>` | unit mix per option (`.json`, see "Unit mix" below), shown as **Table · Unit mix**, in the **Program** tab and in Compare options |
+| `title` | optional short free text per option (e.g. `26.1, refined 26: T06/T08 6 m south`), shown beside the option's name in the preview header and under it on its card (full text on hover). Never an axis, filter, cluster input or measurement; an empty cell or no column shows nothing |
 
 Labels are the column names as written (arrow removed). File names are relative to the
 option's own study folder. Several studies are merged by column name.

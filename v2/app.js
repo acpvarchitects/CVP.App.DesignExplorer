@@ -148,6 +148,8 @@ function readSchema(columns, rows = []) {
             schema.tables.push({ col, label: rest === "units" ? "Unit mix" : `Unit mix · ${rest}`, kind: "mix" });
         } else if (sep < 0 && prefix === "context") {
             schema.context = { col };
+        } else if (sep < 0 && prefix === "title") {
+            schema.titleCol = col; // free text per option, shown beside its name; no axis, filter or cluster
         } else if (sep < 0 && prefix.startsWith("an_")) {
             schema.analyses.push({ col, label: col.slice(3).replace(/_/g, " "), composed: true });
         } else if (sep < 0 && holds3d(col)) {
@@ -188,7 +190,9 @@ function readOptions(rows, study, first, prefixed) {
             if (m.targetCol) targets[m.col] = parseFloat(row[m.targetCol]);
         }
         const name = single ? `${single.label} ${row[single.col]}` : `Option ${i + 1}`;
-        return { index: first + i, row, values, targets, study, name, title: prefixed ? `${study.name} · ${name}` : name };
+        // `title` column (optional, free text): a short note shown beside the name, never a value.
+        const caption = schema.titleCol ? String(row[schema.titleCol] ?? "").trim() : "";
+        return { index: first + i, row, values, targets, study, name, caption, title: prefixed ? `${study.name} · ${name}` : name };
     });
 }
 
@@ -812,7 +816,8 @@ function renderGallery(view) {
                     <div class="option-image"><img loading="lazy" alt="${esc(o.name)}" /></div>
                     <div class="option-body">
                         ${data.studies.length > 1 ? methodLabel(o) : ""}
-                        <h3>${esc(o.name)}</h3>
+                        <h3${o.caption ? ` title="${esc(o.caption)}"` : ""}>${esc(o.name)}</h3>
+                        ${o.caption ? `<p class="card-caption" title="${esc(o.caption)}">${esc(o.caption)}</p>` : ""}
                         <div class="card-value"><strong></strong><span></span></div>
                         <span class="card-note"></span>
                     </div>
@@ -879,7 +884,7 @@ function renderPreview(view) {
         return;
     }
     $("previewMethod").outerHTML = `<span id="previewMethod">${data.studies.length > 1 ? methodLabel(o) : ""}</span>`;
-    $("previewTitle").textContent = o.name;
+    $("previewTitle").innerHTML = esc(o.name) + (o.caption ? ` <span class="option-caption">${esc(o.caption)}</span>` : "");
     const best = bestAt(o, view).map((m) => m.label);
     $("previewSummary").textContent = [
         isBestBalance(o, view) ? "Best balance of all goals" : "",
