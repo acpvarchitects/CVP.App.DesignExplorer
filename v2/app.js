@@ -34,6 +34,7 @@ import { paretoFront } from "./pareto.js?v=1";
 import { readGeneration, generationScope, scaleVectors, kmeans, representatives, clusterCountLimit, clampClusterCount } from "./clustering.js?v=3";
 import { aboutHtml, described, entryForResult, entryForView } from "./about.js?v=4";
 import { PlanViewer } from "./plan2d.js?v=6";
+import { sectionSnap } from "./scroll-snap.js?v=5";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
 const MAX_SHORTLIST = 4;
@@ -58,7 +59,12 @@ const MODES = [
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
+// Full height / compact button of the option window: the icon shows what a click does.
+const ICON_COMPACT = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 6.5h-4v-4M9.5 6.5 14 2M2.5 9.5h4v4M6.5 9.5 2 14"/></svg>`;
+const ICON_EXPAND = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9"/></svg>`;
+
 const state = {
+    expanded: true, // the open option fills the height of the card (false: compact)
     methods: new Set(), // ticked study names; empty = all methods
     ranges: {}, // column -> [low, high]; either end may be ±Infinity (no limit)
     batches: new Set(), // studies kept by their Index bars (a filter: the others stay as pale lines); empty = none
@@ -78,7 +84,6 @@ const state = {
     mode: "image",
     layer: { image: 0, model: 0, analysis: 0, program: 0, table: 0 },
     thumb: 0, // image column used as thumbnail in the gallery and the comparison
-    expanded: false,
     shortlist: [], // option indexes, in the order they were picked
     compareView: '', // shared by comparison slots only; independent of main preview/gallery
     notice: "", // one-off message, e.g. why the preview closed
@@ -894,8 +899,11 @@ function renderPreview(view) {
         .join(" · ");
     $("previewSummary").title = isBestBalance(o, view) ? BEST_BALANCE_HELP : "";
     $("preview").classList.toggle("expanded", state.expanded);
-    $("expandPreview").textContent = state.expanded ? "Compact preview" : "Expand preview";
-    $("expandPreview").setAttribute("aria-expanded", state.expanded);
+    const expand = $("expandPreview");
+    expand.innerHTML = state.expanded ? ICON_COMPACT : ICON_EXPAND;
+    expand.title = state.expanded ? "Compact view" : "Full height";
+    expand.setAttribute("aria-label", expand.title);
+    expand.setAttribute("aria-expanded", state.expanded);
 
     $("modeButtons").innerHTML = MODES.map((m) => {
         const has = layersOf(m.key).length > 0;
@@ -1623,6 +1631,7 @@ function popUp(ms = POPUP_MS) {
 // Slow smooth scroll (1.3 to 2.6 s) so you can follow where the page goes. A wheel, touch or
 // key press stops it; with "reduce motion" it jumps straight there.
 let cancelScroll = null;
+let snap = null; // section snapping of the centre card, set in bindEvents()
 let returnTo = null; // where "Back to options" goes after "See comparison"
 
 // The center card scrolls inside itself (like the library's main-shell card); on a narrow screen
@@ -1632,8 +1641,9 @@ function scroller() {
     return card && getComputedStyle(card).overflowY === "auto" ? card : null;
 }
 const scrollNow = () => (scroller() ? scroller().scrollTop : window.scrollY);
-// scroll position that puts `el` 20px under the top of the visible area
-const scrollOf = (el) => scrollNow() + el.getBoundingClientRect().top - (scroller()?.getBoundingClientRect().top ?? 0) - 20;
+// scroll position that puts `el` 12px under the top of the visible area (as scroll-snap.js does)
+const SCROLL_MARGIN = 12;
+const scrollOf = (el) => scrollNow() + el.getBoundingClientRect().top - (scroller()?.getBoundingClientRect().top ?? 0) - SCROLL_MARGIN;
 const scrollTo = (top) => (scroller() ? scroller().scrollTo({ top, behavior: "instant" }) : window.scrollTo({ top, behavior: "instant" }));
 
 function scrollPage(top, arrival) {
@@ -1836,11 +1846,12 @@ async function copyLink() {
 function openOption(index, scroll) {
     state.sel = index;
     render();
+    if (!scroll) return;
+    // the option fills the card's view: bring it into place (scroll-snap.js); on a narrow screen
+    // the page scrolls, and only when the option is not already near the top
+    if (snap?.show($("preview"))) return;
     const box = $("preview").getBoundingClientRect();
-    const view = scroller()?.getBoundingClientRect() ?? { top: 0, height: window.innerHeight };
-    if (scroll && (box.top < view.top || box.top > view.top + view.height * 0.6)) {
-        $("preview").scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    if (box.top < 0 || box.top > window.innerHeight * 0.6) $("preview").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function step(delta) {
@@ -2034,10 +2045,16 @@ function bindEvents() {
         state.sel = null;
         render();
     });
+    // Section snapping of the centre card (scroll-snap.js): chart, selected option, mosaic, comparison.
     $("expandPreview").addEventListener("click", () => {
         state.expanded = !state.expanded;
         render();
+        snap?.show($("preview")); // its height changed: keep its top in place
     });
+    const card = document.querySelector(".center-scroll");
+    if (card) {
+        snap = sectionSnap(card, () => [$("preview"), document.querySelector(".result-toolbar"), $("comparison")].filter((el) => el && !el.hidden && el.offsetParent), { margin: SCROLL_MARGIN });
+    }
     $("prevOption").addEventListener("click", () => step(-1));
     $("nextOption").addEventListener("click", () => step(1));
     $("modeButtons").addEventListener("click", (e) => {

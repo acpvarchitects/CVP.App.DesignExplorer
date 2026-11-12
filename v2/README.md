@@ -253,8 +253,14 @@ Files of a 3D study (written by the Grasshopper "EXPORT | Full noise volume + De
    bring one back, or all.
    Kept in the URL (`?hide=`, positions among inputs + results). Index can be hidden from the
    chart too.
-3. **Preview**, hidden until an option is clicked: Image / 3D model / 3D analysis, previous/next,
-   expand, ← → and Escape. A 3D analysis made of whole floors (the unit mix: one mesh per apartment per floor) gets a
+3. **Preview**, hidden until an option is clicked: one row with the option's name, Image / 3D model /
+   3D analysis and, at the right, one group `← → ⤢ ✕` (previous, next, full height / compact, close);
+   ← → and Escape on the keyboard. It opens at the full height of the centre card (compact: 420px).
+   **Section snapping** (`scroll-snap.js`, while the centre card scrolls inside itself): the card
+   never rests with the edge between two sections (chart, open option, gallery, Compare options)
+   inside the view. One wheel step that would show the next section goes all the way to it, any
+   other scroll settles the same way when it stops; inside a section taller than the view the
+   scroll is free. A wheel over the 3D still zooms. A 3D analysis made of whole floors (the unit mix: one mesh per apartment per floor) gets a
    level picker on the right: "All" or one level at a time (L00 = lowest), every other surface of
    the option is hidden and the other levels stay as one halftone outer outline each (the boundary of all their
    pieces together: apartments, cores and corridors); the chosen level stays from option to option.
