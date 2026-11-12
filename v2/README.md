@@ -16,7 +16,7 @@ when several studies are open, each is shown as a **method**.
 | Several studies (methods) together | `/v2/?PROJECT=STUDY_A,STUDY_B` |
 | Short display names | `/v2/?PROJECT=FOLDER_A:Label A,FOLDER_B:Label B` |
 | Local folder copy (tests) | `/v2/?data=/v2/_test/STUDY/` |
-| The 2D analyses of one study (single option, level by level) | `/v2/analysis.html?PROJECT=STUDY` (optional `&an=<key>&level=<key>`) |
+| The analyses of one study (single option): 2D plans level by level, or a 3D field in 3D / plan / section | `/v2/analysis.html?PROJECT=STUDY` (optional `&an=<key>&level=<key>`) |
 
 `?PROJECT=` loads `data.csv` and its files from the design-explorer API
 (`.../v1/design-explorer/projects/<folder>/`, read only). On dev: `/dev/v2/?PROJECT=…`.
@@ -181,6 +181,37 @@ Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" com
 | `parameters` | rows used by every analysis of the study (weather station, climate data, source models, grid, analysis plane, apertures, opaque surfaces...); a layer's own `parameters` (method, thresholds, hours...) follow. A row is `{ label, value }` or a group `{ label, items: [{ label, value }] }` (shown as a list). Shown in the folding section "Parameters of this study" |
 | `about` | `[{ heading, text }]` shared by every analysis (e.g. The model, Limits), shown after the analysis' own description in "About this analysis" |
 
+**3D analyses on the same page** (`volumeview.js`, `volume.js`, `slice2d.js`): a layer with `kind: "analysis"`,
+`dim: "3d"` is a dense field on a regular grid (first case: the ZRCH hotel road-noise study). The left
+sidebar is the same (analysis menu, mean over the analysed points, legend, description, parameters) plus the
+**scenarios** of the field. On the right a switch between three views of the same field:
+
+- **3D**: the model (`model.glb`, its own colours and edge lines) with the field on a horizontal and a
+  vertical section plane. The elevation slider moves the horizontal plane, the key plan places the
+  vertical one. "Cut the model at the planes" removes the model between the eye and each plane (the inside
+  of a cut solid is plain grey).
+- **2D Plan**: the field at the chosen elevation, with the model cut at that height (dark lines), the
+  edges below it (light) and the section line.
+- **2D Section**: the vertical cut along the section line, with the profile of terrain and buildings,
+  model elevations on the left and the plan's height as a dashed line. "Heights" draws them ×1, ×2 or ×4.
+
+The field on a plane is a colour map sampled from the volume (trilinear), drawn only where every
+contributing node is valid: nothing is bridged across an excluded node, so the field stops up to one grid
+step before the ground and the buildings. Hovering reads the value at that point. The whole view is one
+serialisable object (`VolumeView.view()`: mode, scenario, plan height, section line, planes, cut, heights,
+camera or 2D frame), kept in the address (`mode`, `sc`, `z`, `sec`, `planes`, `vx`, `cam` / `frame`) and
+copied by **Copy link**; it is the base for saved viewpoints and a PDF of them (not built yet: no
+"Export view" on a 3D analysis). three.js is loaded only when a 3D analysis is opened.
+
+Files of a 3D study (written by the Grasshopper "EXPORT | Full noise volume + DesignExplorer assets" component):
+
+| File | Content |
+|---|---|
+| `volume.json` | `grid { dimensions [nx, ny, nz], spacing_m }` (nodes at `(i*sx, j*sy, k*sz)` local metres, Z up, `index = i + nx*(j + ny*k)`), `buffers [{ key, file, dtype, byteOffset, byteLength }]` (float32 fields and a uint8 `mask`, 0 = valid), `coordinates.worldOriginRhino_m` (its Z turns local heights into model elevations) |
+| `field.bin` | the buffers, little-endian |
+| `model.glb` | the model in the same origin, glTF Y-up `(x, z, -y)`, one node per layer, vertex colours, edge lines as a second primitive |
+| `layers.json` | a `kind: "geometry"` layer (`file: "model.glb"`) and one `kind: "analysis"`, `dim: "3d"` layer: `key`, `label`, `unit`, `better`, `file` (`volume.json`), `legend`, `score_label`, `scenarios [{ key (a buffer), label, unit?, better?, legend? }]`, `description`; root `parameters` and `about` as in a 2D study |
+
 ## Page, top to bottom
 
 1. **Method tick boxes** ("All methods" ticks every method; untick some to leave them out, the last
@@ -268,7 +299,10 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 | `parallel.js` | parallel-coordinates chart (d3) |
 | `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera, picking and emphasis (Program tab). Draws a frame only when the camera moves or something changes; the pieces of a layer that share a material are merged at load into one mesh (a layer used to be one draw call per glTF primitive), and the Program tab draws the apartments in one mesh per state |
 | `plan2d.js` | 2D plan viewer (SVG layers, pan / zoom by viewBox, room hover) and `legendColor()` |
-| `analysis.html` / `analysis.js` | single-analysis page: the 2D analyses of one study, level by level |
+| `analysis.html` / `analysis.js` | single-analysis page: the analyses of one study (2D plans level by level, 3D fields) |
+| `volumeview.js` | a 3D analysis: the 3D scene (reuses `viewer.js`) with the two section planes, the 2D plan and section, the cuts through the model, the view state |
+| `volume.js` | reader of `volume.json` + `field.bin`: mask-aware sampling and colour-map slices |
+| `slice2d.js` | canvas drawing of a slice (image + line work, pan / zoom) and the key plan of the section line |
 | `pdfexport.js` | "Export view" on the analysis page: vector PDF (A3 landscape) of the plan as framed, with legend, rooms, score and a graphic scale; loads jsPDF 2.5.1 + svg2pdf.js 2.2.3 from jsdelivr on first use |
 | `style.css` | all styles; its colour/radius/font names are aliases of the `@acpvarchitects/ui` tokens |
 | `theme/` | vendored `@acpvarchitects/ui` tokens (identical to 0.22.0, `scripts/check-theme-drift.mjs` verifies it) (`base.css`, `tertiary/coral.css`, `tokens/`) + local Inter font; see `theme/README.md`. `<body class="light-medium-contrast">` picks the contrast mode (as the library ThemeService does in the Angular apps); `<html class="acpv-density--2">` the density |

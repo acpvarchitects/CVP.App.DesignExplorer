@@ -19,7 +19,16 @@
     <link rel="stylesheet" href="theme/tokens/icons.css?v=1" />
     <link rel="stylesheet" href="theme/tokens/z-index.css?v=1" />
     <link rel="stylesheet" href="theme/fonts.css?v=1" />
-    <link rel="stylesheet" href="style.css?v=107" />
+    <link rel="stylesheet" href="style.css?v=108" />
+    <!-- three.js is loaded only by a study with a 3D analysis (volumeview.js) -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"
+            }
+        }
+    </script>
 </head>
 <body class="light-medium-contrast an-page">
     <!-- App bar as in index.html (acpv-appbar anatomy): app icon + title, the open study in the
@@ -48,6 +57,11 @@
                 <span class="eyebrow">Analysis</span>
                 <select id="analysisSelect" aria-label="Analysis"></select>
             </div>
+            <!-- 3D analyses: the scenarios of the same field -->
+            <div id="scenarioBlock" class="an-block" hidden>
+                <span class="eyebrow">Scenario</span>
+                <div id="scenarioButtons" class="an-scenarios" aria-label="Scenario"></div>
+            </div>
             <div class="an-block an-score">
                 <span id="scoreLabel" class="muted small"></span>
                 <strong id="scoreValue"></strong>
@@ -56,7 +70,7 @@
             <div class="an-block">
                 <div id="legend" class="an-legend" aria-label="Colour legend"></div>
             </div>
-            <details class="an-block an-rooms" open>
+            <details id="roomsBlock" class="an-block an-rooms" open>
                 <summary><span class="eyebrow">Rooms</span><span id="roomCount" class="muted small"></span></summary>
                 <ul id="roomList"></ul>
             </details>
@@ -70,9 +84,43 @@
             </details>
         </aside>
 
-        <!-- Right: the plan, vector, pan and zoom -->
-        <section class="an-view card" aria-label="Plan">
+        <!-- Right: a 2D analysis is a vector plan (pan and zoom); a 3D analysis is seen in 3D, in plan
+             or in section (data-dim and data-mode on the section pick what is shown) -->
+        <section id="view" class="an-view card" aria-label="View" data-dim="2d">
             <div id="plan" class="an-plan"></div>
+            <!-- 3D analyses: the panes of each one are added here -->
+            <div id="vol" class="an-vol"></div>
+            <div id="volModes" class="seg an-modes" role="group" aria-label="View">
+                <button type="button" data-mode="3d">3D</button>
+                <button type="button" data-mode="plan">2D Plan</button>
+                <button type="button" data-mode="section">2D Section</button>
+            </div>
+            <div id="volPanel" class="an-vol-panel">
+                <div class="an-vol-row">
+                    <span id="volElevLabel" class="eyebrow">Elevation</span>
+                    <output id="volElevValue" for="volElev"></output>
+                </div>
+                <input id="volElev" type="range" min="0" max="1" step="0.1" aria-labelledby="volElevLabel" />
+                <div id="volPlanes" class="an-vol-checks">
+                    <label><input id="volH" type="checkbox" /> Horizontal plane</label>
+                    <label><input id="volV" type="checkbox" /> Vertical plane</label>
+                    <label><input id="volCut" type="checkbox" /> Cut the model at the planes</label>
+                </div>
+                <!-- 2D section only: a long site is a thin strip at true scale -->
+                <div class="an-vol-row an-vol-heights">
+                    <span class="eyebrow">Heights</span>
+                    <div id="volHeights" class="seg" role="group" aria-label="Heights of the section">
+                        <button type="button" data-vx="1">×1</button>
+                        <button type="button" data-vx="2">×2</button>
+                        <button type="button" data-vx="4">×4</button>
+                    </div>
+                </div>
+                <div id="volKeyBox" class="an-vol-keybox">
+                    <span class="eyebrow">Section line</span>
+                    <div id="volKey"></div>
+                    <p class="muted small">Drag to draw the line, or move its ends</p>
+                </div>
+            </div>
             <!-- Levels over the plan, top right: highest first, like a section -->
             <div class="an-levels-box">
                 <span class="eyebrow">Level</span>
@@ -85,13 +133,13 @@
                 <button id="labelsBtn" type="button" aria-pressed="true">Hide labels</button>
                 <button id="resetView" type="button">Reset view</button>
             </div>
-            <p class="an-hint muted small">Scroll to zoom · drag to move · double-click to reset</p>
+            <p id="hint" class="an-hint muted small">Scroll to zoom · drag to move · double-click to reset</p>
             <p id="status" class="an-status muted small"></p>
         </section>
     </main>
 
     <div id="message" class="message" hidden></div>
 
-    <script type="module" src="analysis.js?v=18"></script>
+    <script type="module" src="analysis.js?v=19"></script>
 </body>
 </html>
