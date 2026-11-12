@@ -285,6 +285,12 @@ Files of a 3D study (written by the Grasshopper "EXPORT | Full noise volume + De
    This avoids detaching active WebGL canvases, which could leave Chrome displaying an
    older analysis while its HTML legend changed. Compositions also commit a frame immediately;
    offscreen detection uses current bounds rather than observer state across reparenting.
+   On desktop, comparison uses the centre card's measured viewport height, with the sidebar
+   either expanded or collapsed. Previews follow that height instead of growing with their width.
+   The compact header combines the title, shared view selector and back button; long strengths
+   and expanded exact-value tables remain scrollable. Radar axis descriptions appear beside
+   their numbers at a fixed readable text size, wrapping independently of the chart. The
+   best-found explanation sits with the expanded exact values.
 
 The URL keeps ticked methods, order, option, mode/layer, ranges, batch filter, shortlist and
 "Show inputs", so the address bar shares the current view. "Copy link" copies the home page

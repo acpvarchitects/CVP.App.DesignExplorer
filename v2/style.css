@@ -1878,11 +1878,12 @@ html.nav-collapsed .left-panel .drawer {
     margin: 12px 0 24px;
     padding: 24px;
     scroll-margin-top: 16px;
+    container-type: inline-size;
 }
 
 .comparison h2 {
-    font-size: 24px;
-    margin: 5px 0;
+    font-size: 20px;
+    margin: 0;
 }
 
 .comparison h3 {
@@ -1923,9 +1924,11 @@ button.cp-primary:hover:not(:disabled) {
 .cp-head {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     gap: 15px;
 }
+.cp-head-tools { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px 16px; }
+.cp-head-tools .cp-primary { align-self: center; }
 
 .cp-picks {
     display: flex;
@@ -1952,7 +1955,7 @@ button.cp-primary:hover:not(:disabled) {
     position: relative;
 }
 
-.cp-view-control { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 14px; flex-wrap: wrap; font-size: 13px; }
+.cp-view-control { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin: 0; font-size: 13px; }
 .cp-view-control select { max-width: 100%; min-width: 180px; }
 .cp-media { position: relative; width: 100%; aspect-ratio: 16 / 10; min-height: 220px; background: var(--card); overflow: hidden; }
 .cp-media [hidden] { display: none !important; }
@@ -2029,9 +2032,12 @@ button.cp-primary:hover:not(:disabled) {
     gap: 28px;
 }
 
-.cp-radar svg {
-    width: 100%;
-    max-height: 400px;
+.cp-radar-chart { position: relative; height: 320px; container-type: size; }
+.cp-radar-chart svg {
+    position: absolute;
+    inset: 36px 108px;
+    width: calc(100% - 216px);
+    height: calc(100% - 72px);
 }
 
 .cp-radar p {
@@ -2040,10 +2046,70 @@ button.cp-primary:hover:not(:disabled) {
     color: var(--muted);
 }
 
-.cp-radar ol {
-    columns: 2;
+.cp-axis-label {
+    --r: min(calc((100cqw - 216px) / 2), calc((100cqh - 72px) / 2));
+    position: absolute;
+    left: calc(50% + var(--r) * var(--axis-x) * 1.1);
+    top: calc(50% + var(--r) * var(--axis-y) * 1.1);
+    width: min(150px, calc(50cqw - var(--r) * 1.1 - 16px));
     font-size: 11px;
-    line-height: 1.8;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+    color: var(--text);
+}
+.cp-axis-left { transform: translate(calc(-100% - 10px), -50%); text-align: right; }
+.cp-axis-right { transform: translate(10px, -50%); }
+.cp-axis-top, .cp-axis-bottom { width: min(240px, 80cqw); text-align: center; }
+.cp-axis-top { transform: translate(-50%, -100%); }
+.cp-axis-bottom { transform: translate(-50%, 0); }
+.cp-radar, .cp-strengths { min-width: 0; }
+.cp-content { min-height: 0; }
+
+/* Use the same measured centre-card height as the full-height option view. The
+   comparison keeps its header in view; unusually long results remain scrollable. */
+@media (min-width: 851px) {
+    .center-scroll.snap-on .comparison:not([hidden]) {
+        height: calc(var(--snap-view, 100dvh) - 24px);
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        padding: 16px;
+        margin-bottom: 12px;
+    }
+    .center-scroll.snap-on .comparison .cp-head { flex: none; }
+    .center-scroll.snap-on .comparison h2 { font-size: 20px; }
+    .center-scroll.snap-on .comparison .cp-head p { margin: 3px 0; }
+    .center-scroll.snap-on .cp-content {
+        flex: 1;
+        overflow: auto;
+        scrollbar-gutter: stable;
+        padding-right: 4px;
+    }
+    .center-scroll.snap-on .cp-picks { flex-wrap: nowrap; margin: 10px 0; gap: 8px; }
+    .center-scroll.snap-on .cp-picks article { flex: 1 1 0; padding: 8px; gap: 5px; }
+    .center-scroll.snap-on .cp-media {
+        aspect-ratio: auto;
+        height: clamp(110px, calc((var(--snap-view) - 280px) * .4), 300px);
+        min-height: 0;
+    }
+    .center-scroll.snap-on .cp-radar-layout { gap: 16px; align-items: start; }
+    .center-scroll.snap-on .cp-radar-chart {
+        height: clamp(200px, calc((var(--snap-view) - 280px) * .65), 400px);
+    }
+    .center-scroll.snap-on .cp-radar p { margin: 2px 0 8px; }
+    .center-scroll.snap-on .cp-strengths {
+        max-height: clamp(200px, calc((var(--snap-view) - 280px) * .65), 400px);
+        overflow: auto;
+    }
+    .center-scroll.snap-on .cp-strength { padding: 7px 10px; margin-bottom: 8px; }
+    .center-scroll.snap-on .cp-strength p { line-height: 1.4; }
+    .center-scroll.snap-on .cp-note { margin-top: 8px; }
+}
+
+@container (max-width: 700px) {
+    .cp-radar-layout { grid-template-columns: 1fr; }
+    .center-scroll.snap-on .cp-picks { flex-wrap: wrap; }
+    .center-scroll.snap-on .cp-picks article { flex-basis: 180px; }
 }
 
 .cp-strength {
