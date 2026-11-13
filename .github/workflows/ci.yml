@@ -65,6 +65,9 @@ jobs:
       - name: Comparison views and independent composition
         run: node scripts/test-comparison.mjs
 
+      - name: Model section closure and tolerance
+        run: node scripts/test-meshcut.mjs
+
       - name: Analysis comparison scales and coordinate alignment
         run: node scripts/test-analysiscompare.mjs
 
