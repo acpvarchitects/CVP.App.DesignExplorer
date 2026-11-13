@@ -308,7 +308,7 @@ export class VolumeView {
     // A render target leaves the interactive camera and its canvas untouched.
     modelPlan(mode = "key") {
         const [lx, ly] = this.volume.size;
-        if (!this.model) return { images: [] };
+        if (!this.model) return { images: [], edges: [] };
         if (!this.drawingScene) {
             this.drawingScene = new THREE.Scene();
             for (const light of this.viewer.scene.children.filter(node => node.isLight)) this.drawingScene.add(light.clone());
