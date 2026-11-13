@@ -16,8 +16,8 @@
 import * as THREE from "three";
 import { Viewer } from "./viewer.js?v=46";
 import { loadVolume, colourLut, texturePixels } from "./volume.js?v=2";
-import { SliceView, KeyPlan, drawLoops, drawScaleBar, drawSectionLine } from "./slice2d.js?v=2";
-import { cutModel, edgesBelow, insideLoops, tallLoops } from "./meshcut.js?v=1";
+import { SliceView, KeyPlan, drawLoops, drawScaleBar, drawSectionLine, snapSectionEnd } from "./slice2d.js?v=3";
+import { cutModel, insideLoops, tallLoops } from "./meshcut.js?v=1";
 
 const SOFT_LAYER = /plant|tree|veget/i; // canopies: not solid for the analysis, drawn apart from terrain and buildings
 // Cut geometry, in 2D and on the 3D planes: solids are one dark grey, canopies a light green.
@@ -26,7 +26,6 @@ const SOLID = { color: `rgb(${SOLID_GREY}, ${SOLID_GREY}, ${SOLID_GREY})` };
 const CANOPY = { color: "rgba(96, 150, 96, 0.4)", stroke: "rgba(30, 90, 40, 0.85)", width: 0.8 };
 const OPEN_LINE = { color: "#1c1c1c", width: 1.3 }; // a cut surface that is not a closed solid
 const SOFT_LINE = { color: "rgba(30, 90, 40, 0.85)", width: 0.8 };
-const BELOW_LINE = { color: "rgba(0, 0, 0, 0.22)", width: 0.6 };
 const FRAME_COLOR = 0x222222;
 const TEXTURE_SCALE = 2; // a plane's texture, in pixels per pixel of the field slice: sharper cut geometry
 const DOT_SIZE = 0.4; // dot diameter, in grid steps
@@ -43,7 +42,7 @@ export class VolumeView {
         this.onHover = onHover || (() => {});
         this.onStatus = onStatus || (() => {});
         this.onNavigate = onNavigate || (() => {});
-        this.state = { mode: "3d", scenario: "", z: 0, a: [0, 0], b: [1, 1], h: false, v: false, cut: false, dots: false, drape: true, vx: 1 };
+        this.state = { mode: "3d", scenario: "", z: 0, a: [0, 0], b: [1, 1], h: false, v: false, cut: false, dots: false, drape: true, planGuide: true, sectionGuide: true, vx: 1 };
         this.frames = { plan: null, section: null }; // pan / zoom of each 2D drawing
         this.dirty = { plan: true, section: true };
         this.means = {};
@@ -143,7 +142,7 @@ export class VolumeView {
         for (const [k, v] of Object.entries(patch)) {
             if (k === "z" && Number.isFinite(v)) out.z = Math.min(Math.max(v, 0), lz);
             else if ((k === "a" || k === "b") && point(v)) out[k] = point(v);
-            else if (["h", "v", "cut", "dots", "drape"].includes(k) && v != null) out[k] = !!v;
+            else if (["h", "v", "cut", "dots", "drape", "planGuide", "sectionGuide"].includes(k) && v != null) out[k] = !!v;
             else if (k === "vx" && [1, 2, 4].includes(v)) out.vx = v;
             else if (k === "mode" || k === "scenario") out[k] = v;
         }
@@ -178,7 +177,7 @@ export class VolumeView {
         const r = (v, d = 2) => +v.toFixed(d);
         const out = {
             mode: s.mode, scenario: s.scenario, z: r(s.z), a: s.a.map((v) => r(v, 1)), b: s.b.map((v) => r(v, 1)),
-            h: s.h, v: s.v, cut: s.cut, dots: s.dots, drape: s.drape, vx: s.vx, camera: null, frame: null,
+            planGuide: s.planGuide, sectionGuide: s.sectionGuide, h: s.h, v: s.v, cut: s.cut, dots: s.dots, drape: s.drape, vx: s.vx, camera: null, frame: null,
         };
         if (s.mode === "3d") out.camera = this.getCamera();
         else if (this.frames[s.mode]) out.frame = this.frames[s.mode].map((v, i) => r(v, i === 2 ? 4 : 1));
@@ -307,42 +306,104 @@ export class VolumeView {
 
     // An independent, uncut top view of the model, captured before analysis shaders are added.
     // A render target leaves the interactive camera and its canvas untouched.
-    modelPlan() {
+    modelPlan(mode = "key") {
         const [lx, ly] = this.volume.size;
         if (!this.model) return { images: [] };
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xffffff);
-        for (const light of this.viewer.scene.children.filter(node => node.isLight)) scene.add(light.clone());
-        this.viewer.root.updateMatrixWorld(true);
-        const model = this.model.clone(true);
-        model.matrixAutoUpdate = false;
-        model.matrix.copy(new THREE.Matrix4().copy(this.viewer.root.matrixWorld).invert().multiply(this.model.matrixWorld));
-        scene.add(model);
-        const box = new THREE.Box3().setFromObject(model);
-        const camera = new THREE.OrthographicCamera(-lx / 2, lx / 2, ly / 2, -ly / 2, 0.1, box.max.y - box.min.y + 20);
-        camera.position.set(lx / 2, box.max.y + 10, -ly / 2);
-        camera.up.set(0, 0, -1);
-        camera.lookAt(lx / 2, box.min.y, -ly / 2);
-        const w = 1024, h = Math.max(1, Math.round(w * ly / lx));
+        if (!this.drawingScene) {
+            this.drawingScene = new THREE.Scene();
+            for (const light of this.viewer.scene.children.filter(node => node.isLight)) this.drawingScene.add(light.clone());
+            this.viewer.root.updateMatrixWorld(true);
+            const model = this.model.clone(true);
+            model.matrixAutoUpdate = false;
+            model.matrix.copy(new THREE.Matrix4().copy(this.viewer.root.matrixWorld).invert().multiply(this.model.matrixWorld));
+            this.drawingMaterials = new Set();
+            const copies = new Map();
+            model.traverse(node => {
+                if (!node.material) return;
+                const copy = material => {
+                    if (!copies.has(material)) copies.set(material, material.clone());
+                    const result = copies.get(material);
+                    this.drawingMaterials.add(result);
+                    return result;
+                };
+                node.material = Array.isArray(node.material) ? node.material.map(copy) : copy(node.material);
+            });
+            this.drawingScene.add(model);
+            this.drawingBox = new THREE.Box3().setFromObject(model);
+        }
+        const scene = this.drawingScene, box = this.drawingBox;
+        const section = mode === "section", lz = this.volume.size[2];
+        const len = section ? Math.max(this.sectionLength(), 1) : lx;
+        const height = section ? lz : ly;
+        const depth = box.getSize(new THREE.Vector3()).length() + 20;
+        const camera = new THREE.OrthographicCamera(-len / 2, len / 2, height / 2, -height / 2, 0.1, depth * 2);
+        let plane = null;
+        if (section) {
+            const { a, b } = this.state;
+            const normal = new THREE.Vector3((b[1] - a[1]) / len, 0, (b[0] - a[0]) / len);
+            const center = toGl((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, lz / 2);
+            camera.position.copy(center).addScaledVector(normal, depth);
+            camera.lookAt(center);
+            plane = new THREE.Plane(normal.clone().negate(), normal.dot(center));
+        } else {
+            camera.position.set(lx / 2, box.max.y + 10, -ly / 2);
+            camera.up.set(0, 0, -1);
+            camera.lookAt(lx / 2, box.min.y, -ly / 2);
+            if (mode === "plan") plane = new THREE.Plane(new THREE.Vector3(0, -1, 0), this.state.z);
+        }
+        for (const material of this.drawingMaterials) {
+            material.clippingPlanes = plane ? [plane] : null;
+            material.needsUpdate = true;
+        }
+        const w = 1536, h = Math.min(2048, Math.max(1, Math.round(w * height / len)));
         const target = new THREE.WebGLRenderTarget(w, h, { samples: 4 });
         target.texture.colorSpace = THREE.SRGBColorSpace;
         const renderer = this.viewer.renderer, previous = renderer.getRenderTarget();
-        const pixels = new Uint8Array(w * h * 4);
-        try {
+        const alpha = renderer.getClearAlpha();
+        const capture = () => {
+            // Pixel readback binds the resolved framebuffer; rebind the multisample target for each pass.
+            renderer.setRenderTarget(null);
             renderer.setRenderTarget(target);
             renderer.render(scene, camera);
+            const pixels = new Uint8Array(w * h * 4);
             renderer.readRenderTargetPixels(target, 0, 0, w, h, pixels);
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d"), image = ctx.createImageData(w, h);
+            for (let y = 0; y < h; y++) image.data.set(pixels.subarray((h - y - 1) * w * 4, (h - y) * w * 4), y * w * 4);
+            ctx.putImageData(image, 0, 0);
+            return { canvas, rect: [0, 0, len, height] };
+        };
+        const offsets = new Map([...this.drawingMaterials].map(material => [material, [material.polygonOffset, material.polygonOffsetFactor, material.polygonOffsetUnits]]));
+        try {
+            renderer.setClearAlpha(0);
+            renderer.setRenderTarget(target);
+            const images = [capture()];
+            const edges = [];
+            if (mode !== "key") {
+                // Invisible surfaces still write depth: only exposed edges survive over the field.
+                // Drawing every projected edge here would turn the plan into a wireframe.
+                for (const material of this.drawingMaterials) {
+                    material.colorWrite = !!material.isLineBasicMaterial;
+                    if (!material.isLineBasicMaterial) {
+                        material.polygonOffset = true;
+                        material.polygonOffsetFactor = 1;
+                        material.polygonOffsetUnits = 1;
+                    }
+                }
+                edges.push(capture());
+            }
+            return { images, edges };
         } finally {
+            for (const material of this.drawingMaterials) {
+                material.colorWrite = true;
+                [material.polygonOffset, material.polygonOffsetFactor, material.polygonOffsetUnits] = offsets.get(material);
+            }
             renderer.setRenderTarget(previous);
+            renderer.setClearAlpha(alpha);
             target.dispose();
         }
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d"), image = ctx.createImageData(w, h);
-        for (let y = 0; y < h; y++) image.data.set(pixels.subarray((h - y - 1) * w * 4, (h - y) * w * 4), y * w * 4);
-        ctx.putImageData(image, 0, 0);
-        return { images: [{ canvas, rect: [0, 0, lx, ly] }] };
     }
 
     sectionLength() {
@@ -355,7 +416,7 @@ export class VolumeView {
     cutPlan() {
         if (!this.planCut) {
             const z = this.state.z;
-            this.planCut = { ...cutModel(this.parts, [0, 0, z], [1, 0, 0], [0, 1, 0], [0, 0, 1]), below: edgesBelow(this.edges, z) };
+            this.planCut = cutModel(this.parts, [0, 0, z], [1, 0, 0], [0, 1, 0], [0, 0, 1]);
         }
         return this.planCut;
     }
@@ -394,15 +455,33 @@ export class VolumeView {
         return o && o.offsetHeight ? o.offsetTop + o.offsetHeight + 28 : 64;
     }
 
+    pickGuide(point, view) {
+        const s = this.state, tolerance = 9 * view.frame[2];
+        if (s.mode === "section") {
+            if (!s.planGuide || point[0] < 0 || point[0] > this.sectionLength() + 90 * view.frame[2] || Math.abs(point[1] - s.z * s.vx) > tolerance) return null;
+            return { cursor: "ns-resize", move: p => this.set({ z: p[1] / s.vx }, { quiet: true }), end: () => this.onChange() };
+        }
+        if (s.mode !== "plan" || !s.sectionGuide) return null;
+        const near = p => Math.hypot(p[0] - point[0], p[1] - point[1]) <= tolerance;
+        const end = near(s.a) ? "a" : near(s.b) ? "b" : null;
+        if (end) return { cursor: "crosshair", move: p => this.set({ [end]: snapSectionEnd(p, s[end === "a" ? "b" : "a"], [0, 0, ...this.volume.size.slice(0, 2)]) }, { quiet: true }), end: () => this.onChange() };
+        return null;
+    }
+
     planScene() {
         const [lx, ly] = this.volume.size;
         const cut = this.cutPlan();
+        if (this.planDrawingZ !== this.state.z) {
+            this.planDrawing = this.modelPlan("plan");
+            this.planDrawingZ = this.state.z;
+        }
         return {
+            pick: (point, view) => this.pickGuide(point, view),
             extent: [0, 0, lx, ly],
             pad: [this.padTop(), 40, 56, 40],
-            images: [{ canvas: this.planSlice.canvas, rect: [0, 0, lx, ly] }],
+            images: [...this.planDrawing.images, { canvas: this.planSlice.canvas, rect: [0, 0, lx, ly] }, ...this.planDrawing.edges],
             fills: [{ loops: cut.main.loops, ...SOLID }, { loops: cut.soft.loops, ...CANOPY }],
-            lines: [{ segs: cut.below, ...BELOW_LINE }, { segs: cut.soft.open, ...SOFT_LINE }, { segs: cut.main.open, ...OPEN_LINE }],
+            lines: [{ segs: cut.soft.open, ...SOFT_LINE }, { segs: cut.main.open, ...OPEN_LINE }],
             decorate: (ctx, view) => {
                 const [l, t] = view.px(0, ly), [r, b] = view.px(lx, 0);
                 ctx.save();
@@ -411,7 +490,7 @@ export class VolumeView {
                 ctx.setLineDash([2, 3]);
                 ctx.strokeRect(l, t, r - l, b - t); // the analysed area
                 ctx.restore();
-                if (this.sectionLength() > 0.5) drawSectionLine(ctx, view, this.state.a, this.state.b);
+                if (this.state.sectionGuide && this.sectionLength() > 0.5) drawSectionLine(ctx, view, this.state.a, this.state.b, { handles: true });
                 drawScaleBar(ctx, view.frame[2], 16, view.container.clientHeight - 40);
             },
         };
@@ -423,11 +502,17 @@ export class VolumeView {
         const cut = this.cutSection();
         const world = this.volume.worldZ;
         const k = this.state.vx;
+        const drawingKey = [...this.state.a, ...this.state.b].join();
+        if (this.sectionDrawingKey !== drawingKey) {
+            this.sectionDrawing = this.modelPlan("section");
+            this.sectionDrawingKey = drawingKey;
+        }
         const tall = (segs) => (k === 1 ? segs : segs.map((v, i) => (i & 1 ? v * k : v)));
         return {
+            pick: (point, view) => this.pickGuide(point, view),
             extent: [0, 0, len, lz * k],
             pad: [this.padTop(), 110, 70, 70],
-            images: [{ canvas: this.sectionSlice.canvas, rect: [0, 0, len, lz * k] }],
+            images: [...this.sectionDrawing.images.map(image => ({ ...image, rect: [0, 0, len, lz * k] })), { canvas: this.sectionSlice.canvas, rect: [0, 0, len, lz * k] }, ...this.sectionDrawing.edges.map(image => ({ ...image, rect: [0, 0, len, lz * k] }))],
             fills: [{ loops: tallLoops(cut.main.loops, k), ...SOLID }, { loops: tallLoops(cut.soft.loops, k), ...CANOPY }],
             lines: [{ segs: tall(cut.soft.open), ...SOFT_LINE }, { segs: tall(cut.main.open), ...OPEN_LINE }],
             clip: [0, -3 * k, len, (lz + 12) * k],
@@ -454,6 +539,7 @@ export class VolumeView {
                 }
                 ctx.stroke();
                 // where the plan cuts
+                if (this.state.planGuide) {
                 const y = Math.round(view.px(0, this.state.z * k)[1]) + 0.5;
                 ctx.setLineDash([6, 4]);
                 ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
@@ -468,6 +554,7 @@ export class VolumeView {
                 ctx.setLineDash([]);
                 ctx.textAlign = "left";
                 ctx.fillText(`Plan ${elevationText(this.state.z + world)}`, r + 10, y);
+                }
                 // the two ends
                 ctx.font = "600 13px system-ui, sans-serif";
                 ctx.textAlign = "center";

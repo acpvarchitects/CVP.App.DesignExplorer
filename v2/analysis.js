@@ -31,7 +31,7 @@ let viewer; // PlanViewer of the 2D analyses
 let vol = null; // VolumeView of the 3D analysis on screen (null while it loads)
 let volumeModule = null; // volumeview.js, loaded with the first 3D analysis (it brings three.js)
 const volumes = new Map(); // layer key -> { view, els, ready }
-const VIEW_KEYS = ["mode", "sc", "z", "sec", "planes", "vx", "cam", "frame"]; // address of a 3D view
+const VIEW_KEYS = ["mode", "sc", "z", "sec", "planes", "vx", "cam", "frame", "guides"]; // address of a 3D view
 const state = { an: params.get("an") || "", level: params.get("level") || "" };
 const embedded = params.get("embedded") === "1" && window.parent !== window;
 let applyingComparison = false;
@@ -231,6 +231,7 @@ function render() {
     publishView();
     if (is3d(current())) return showVolume(current());
     vol = null;
+    $("guideBtn").hidden = true;
     renderInfo();
     renderPlan();
     writeUrl();
@@ -241,6 +242,7 @@ function render() {
 // A view (VolumeView.view()) as address parameters, and back.
 function viewParams(v) {
     const out = { mode: v.mode, sc: v.scenario, z: v.z, sec: [...v.a, ...v.b].join(","), planes: (v.h ? "h" : "") + (v.v ? "v" : "") + (v.cut ? "c" : "") + (v.dots ? "p" : "") + (v.drape ? "s" : "") || "0" };
+    if (v.planGuide === false || v.sectionGuide === false) out.guides = (v.planGuide ? "p" : "") + (v.sectionGuide ? "s" : "") || "0";
     if (v.vx !== 1) out.vx = v.vx;
     if (v.camera) out.cam = v.camera.join(",");
     if (v.frame) out.frame = v.frame.join(",");
@@ -266,6 +268,7 @@ function viewFromParams() {
         z: list("z", 1)?.[0],
         ...(sec ? { a: sec.slice(0, 2), b: sec.slice(2) } : {}),
         ...(planes != null ? { h: planes.includes("h"), v: planes.includes("v"), cut: planes.includes("c"), dots: planes.includes("p"), drape: planes.includes("s") } : {}),
+        ...(params.has("guides") ? { planGuide: params.get("guides").includes("p"), sectionGuide: params.get("guides").includes("s") } : {}),
         vx: list("vx", 1)?.[0],
         camera: list("cam", 6),
         frame: list("frame", 3),
@@ -287,7 +290,7 @@ async function showVolume(layer) {
         if (!entry) {
             $("status").textContent = "Loading…";
             try {
-                volumeModule ||= await import("./volumeview.js?v=4");
+                volumeModule ||= await import("./volumeview.js?v=5");
             } catch (e) {
                 $("status").textContent = `Cannot load the 3D view: ${e.message}`;
                 return;
@@ -301,7 +304,7 @@ async function showVolume(layer) {
                 onChange: () => vol === view && volumeChanged(),
                 onHover: (hit, e) => vol === view && volumeHover(hit, e),
                 onStatus: (text) => current() === layer && ($("status").textContent = text),
-                onNavigate: () => vol === view && publishNavigation(),
+                onNavigate: () => { if (vol === view) { syncElevation(); publishNavigation(); } },
             });
             const model = (study.manifest.layers || []).find((l) => l.kind === "geometry" && /\.(glb|gltf)$/i.test(l.file || l.file_pattern || ""));
             // the view in the address belongs to the analysis it was copied from
@@ -333,6 +336,10 @@ async function showVolume(layer) {
 function volumeChanged() {
     const s = vol.state;
     $("view").dataset.mode = s.mode;
+    $("guideBtn").hidden = s.mode === "3d";
+    const guide = s.mode === "section" ? "planGuide" : "sectionGuide";
+    $("guideBtn").textContent = `${s[guide] ? "Hide" : "Show"} ${s.mode === "section" ? "plan" : "section"}`;
+    $("guideBtn").setAttribute("aria-pressed", String(s[guide]));
     for (const b of $("volModes").children) b.classList.toggle("on", b.dataset.mode === s.mode);
     syncElevation();
     $("volElevLabel").textContent = s.mode === "3d" ? "Horizontal plane" : "Plan elevation";
@@ -397,6 +404,11 @@ function commitElevation() {
 }
 
 function bindVolume() {
+    $("guideBtn").addEventListener("click", () => {
+        if (!vol) return;
+        const key = vol.state.mode === "section" ? "planGuide" : "sectionGuide";
+        vol.set({ [key]: !vol.state[key] });
+    });
     $("volElevValue").addEventListener("change", commitElevation);
     $("volElevValue").addEventListener("keydown", e => {
         if (e.key === "Enter") { e.preventDefault(); commitElevation(); e.target.blur(); }

@@ -119,12 +119,19 @@ export class SliceView {
         let drag = null;
         c.addEventListener("pointerdown", (e) => {
             if (e.button !== 0 || !this.frame) return;
-            drag = { x: e.clientX, y: e.clientY, frame: [...this.frame] };
+            const rect = c.getBoundingClientRect();
+            const interaction = this.scene.pick?.(this.metres(e.clientX - rect.left, e.clientY - rect.top), this);
+            drag = interaction ? { interaction } : { x: e.clientX, y: e.clientY, frame: [...this.frame] };
             c.setPointerCapture(e.pointerId);
             c.classList.add("dragging");
         });
         c.addEventListener("pointermove", (e) => {
             if (!this.frame) return;
+            if (drag?.interaction) {
+                const rect = c.getBoundingClientRect();
+                drag.interaction.move(this.metres(e.clientX - rect.left, e.clientY - rect.top));
+                return;
+            }
             if (drag) {
                 const mpp = drag.frame[2];
                 this.frame = [drag.frame[0] - (e.clientX - drag.x) * mpp, drag.frame[1] + (e.clientY - drag.y) * mpp, mpp];
@@ -133,14 +140,18 @@ export class SliceView {
                 return;
             }
             const rect = c.getBoundingClientRect();
-            this.onHover(this.metres(e.clientX - rect.left, e.clientY - rect.top), e);
+            const point = this.metres(e.clientX - rect.left, e.clientY - rect.top);
+            c.style.cursor = this.scene.pick?.(point, this)?.cursor || "grab";
+            this.onHover(point, e);
         });
         const end = (e) => {
             if (!drag) return;
+            const interaction = drag.interaction;
             drag = null;
             c.classList.remove("dragging");
             if (c.hasPointerCapture?.(e.pointerId)) c.releasePointerCapture(e.pointerId);
-            this.onFrame();
+            if (interaction) interaction.end();
+            else this.onFrame();
         };
         c.addEventListener("pointerup", end);
         c.addEventListener("pointercancel", end);
@@ -281,8 +292,7 @@ export function drawSectionLine(ctx, view, a, b, { handles = false, color = "#11
     ctx.restore();
 }
 
-// Small fixed plan (no pan / zoom): drag an end to move it, drag the line to shift it,
-// drag anywhere else to draw a new line. onLine(a, b, done) while and after dragging.
+// Key plan: wheel zooms at the pointer; right/middle drag pans. Only the endpoints move the section. onLine(a, b, done) while and after dragging.
 export class KeyPlan {
     constructor(container, { bounds, onLine }) {
         this.container = container;
@@ -295,6 +305,17 @@ export class KeyPlan {
         this.a = [0, 0];
         this.b = [1, 1];
         this.frame = [0, 0, 1];
+        this.zoom = 1;
+        this.center = null;
+        this.refit = document.createElement("button");
+        this.refit.type = "button";
+        this.refit.className = "keyplan-refit";
+        this.refit.hidden = true;
+        this.refit.title = "Refit key plan";
+        this.refit.setAttribute("aria-label", "Refit key plan");
+        this.refit.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>';
+        this.refit.onclick = () => { this.zoom = 1; this.center = null; this.draw(); };
+        container.append(this.refit);
         this.bind();
         new ResizeObserver(() => this.draw()).observe(container);
     }
@@ -334,7 +355,9 @@ export class KeyPlan {
             }
             this.w = W;
             this.h = H;
-            this.frame = [(x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / W];
+            const center = this.center || [(x0 + x1) / 2, (y0 + y1) / 2];
+            this.frame = [...center, (x1 - x0) / (W * this.zoom)];
+            this.refit.hidden = Math.abs(this.zoom - 1) < 1e-6 && !this.center;
             const ctx = c.getContext("2d");
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             ctx.clearRect(0, 0, W, H);
@@ -350,20 +373,35 @@ export class KeyPlan {
             const r = c.getBoundingClientRect();
             return [e.clientX - r.left, e.clientY - r.top];
         };
+        c.addEventListener("contextmenu", e => e.preventDefault());
+        c.addEventListener("wheel", e => {
+            if (!this.scene || !this.w || drag) return;
+            e.preventDefault();
+            const [x, y] = at(e);
+            const [cx, cy, mpp] = this.frame;
+            const delta = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? this.h : 1);
+            const zoom = Math.max(0.25, Math.min(16, this.zoom * Math.exp(-delta * 0.002)));
+            const next = (this.bounds[2] - this.bounds[0]) / (this.w * zoom);
+            this.center = [cx + (x - this.w / 2) * (mpp - next), cy - (y - this.h / 2) * (mpp - next)];
+            this.zoom = zoom;
+            this.frame = [...this.center, next];
+            this.draw();
+        }, { passive: false });
         c.addEventListener("pointerdown", (e) => {
-            if (e.button !== 0 || !this.scene) return;
+            if (!this.scene) return;
+            if (e.button === 1 || e.button === 2) {
+                drag = { kind: "pan", from: at(e), center: this.frame.slice(0, 2), mpp: this.frame[2] };
+                c.setPointerCapture(e.pointerId);
+                e.preventDefault();
+                return;
+            }
+            if (e.button !== 0) return;
             const [x, y] = at(e);
             const pa = this.px(...this.a), pb = this.px(...this.b);
             const near = (p) => Math.hypot(p[0] - x, p[1] - y) < 11;
-            const m = this.metres(x, y);
             if (near(pa)) drag = { kind: "a" };
             else if (near(pb)) drag = { kind: "b" };
-            else if (distToSegment([x, y], pa, pb) < 7) drag = { kind: "move", from: m, a: [...this.a], b: [...this.b] };
-            else {
-                drag = { kind: "b" };
-                this.a = m;
-                this.b = m;
-            }
+            else return;
             c.setPointerCapture(e.pointerId);
             e.preventDefault();
         });
@@ -372,40 +410,39 @@ export class KeyPlan {
                 const [x, y] = at(e);
                 const pa = this.px(...this.a), pb = this.px(...this.b);
                 const near = Math.hypot(pa[0] - x, pa[1] - y) < 11 || Math.hypot(pb[0] - x, pb[1] - y) < 11;
-                c.style.cursor = near ? "grab" : distToSegment([x, y], pa, pb) < 7 ? "move" : "crosshair";
+                c.style.cursor = near ? "grab" : "default";
+                return;
+            }
+            if (drag.kind === "pan") {
+                const [x, y] = at(e);
+                this.center = [drag.center[0] - (x - drag.from[0]) * drag.mpp, drag.center[1] + (y - drag.from[1]) * drag.mpp];
+                this.draw();
                 return;
             }
             const m = this.metres(...at(e));
-            if (drag.kind === "a") this.a = m;
-            else if (drag.kind === "b") this.b = m;
-            else {
-                // shift both ends, stopping when either reaches the bounds
-                const [x0, y0, x1, y1] = this.bounds;
-                let dx = m[0] - drag.from[0], dy = m[1] - drag.from[1];
-                for (const p of [drag.a, drag.b]) {
-                    dx = Math.min(Math.max(dx, x0 - p[0]), x1 - p[0]);
-                    dy = Math.min(Math.max(dy, y0 - p[1]), y1 - p[1]);
-                }
-                this.a = [drag.a[0] + dx, drag.a[1] + dy];
-                this.b = [drag.b[0] + dx, drag.b[1] + dy];
-            }
+            if (drag.kind === "a") this.a = snapSectionEnd(m, this.b, this.bounds);
+            else if (drag.kind === "b") this.b = snapSectionEnd(m, this.a, this.bounds);
             this.draw();
             this.onLine(this.a, this.b, false);
         });
         const end = (e) => {
             if (!drag) return;
+            const pan = drag.kind === "pan";
             drag = null;
             if (c.hasPointerCapture?.(e.pointerId)) c.releasePointerCapture(e.pointerId);
-            this.onLine(this.a, this.b, true);
+            if (!pan) this.onLine(this.a, this.b, true);
         };
         c.addEventListener("pointerup", end);
         c.addEventListener("pointercancel", end);
     }
 }
 
-function distToSegment(p, a, b) {
-    const dx = b[0] - a[0], dy = b[1] - a[1];
-    const l2 = dx * dx + dy * dy;
-    const t = l2 ? Math.min(Math.max(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2, 0), 1) : 0;
-    return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+// Prefer the site's longitudinal/transverse axes within 8 degrees, leaving oblique cuts possible.
+export function snapSectionEnd(point, anchor, bounds) {
+    const p = point.map((n, i) => Math.max(bounds[i], Math.min(bounds[i + 2], n)));
+    const dx = Math.abs(p[0] - anchor[0]), dy = Math.abs(p[1] - anchor[1]);
+    const tolerance = Math.tan(8 * Math.PI / 180);
+    if (dx <= dy * tolerance) p[0] = anchor[0];
+    else if (dy <= dx * tolerance) p[1] = anchor[1];
+    return p;
 }

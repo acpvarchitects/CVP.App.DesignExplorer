@@ -3245,3 +3245,17 @@ code {
     font-weight: 600;
     font-variant-numeric: tabular-nums;
 }
+
+.an-vol-key { position: relative; }
+.keyplan-refit {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    display: grid;
+    place-items: center;
+    padding: 5px;
+    background: #fff;
+    border: 1px solid var(--line-strong);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.16);
+}
+.keyplan-refit[hidden] { display: none; }

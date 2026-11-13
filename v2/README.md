@@ -400,3 +400,16 @@ For ZRCH HotelNoise studies the default plan elevation is **+14 m** in model coo
 (user instruction, 2026-11-13); it is converted to local grid height by subtracting the volume
 origin. A layer can set `default_plan_elevation_m` explicitly. A saved URL elevation overrides
 this default, and other studies keep their automatic initial elevation.
+
+Plan elevation accepts a typed model quota (Enter or leaving the field); values outside the
+volume clamp to its minimum/maximum, and an empty field restores the current quota.
+The key plan supports wheel zoom around the pointer and right/middle drag to pan; its Refit
+icon appears after navigating away from the fitted view and resets only the key-plan framing.
+In 2D Section, **Hide/Show plan** toggles the draggable horizontal plan line. In 2D Plan,
+**Hide/Show section** toggles the section line: drag only its endpoints
+to move or rotate it. Both the plan and key plan snap within 8 degrees of either site axis;
+clicks or drags away from the key-plan endpoints never create or move a section. Other drags still pan the drawing. Guide visibility is kept in the view address.
+Uncut model geometry in plans and sections is rendered as surfaces with a depth buffer:
+hidden edges do not show through nearer faces, and geometry in front of the cutting plane is
+removed. The analysis colours and the dark cut fill are overlaid on that visible model; a separate
+depth-tested edge pass keeps only the visible outlines over the analysis colours.
