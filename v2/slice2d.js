@@ -293,7 +293,7 @@ export function drawSectionLine(ctx, view, a, b, { handles = false, color = "#11
     ctx.restore();
 }
 
-// Key plan: wheel zooms at the pointer; right/middle drag pans. Only the endpoints move the section. onLine(a, b, done) while and after dragging.
+// Key plan: wheel zooms at the pointer; right/middle drag pans. Drag the line to translate it, or its endpoints to rotate it. onLine(a, b, done) while and after dragging.
 export class KeyPlan {
     constructor(container, { bounds, onLine }) {
         this.container = container;
@@ -403,6 +403,7 @@ export class KeyPlan {
             const near = (p) => Math.hypot(p[0] - x, p[1] - y) < 11;
             if (near(pa)) drag = { kind: "a" };
             else if (near(pb)) drag = { kind: "b" };
+            else if (distanceToLine([x, y], pa, pb) < 7) drag = { kind: "move", from: this.metres(x, y), a: [...this.a], b: [...this.b] };
             else return;
             c.setPointerCapture(e.pointerId);
             e.preventDefault();
@@ -412,7 +413,7 @@ export class KeyPlan {
                 const [x, y] = at(e);
                 const pa = this.px(...this.a), pb = this.px(...this.b);
                 const near = Math.hypot(pa[0] - x, pa[1] - y) < 11 || Math.hypot(pb[0] - x, pb[1] - y) < 11;
-                c.style.cursor = near ? "grab" : "default";
+                c.style.cursor = near ? "grab" : distanceToLine([x, y], pa, pb) < 7 ? "move" : "default";
                 return;
             }
             if (drag.kind === "pan") {
@@ -424,6 +425,11 @@ export class KeyPlan {
             const m = this.metres(...at(e));
             if (drag.kind === "a") this.a = snapSectionEnd(m, this.b, this.bounds, 8 * this.frame[2]);
             else if (drag.kind === "b") this.b = snapSectionEnd(m, this.a, this.bounds, 8 * this.frame[2]);
+            else if (drag.kind === "move") {
+                const shift = m.map((n, i) => Math.max(this.bounds[i] - Math.min(drag.a[i], drag.b[i]), Math.min(this.bounds[i + 2] - Math.max(drag.a[i], drag.b[i]), n - drag.from[i])));
+                this.a = drag.a.map((n, i) => n + shift[i]);
+                this.b = drag.b.map((n, i) => n + shift[i]);
+            }
             this.draw();
             this.onLine(this.a, this.b, false);
         });
@@ -447,4 +453,10 @@ export function snapSectionEnd(point, anchor, bounds, radius = Infinity) {
     if (dx <= dy * tolerance && dx <= radius) p[0] = anchor[0];
     else if (dy <= dx * tolerance && dy <= radius) p[1] = anchor[1];
     return p;
+}
+
+function distanceToLine(p, a, b) {
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1)));
+    return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
 }

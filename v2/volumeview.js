@@ -16,7 +16,7 @@
 import * as THREE from "three";
 import { Viewer } from "./viewer.js?v=46";
 import { loadVolume, colourLut, texturePixels } from "./volume.js?v=2";
-import { SliceView, KeyPlan, drawLoops, drawScaleBar, drawSectionLine, snapSectionEnd } from "./slice2d.js?v=4";
+import { SliceView, KeyPlan, drawLoops, drawScaleBar, drawSectionLine, snapSectionEnd } from "./slice2d.js?v=5";
 import { cutModel, insideLoops, tallLoops } from "./meshcut.js?v=1";
 
 const SOFT_LAYER = /plant|tree|veget/i; // canopies: not solid for the analysis, drawn apart from terrain and buildings
@@ -375,6 +375,7 @@ export class VolumeView {
             ctx.putImageData(image, 0, 0);
             return { canvas, rect: [0, 0, len, height] };
         };
+        const lineStyles = new Map([...this.drawingMaterials].filter(material => material.isLineBasicMaterial).map(material => [material, { color: material.color.clone(), opacity: material.opacity, transparent: material.transparent, depthWrite: material.depthWrite }]));
         const offsets = new Map([...this.drawingMaterials].map(material => [material, [material.polygonOffset, material.polygonOffsetFactor, material.polygonOffsetUnits]]));
         try {
             renderer.setClearAlpha(0);
@@ -386,6 +387,12 @@ export class VolumeView {
                 // Drawing every projected edge here would turn the plan into a wireframe.
                 for (const material of this.drawingMaterials) {
                     material.colorWrite = !!material.isLineBasicMaterial;
+                    if (material.isLineBasicMaterial) {
+                        material.color.set(0x000000);
+                        material.opacity = 0.22;
+                        material.transparent = true;
+                        material.depthWrite = false;
+                    }
                     if (!material.isLineBasicMaterial) {
                         material.polygonOffset = true;
                         material.polygonOffsetFactor = 1;
@@ -398,6 +405,13 @@ export class VolumeView {
         } finally {
             for (const material of this.drawingMaterials) {
                 material.colorWrite = true;
+                if (lineStyles.has(material)) {
+                    const style = lineStyles.get(material);
+                    material.color.copy(style.color);
+                    material.opacity = style.opacity;
+                    material.transparent = style.transparent;
+                    material.depthWrite = style.depthWrite;
+                }
                 [material.polygonOffset, material.polygonOffsetFactor, material.polygonOffsetUnits] = offsets.get(material);
             }
             renderer.setRenderTarget(previous);
@@ -465,7 +479,13 @@ export class VolumeView {
         const near = p => Math.hypot(p[0] - point[0], p[1] - point[1]) <= tolerance;
         const end = near(s.a) ? "a" : near(s.b) ? "b" : null;
         if (end) return { cursor: "crosshair", move: p => this.set({ [end]: snapSectionEnd(p, s[end === "a" ? "b" : "a"], [0, 0, ...this.volume.size.slice(0, 2)], 8 * view.frame[2]) }, { quiet: true }), end: () => this.onChange() };
-        return null;
+        const dx = s.b[0] - s.a[0], dy = s.b[1] - s.a[1];
+        const t = Math.max(0, Math.min(1, ((point[0] - s.a[0]) * dx + (point[1] - s.a[1]) * dy) / (dx * dx + dy * dy || 1)));
+        if (Math.hypot(point[0] - s.a[0] - t * dx, point[1] - s.a[1] - t * dy) > tolerance) return null;
+        return { cursor: "move", move: p => {
+            const shift = p.map((n, i) => Math.max(-Math.min(s.a[i], s.b[i]), Math.min(this.volume.size[i] - Math.max(s.a[i], s.b[i]), n - point[i])));
+            this.set({ a: s.a.map((n, i) => n + shift[i]), b: s.b.map((n, i) => n + shift[i]) }, { quiet: true });
+        }, end: () => this.onChange() };
     }
 
     planScene() {

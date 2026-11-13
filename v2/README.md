@@ -406,12 +406,15 @@ volume clamp to its minimum/maximum, and an empty field restores the current quo
 The key plan supports wheel zoom around the pointer and right/middle drag to pan; its Refit
 icon appears after navigating away from the fitted view and resets only the key-plan framing.
 In 2D Section, **Hide/Show plan** toggles the draggable horizontal plan line. In 2D Plan,
-**Hide/Show section** toggles the section line: drag only its endpoints
-to move or rotate it. Both the plan and key plan snap within 8 degrees of either site axis;
-clicks or drags away from the key-plan endpoints never create or move a section. Other drags still pan the drawing. Guide visibility is kept in the view address.
+**Hide/Show section** toggles the section line: drag the line to translate it or its endpoints
+to rotate it. Both the plan and key plan snap within 8 degrees of either site axis;
+In the key plan, dragging the existing line translates it; clicks away from the line and endpoints never create or move a section. Other drags still pan the drawing. Guide visibility is kept in the view address.
 Plans and sections show the analysis, dark cut fill and exposed model edges only. Uncut
 surfaces write depth to hide lines behind nearer geometry; their shading/colours are never
 composited into the drawing. The separate key plan retains the model's original colours.
 Section endpoints stay inset from the key-plan border so both handles remain reachable.
 Orthogonal snapping is limited to 8 screen pixels as well as the angle threshold, so a long
 section can still be freely rotated by an intentional drag.
+
+Projection edges use the original light 22% black appearance. Cut tree canopies keep their
+original translucent green fill and outline.
