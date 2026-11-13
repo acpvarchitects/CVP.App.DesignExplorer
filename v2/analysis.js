@@ -334,8 +334,7 @@ function volumeChanged() {
     const s = vol.state;
     $("view").dataset.mode = s.mode;
     for (const b of $("volModes").children) b.classList.toggle("on", b.dataset.mode === s.mode);
-    $("volElev").value = s.z;
-    $("volElevValue").textContent = volumeModule.elevationText(s.z + vol.volume.worldZ);
+    syncElevation();
     $("volElevLabel").textContent = s.mode === "3d" ? "Horizontal plane" : "Plan elevation";
     $("volH").checked = s.h;
     $("volV").checked = s.v;
@@ -379,7 +378,30 @@ function volumeHover(hit, e) {
     tip.hidden = false;
 }
 
+function syncElevation() {
+    const input = $("volElevValue");
+    $("volElev").value = vol.state.z;
+    input.min = +vol.volume.worldZ.toFixed(2);
+    input.max = +(vol.volume.worldZ + vol.volume.size[2]).toFixed(2);
+    input.value = +(vol.state.z + vol.volume.worldZ).toFixed(2);
+}
+
+function commitElevation() {
+    if (!vol) return;
+    const value = $("volElevValue").valueAsNumber;
+    if (Number.isFinite(value)) {
+        const z = Math.max(0, Math.min(vol.volume.size[2], value - vol.volume.worldZ));
+        vol.set({ z });
+    }
+    syncElevation(); // also restores a cleared or invalid value
+}
+
 function bindVolume() {
+    $("volElevValue").addEventListener("change", commitElevation);
+    $("volElevValue").addEventListener("keydown", e => {
+        if (e.key === "Enter") { e.preventDefault(); commitElevation(); e.target.blur(); }
+        if (e.key === "Escape" && vol) { syncElevation(); e.target.blur(); }
+    });
     $("volModes").addEventListener("click", (e) => {
         const b = e.target.closest("button[data-mode]");
         if (b && vol) vol.set({ mode: b.dataset.mode });
@@ -397,7 +419,7 @@ function bindVolume() {
         if (!vol) return;
         vol.set({ z: +e.target.value }, { quiet: true });
         publishNavigation();
-        $("volElevValue").textContent = volumeModule.elevationText(vol.state.z + vol.volume.worldZ);
+        syncElevation();
     });
     $("volElev").addEventListener("change", () => vol && volumeChanged());
     for (const [id, key] of [["volH", "h"], ["volV", "v"], ["volCut", "cut"], ["volDots", "dots"], ["volDrape", "drape"]]) {

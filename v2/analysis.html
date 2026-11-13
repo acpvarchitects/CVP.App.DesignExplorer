@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="theme/tokens/icons.css?v=1" />
     <link rel="stylesheet" href="theme/tokens/z-index.css?v=1" />
     <link rel="stylesheet" href="theme/fonts.css?v=1" />
-    <link rel="stylesheet" href="style.css?v=115" />
+    <link rel="stylesheet" href="style.css?v=116" />
     <link rel="stylesheet" href="analysiscompare.css?v=1" />
     <!-- three.js is loaded only by a study with a 3D analysis (volumeview.js) -->
     <script type="importmap">
@@ -99,7 +99,7 @@
             <div id="volPanel" class="an-vol-panel">
                 <div class="an-vol-row">
                     <span id="volElevLabel" class="eyebrow">Elevation</span>
-                    <output id="volElevValue" for="volElev"></output>
+                    <label class="an-elevation-input"><input id="volElevValue" type="number" step="any" aria-labelledby="volElevLabel" /><span>m</span></label>
                 </div>
                 <input id="volElev" type="range" min="0" max="1" step="0.1" aria-labelledby="volElevLabel" />
                 <div id="volPlanes" class="an-vol-checks">
@@ -145,6 +145,6 @@
 
     <div id="message" class="message" hidden></div>
 
-    <script type="module" src="analysis.js?v=22"></script>
+    <script type="module" src="analysis.js?v=23"></script>
 </body>
 </html>

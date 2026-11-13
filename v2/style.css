@@ -3235,3 +3235,13 @@ code {
 }
 @keyframes an-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .an-spinner { animation-duration: 2s; } }
+
+.an-elevation-input { display: inline-flex; align-items: center; gap: 5px; }
+.an-elevation-input input {
+    width: 84px;
+    min-width: 0;
+    padding: 4px 6px;
+    text-align: right;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}

@@ -19,7 +19,7 @@ let browser;
     for (const frame of frames()) {
         assert.equal(await frame.locator('#loading').isVisible(), false);
         assert.equal(await frame.locator('#volDrape').isChecked(), true);
-        assert.equal(await frame.locator('#volElevValue').textContent(), '+14.0 m');
+        assert.equal(await frame.locator('#volElevValue').inputValue(), '14');
         for (const id of ['volH', 'volV', 'volCut', 'volDots']) assert.equal(await frame.locator('#' + id).isChecked(), false);
     }
     await page.locator('#shareBtn').click();
@@ -31,6 +31,24 @@ let browser;
     assert.equal(await page.locator('.ac-option:visible').count(), 2);
     const [left, right] = frames();
     await page.screenshot({ path: path.resolve('v2/_test/noise-comparison-3d.png') });
+    const elevation = left.locator('#volElevValue');
+    await elevation.fill('16.25');
+    await elevation.press('Enter');
+    await right.waitForFunction(() => +document.querySelector('#volElevValue').value === 16.25);
+    assert.ok(Math.abs(+(await left.locator('#volElev').inputValue()) - 25.75) < 0.11, 'model elevation converts to local grid height');
+    await elevation.fill('-1000');
+    await elevation.press('Enter');
+    assert.equal(+(await left.locator('#volElev').inputValue()), 0, 'below range clamps to minimum');
+    await elevation.fill('1000');
+    await elevation.press('Tab');
+    await left.waitForFunction(() => +document.querySelector('#volElev').value > 40);
+    assert.ok(Math.abs(+(await left.locator('#volElev').inputValue()) - +(await left.locator('#volElev').getAttribute('max'))) < 0.11, 'above range clamps to maximum within slider step');
+    const clamped = await elevation.inputValue();
+    await elevation.fill('');
+    await elevation.press('Enter');
+    assert.equal(await elevation.inputValue(), clamped, 'empty input restores current elevation');
+    await elevation.fill('14');
+    await elevation.press('Enter');
     await left.locator('#zoomIn').click();
     await page.waitForFunction(() => {
         const p = new URLSearchParams(location.search);
