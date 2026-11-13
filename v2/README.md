@@ -267,6 +267,12 @@ Files of a 3D study (written by the Grasshopper "EXPORT | Full noise volume + De
    remembered layer. These two modes no longer show a separate view dropdown. Menus support
    arrow keys, Home/End, Enter/Space, Escape, Tab and outside-click dismissal, and stay within
    the viewport. Other modes retain their existing view selector when more than one view exists.
+   Header wrapping reserves room for the entire controls row, including previous/next,
+   compact/expand and close: the batch label moves above first, then Index joins it if needed.
+   After wrapping, the remaining controls align left; only at still smaller widths may the
+   controls row itself wrap. This follows the actual available width, including sidebar changes.
+   "Where this option stands" can be collapsed to a narrow right rail; on smaller screens its
+   content below the image can be folded with the same control. The choice survives option changes.
    **Section snapping** (`scroll-snap.js`, while the centre card scrolls inside itself): the card
    never rests with the edge between two sections (chart, open option, gallery, Compare options)
    inside the view. One wheel step that would show the next section goes all the way to it, any
@@ -332,6 +338,7 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 | `comparison.js` | the Compare options section (radar, strengths, values table) |
 | `comparison-focus.js` | hover preview and pinned option emphasis, without rebuilding media |
 | `preview-mode-menus.js` | integrated analysis/table menus, current-title labels and keyboard navigation |
+| `preview-header-layout.js` | measured header wrapping, preserving room for the complete navigation group |
 | `comparison-media.js` | independent media and viewer lifecycle for the shared Compare view selector |
 | `parallel.js` | parallel-coordinates chart (d3) |
 | `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera, picking and emphasis (Program tab). Draws a frame only when the camera moves or something changes; the pieces of a layer that share a material are merged at load into one mesh (a layer used to be one draw call per glTF primitive), and the Program tab draws the apartments in one mesh per state |
