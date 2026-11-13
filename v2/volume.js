@@ -3,17 +3,23 @@
 //                byteOffset, count }] (float32 fields and a uint8 "mask"), coordinates.worldOriginRhino_m
 //   node (i,j,k) sits at (i*sx, j*sy, k*sz) local metres, Z up; index = i + nx*(j + ny*k)
 //   mask 0 = valid outdoor point; anything else is excluded (outside, below ground, inside a building)
-// Values are interpolated (trilinear) only where every contributing node is valid: the rest
-// stays empty, nothing is bridged across an excluded node.
+// Values are interpolated (trilinear) between valid nodes only. Two readings:
+//   strict  every contributing node must be valid, the rest stays empty (the receivers as computed)
+//   filled  the valid nodes of the cell are enough (their weights are rescaled): the field reaches
+//           the ground and the walls instead of stopping one grid step before them. Used by the
+//           colour maps, which are then covered by the cut geometry; a cell with no valid node stays empty.
 //   const vol = await loadVolume(base, "volume.json")
-//   vol.sample("exposure", x, y, z)                 -> value | NaN
-//   vol.plan("exposure", legend, z)                 -> slice, row 0 = north edge
-//   vol.section("exposure", legend, [ax,ay], [bx,by]) -> slice, A on the left, row 0 = top
-// A slice is { w, h, pixels (RGBA, for a texture), canvas (for 2D drawing) }.
+//   vol.sample("exposure", x, y, z, filled)         -> value | NaN
+// A slice may also paint the excluded space that lies under an analysed point (below the ground,
+// inside a building: there is a valid node higher up in the same column) in one plain colour, so the
+// ground reads as solid even where the model has no closed geometry to draw over it.
+//   vol.plan("exposure", legend, z, solid)          -> { w, h, canvas }, row 0 = north edge; solid = [r, g, b] | null
+//   vol.section("exposure", legend, [ax,ay], [bx,by]) -> { w, h, canvas }, A on the left, row 0 = top
 
 const PLAN_PX_PER_CELL = 4; // raster resolution of a slice, in pixels per grid step
 const SECTION_PX_PER_CELL = 8; // vertical resolution of a section (it is seen much closer)
 const EPS = 1e-4; // a node with a smaller weight does not contribute
+const MIN_VALID = 1e-3; // filled reading: the least total weight of valid nodes
 
 export async function loadVolume(base, file) {
     const get = async (name, kind) => {
@@ -45,6 +51,19 @@ export class Volume {
         this.worldZ = meta.coordinates?.worldOriginRhino_m?.[2] ?? 0; // model elevation of local z = 0
     }
 
+    // The highest valid node of every column (-1: none): what is excluded below it is ground or building.
+    tops() {
+        if (!this.top) {
+            const { nx, ny, nz, mask } = this;
+            this.top = new Int16Array(nx * ny).fill(-1);
+            for (let n = 0; n < nx * ny; n++) for (let k = nz - 1; k >= 0; k--) if (mask[n + nx * ny * k] === 0) {
+                this.top[n] = k;
+                break;
+            }
+        }
+        return this.top;
+    }
+
     // A plan elevation where most of the site is analysed: one step above the median ground node.
     defaultElevation() {
         const { nx, ny, nz, mask } = this;
@@ -59,27 +78,42 @@ export class Volume {
         return k * this.sz;
     }
 
-    sample(key, x, y, z) {
+    sample(key, x, y, z, filled = false) {
         const f = this.fields[key];
         const { nx, ny, nz, mask } = this;
         const gx = x / this.sx, gy = y / this.sy, gz = z / this.sz;
         if (!f || gx < -EPS || gy < -EPS || gz < -EPS || gx > nx - 1 + EPS || gy > ny - 1 + EPS || gz > nz - 1 + EPS) return NaN;
         const i = Math.min(Math.max(Math.floor(gx), 0), nx - 2), j = Math.min(Math.max(Math.floor(gy), 0), ny - 2), k = Math.min(Math.max(Math.floor(gz), 0), nz - 2);
         const fx = gx - i, fy = gy - j, fz = gz - k;
-        let sum = 0;
+        let sum = 0, valid = 0;
         for (let c = 0; c < 8; c++) {
             const w = (c & 1 ? fx : 1 - fx) * (c & 2 ? fy : 1 - fy) * (c & 4 ? fz : 1 - fz);
             if (w < EPS) continue;
             const n = i + (c & 1) + nx * (j + ((c >> 1) & 1) + ny * (k + (c >> 2)));
-            if (mask[n] !== 0) return NaN;
+            if (mask[n] !== 0) {
+                if (!filled) return NaN;
+                continue;
+            }
             sum += w * f[n];
+            valid += w;
         }
-        return sum;
+        return valid > MIN_VALID ? sum / valid : NaN;
+    }
+
+    // The valid nodes, thinned: [x, y, z, value] * n (local metres).
+    nodes(key, every = 1) {
+        const f = this.fields[key], { nx, ny, nz, mask } = this;
+        const out = [];
+        for (let k = 0; k < nz; k += every) for (let j = 0; j < ny; j += every) for (let i = 0; i < nx; i += every) {
+            const n = i + nx * (j + ny * k);
+            if (mask[n] === 0) out.push(i * this.sx, j * this.sy, k * this.sz, f[n]);
+        }
+        return new Float32Array(out);
     }
 
     // Colour map of a planar slice, as RGBA pixels: pixel (px, py) is the point
     // origin + u*(px+0.5) + v*(py+0.5) (metres). Empty where the mask excludes: alpha 0.
-    raster(key, legend, origin, u, v, w, h) {
+    raster(key, legend, origin, u, v, w, h, filled = true, solid = null) {
         const f = this.fields[key];
         const { nx, ny, nz, mask } = this;
         const out = new Uint8ClampedArray(w * h * 4);
@@ -92,6 +126,7 @@ export class Volume {
         const ox = origin[0] / this.sx + (ux + vx) / 2, oy = origin[1] / this.sy + (uy + vy) / 2, oz = origin[2] / this.sz + (uz + vz) / 2;
         const mx = nx - 1 + EPS, my = ny - 1 + EPS, mz = nz - 1 + EPS;
         const row = nx, slab = nx * ny;
+        const top = solid ? this.tops() : null;
         for (let py = 0; py < h; py++) {
             for (let px = 0; px < w; px++) {
                 const gx = ox + ux * px + vx * py, gy = oy + uy * px + vy * py, gz = oz + uz * px + vz * py;
@@ -102,21 +137,33 @@ export class Volume {
                 if (k > nz - 2) k = nz - 2;
                 const fx = gx - i, fy = gy - j, fz = gz - k;
                 const n = i + row * j + slab * k;
-                let sum = 0, ok = true;
+                let sum = 0, valid = 0, ok = true;
                 for (let c = 0; c < 8; c++) {
                     const wgt = (c & 1 ? fx : 1 - fx) * (c & 2 ? fy : 1 - fy) * (c & 4 ? fz : 1 - fz);
                     if (wgt < EPS) continue;
                     const m = n + (c & 1) + (c & 2 ? row : 0) + (c & 4 ? slab : 0);
                     if (mask[m] !== 0) {
+                        if (filled) continue;
                         ok = false;
                         break;
                     }
                     sum += wgt * f[m];
+                    valid += wgt;
                 }
-                if (!ok) continue;
+                const o = (px + py * w) * 4;
+                if (!ok || valid <= MIN_VALID) {
+                    // nothing analysed here: solid if an analysed point lies above in this column
+                    if (solid && top[Math.min(Math.round(gx), nx - 1) + row * Math.min(Math.round(gy), ny - 1)] > gz) {
+                        out[o] = solid[0];
+                        out[o + 1] = solid[1];
+                        out[o + 2] = solid[2];
+                        out[o + 3] = 255;
+                    }
+                    continue;
+                }
+                sum /= valid;
                 let t = Math.round((sum - legend.min) * scale);
                 t = (t < 0 ? 0 : t > last ? last : t) * 3;
-                const o = (px + py * w) * 4;
                 out[o] = lut[t];
                 out[o + 1] = lut[t + 1];
                 out[o + 2] = lut[t + 2];
@@ -127,19 +174,19 @@ export class Volume {
     }
 
     // Horizontal slice at local height z over the whole grid, north at the top.
-    plan(key, legend, z) {
+    plan(key, legend, z, solid = null) {
         const [lx, ly] = this.size;
         const w = (this.nx - 1) * PLAN_PX_PER_CELL, h = (this.ny - 1) * PLAN_PX_PER_CELL;
-        return slice(this.raster(key, legend, [0, ly, z], [lx / w, 0, 0], [0, -ly / h, 0], w, h), w, h);
+        return slice(this.raster(key, legend, [0, ly, z], [lx / w, 0, 0], [0, -ly / h, 0], w, h, true, solid), w, h);
     }
 
     // Vertical slice from a to b (plan points), over the whole height.
-    section(key, legend, a, b) {
+    section(key, legend, a, b, solid = null) {
         const length = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
         const lz = this.size[2];
         const w = Math.max(2, Math.round((length / this.sx) * PLAN_PX_PER_CELL)), h = (this.nz - 1) * SECTION_PX_PER_CELL;
         const u = [(b[0] - a[0]) / w, (b[1] - a[1]) / w, 0];
-        return slice(this.raster(key, legend, [a[0], a[1], lz], u, [0, 0, -lz / h], w, h), w, h);
+        return slice(this.raster(key, legend, [a[0], a[1], lz], u, [0, 0, -lz / h], w, h, true, solid), w, h);
     }
 }
 
@@ -160,14 +207,19 @@ export function colourLut(legend, n = 1024) {
     return luts.get(id);
 }
 
-// A slice for both uses. The canvas is for 2D drawing. The pixels are for a texture: there the
-// empty pixels next to a coloured one take its colour (still alpha 0), so filtering across the
-// edge of the field does not darken it (a canvas cannot keep a colour under alpha 0).
+// A slice: the canvas, for 2D drawing.
 function slice(px, w, h) {
     const canvas = document.createElement("canvas");
     canvas.width = w;
     canvas.height = h;
     canvas.getContext("2d").putImageData(new ImageData(px, w, h), 0, 0);
+    return { w, h, canvas };
+}
+
+// RGBA pixels for a texture: the empty pixels next to a coloured one take its colour (still
+// alpha 0), so filtering across the edge of the field does not darken it (a canvas cannot keep
+// a colour under alpha 0).
+export function texturePixels(px, w, h) {
     const pixels = new Uint8Array(px);
     for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
@@ -185,6 +237,6 @@ function slice(px, w, h) {
             }
         }
     }
-    return { w, h, pixels, canvas };
+    return pixels;
 }
 const NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];

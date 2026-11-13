@@ -3,6 +3,7 @@
 //   const v = new SliceView(container, { onHover(point|null, event), onFrame() })
 //   v.show({ extent: [x0, y0, x1, y1],            // what "fit" frames
 //            images: [{ canvas, rect: [x0, y0, x1, y1] }],
+//            fills:  [{ loops: [{ p: Float32Array [x,y,…] }], color, stroke, width }],  // closed outlines, filled as one area
 //            lines:  [{ segs: Float32Array [x1,y1,x2,y2,…], color, width, dash }],
 //            clip:   [x0, y0, x1, y1] | null,      // lines are drawn inside it only
 //            decorate(ctx, view) })                // screen-space extras; view.px(x, y) -> [px, py]
@@ -170,6 +171,7 @@ export function paintScene(ctx, scene, view) {
         ctx.clip();
     }
     const [ox, oy] = view.px(0, 0);
+    for (const fill of scene.fills || []) drawLoops(ctx, fill, 1 / mpp, ox, -1 / mpp, oy);
     ctx.lineCap = "round";
     for (const line of scene.lines || []) {
         const s = line.segs;
@@ -186,6 +188,29 @@ export function paintScene(ctx, scene, view) {
     }
     ctx.restore();
     scene.decorate?.(ctx, view);
+}
+
+// Closed outlines (all turning the same way, see meshcut.js) filled as their union, then
+// outlined. A point (x, y) is drawn at (ox + x * kx, oy + y * ky).
+export function drawLoops(ctx, { loops, color, stroke, width }, kx, ox, ky, oy) {
+    if (!loops || !loops.length) return;
+    ctx.beginPath();
+    for (const { p } of loops) {
+        ctx.moveTo(ox + p[0] * kx, oy + p[1] * ky);
+        for (let i = 2; i < p.length; i += 2) ctx.lineTo(ox + p[i] * kx, oy + p[i + 1] * ky);
+        ctx.closePath();
+    }
+    if (color) {
+        ctx.fillStyle = color;
+        ctx.fill("nonzero");
+    }
+    if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = width || 1;
+        ctx.setLineDash([]);
+        ctx.lineJoin = "round";
+        ctx.stroke();
+    }
 }
 
 // A round length (1, 2, 5 × 10^n metres) close to `target` pixels on screen.

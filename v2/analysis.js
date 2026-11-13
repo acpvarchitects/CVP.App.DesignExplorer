@@ -13,7 +13,7 @@
 //             layer kind "geometry" (file "model.glb")
 // URL: ?PROJECT=<folder> (or ?data=<folder url>) [&an=<layer key>] [&level=<level key>]
 //   a 3D analysis keeps its view in the address: mode (3d | plan | section), sc (scenario), z (plan height),
-//   sec (ax,ay,bx,by of the section line), planes (h, v, c = cut), vx (heights of the section × 1, 2, 4),
+//   sec (ax,ay,bx,by of the section line), planes (h, v, c = cut, p = points, s = colours on the surfaces), vx (heights of the section × 1, 2, 4),
 //   cam or frame (3D camera, 2D pan / zoom)
 import { PlanViewer, legendColor } from "./plan2d.js?v=5";
 import { sectionsHtml } from "./about.js?v=4";
@@ -176,7 +176,7 @@ function render() {
 
 // A view (VolumeView.view()) as address parameters, and back.
 function viewParams(v) {
-    const out = { mode: v.mode, sc: v.scenario, z: v.z, sec: [...v.a, ...v.b].join(","), planes: (v.h ? "h" : "") + (v.v ? "v" : "") + (v.cut ? "c" : "") || "0" };
+    const out = { mode: v.mode, sc: v.scenario, z: v.z, sec: [...v.a, ...v.b].join(","), planes: (v.h ? "h" : "") + (v.v ? "v" : "") + (v.cut ? "c" : "") + (v.dots ? "p" : "") + (v.drape ? "s" : "") || "0" };
     if (v.vx !== 1) out.vx = v.vx;
     if (v.camera) out.cam = v.camera.join(",");
     if (v.frame) out.frame = v.frame.join(",");
@@ -195,7 +195,7 @@ function viewFromParams() {
         scenario: params.get("sc") || undefined,
         z: list("z", 1)?.[0],
         ...(sec ? { a: sec.slice(0, 2), b: sec.slice(2) } : {}),
-        ...(planes != null ? { h: planes.includes("h"), v: planes.includes("v"), cut: planes.includes("c") } : {}),
+        ...(planes != null ? { h: planes.includes("h"), v: planes.includes("v"), cut: planes.includes("c"), dots: planes.includes("p"), drape: planes.includes("s") } : {}),
         vx: list("vx", 1)?.[0],
         camera: list("cam", 6),
         frame: list("frame", 3),
@@ -212,7 +212,7 @@ async function showVolume(layer) {
     if (!entry) {
         $("status").textContent = "Loading…";
         try {
-            volumeModule ||= await import("./volumeview.js?v=1");
+            volumeModule ||= await import("./volumeview.js?v=2");
         } catch (e) {
             $("status").textContent = `Cannot load the 3D view: ${e.message}`;
             return;
@@ -257,6 +257,8 @@ function volumeChanged() {
     $("volH").checked = s.h;
     $("volV").checked = s.v;
     $("volCut").checked = s.cut;
+    $("volDots").checked = s.dots;
+    $("volDrape").checked = s.drape;
     for (const b of $("volHeights").children) b.classList.toggle("on", +b.dataset.vx === s.vx);
     $("hint").textContent = s.mode === "3d" ? "Drag to orbit · right-drag to move · scroll to zoom" : "Scroll to zoom · drag to move · double-click to reset";
     $("scenarioButtons").innerHTML = vol
@@ -313,7 +315,7 @@ function bindVolume() {
         $("volElevValue").textContent = volumeModule.elevationText(vol.state.z + vol.volume.worldZ);
     });
     $("volElev").addEventListener("change", () => vol && volumeChanged());
-    for (const [id, key] of [["volH", "h"], ["volV", "v"], ["volCut", "cut"]]) {
+    for (const [id, key] of [["volH", "h"], ["volV", "v"], ["volCut", "cut"], ["volDots", "dots"], ["volDrape", "drape"]]) {
         $(id).addEventListener("change", (e) => vol && vol.set({ [key]: e.target.checked }));
     }
 }

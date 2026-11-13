@@ -1,26 +1,37 @@
 // A study with a dense 3D field (layers[] kind "analysis", dim "3d"), seen three ways:
 //   "3d"       the model (model.glb, its own colours and edge lines) with the field on two section
-//              planes, one horizontal and one vertical
+//              planes, one horizontal and one vertical; optionally also as dots at every analysed
+//              point, or spread on terrain and buildings
 //   "plan"     the field at one elevation, with the model cut at that height
-//   "section"  the vertical cut along the section line, with the profile of terrain and buildings
-// The field on a plane is a colour map sampled from the volume (volume.js): empty where the mask excludes.
+//   "section"  the vertical cut along the section line, with the cut terrain and buildings
+// The field on a plane is a colour map sampled from the volume (volume.js, "filled" reading): it
+// reaches the cut geometry, which is drawn over it as a solid dark grey (canopies apart, lighter).
 //
 // One serialisable object describes what is on screen (view()), the base for saved viewpoints:
-//   { mode, scenario, z, a: [x, y], b: [x, y], h, v, cut, vx, camera: [px,py,pz, tx,ty,tz] | null, frame: [cx, cy, m/px] | null }
+//   { mode, scenario, z, a: [x, y], b: [x, y], h, v, cut, dots, drape, vx, camera: [px,py,pz, tx,ty,tz] | null, frame: [cx, cy, m/px] | null }
 //   z, a, b in the volume's local metres (Z up); camera in the model's own coordinates (glTF, Y up);
 //   h / v = the horizontal / vertical plane is shown in 3D; cut = the model is cut away in front of the planes;
+//   dots = every analysed point is a dot in 3D; drape = terrain and buildings take the colour of the field at their surface;
 //   vx = heights drawn 1, 2 or 4 times larger in the 2D section (a long site is a very thin strip at true scale).
 import * as THREE from "three";
 import { Viewer } from "./viewer.js?v=46";
-import { loadVolume } from "./volume.js?v=1";
-import { SliceView, KeyPlan, drawScaleBar, drawSectionLine } from "./slice2d.js?v=1";
+import { loadVolume, colourLut, texturePixels } from "./volume.js?v=2";
+import { SliceView, KeyPlan, drawLoops, drawScaleBar, drawSectionLine } from "./slice2d.js?v=2";
+import { cutModel, edgesBelow, insideLoops, tallLoops } from "./meshcut.js?v=1";
 
-const SOFT_LAYER = /plant|tree|veget/i; // canopies: drawn lighter than terrain and buildings
-const CUT_LINE = { color: "#161616", width: 1.3 };
-const SOFT_LINE = { color: "rgba(30, 90, 40, 0.75)", width: 0.8 };
+const SOFT_LAYER = /plant|tree|veget/i; // canopies: not solid for the analysis, drawn apart from terrain and buildings
+// Cut geometry, in 2D and on the 3D planes: solids are one dark grey, canopies a light green.
+const SOLID_GREY = 0x4b;
+const SOLID_RGB = [SOLID_GREY, SOLID_GREY, SOLID_GREY]; // also where the mask says ground or building and the model has nothing closed
+const SOLID = { color: `rgb(${SOLID_GREY}, ${SOLID_GREY}, ${SOLID_GREY})`, stroke: "#1c1c1c", width: 1 };
+const CANOPY = { color: "rgba(96, 150, 96, 0.4)", stroke: "rgba(30, 90, 40, 0.85)", width: 0.8 };
+const OPEN_LINE = { color: "#1c1c1c", width: 1.3 }; // a cut surface that is not a closed solid
+const SOFT_LINE = { color: "rgba(30, 90, 40, 0.85)", width: 0.8 };
 const BELOW_LINE = { color: "rgba(0, 0, 0, 0.22)", width: 0.6 };
 const FRAME_COLOR = 0x222222;
-const INSIDE_GREY = 0.42; // inner faces of a cut solid (sRGB grey): the cut reads as solid, not as a hollow shell
+const TEXTURE_SCALE = 2; // a plane's texture, in pixels per pixel of the field slice: sharper cut geometry
+const DOT_SIZE = 0.4; // dot diameter, in grid steps
+const CANOPY_OPACITY = 0.28; // canopies while the colours are on the surfaces
 
 // local metres (Rhino, Z up) -> the model's glTF coordinates (Y up)
 const toGl = (x, y, z, out = new THREE.Vector3()) => out.set(x, z, -y);
@@ -32,7 +43,7 @@ export class VolumeView {
         this.onChange = onChange || (() => {});
         this.onHover = onHover || (() => {});
         this.onStatus = onStatus || (() => {});
-        this.state = { mode: "3d", scenario: "", z: 0, a: [0, 0], b: [1, 1], h: true, v: true, cut: false, vx: 1 };
+        this.state = { mode: "3d", scenario: "", z: 0, a: [0, 0], b: [1, 1], h: true, v: true, cut: false, dots: false, drape: false, vx: 1 };
         this.frames = { plan: null, section: null }; // pan / zoom of each 2D drawing
         this.dirty = { plan: true, section: true };
         this.means = {};
@@ -50,8 +61,9 @@ export class VolumeView {
         this.volume = volume;
         const [lx, ly] = volume.size;
         this.model = modelUrl ? await this.viewer.load(modelUrl, "geometry").catch(() => null) : null;
-        this.readModel();
         this.buildPlanes();
+        if (!this.viewer.centred) this.frameField();
+        this.readModel();
 
         // defaults: 3D, first scenario, a plan just above the ground, a section across the middle (south to north)
         const scenarios = this.scenarios();
@@ -73,7 +85,6 @@ export class VolumeView {
             onLine: (a, b, done) => this.set({ a, b }, { quiet: !done }),
         });
         if (initial.frame && this.state.mode !== "3d") this.frames[this.state.mode] = initial.frame;
-        if (!this.viewer.centred) this.frameField();
         if (initial.camera) this.setCamera(initial.camera);
         this.viewer.controls.addEventListener("change", () => this.updateClip());
         this.viewer.controls.addEventListener("end", () => this.onChange());
@@ -114,7 +125,7 @@ export class VolumeView {
         for (const [k, v] of Object.entries(patch)) {
             if (k === "z" && Number.isFinite(v)) out.z = Math.min(Math.max(v, 0), lz);
             else if ((k === "a" || k === "b") && point(v)) out[k] = point(v);
-            else if (k === "h" || k === "v" || k === "cut") out[k] = !!v;
+            else if (["h", "v", "cut", "dots", "drape"].includes(k) && v != null) out[k] = !!v;
             else if (k === "vx" && [1, 2, 4].includes(v)) out.vx = v;
             else if (k === "mode" || k === "scenario") out[k] = v;
         }
@@ -146,7 +157,10 @@ export class VolumeView {
     view() {
         const s = this.state;
         const r = (v, d = 2) => +v.toFixed(d);
-        const out = { mode: s.mode, scenario: s.scenario, z: r(s.z), a: s.a.map((v) => r(v, 1)), b: s.b.map((v) => r(v, 1)), h: s.h, v: s.v, cut: s.cut, vx: s.vx, camera: null, frame: null };
+        const out = {
+            mode: s.mode, scenario: s.scenario, z: r(s.z), a: s.a.map((v) => r(v, 1)), b: s.b.map((v) => r(v, 1)),
+            h: s.h, v: s.v, cut: s.cut, dots: s.dots, drape: s.drape, vx: s.vx, camera: null, frame: null,
+        };
         if (s.mode === "3d") out.camera = this.getCamera();
         else if (this.frames[s.mode]) out.frame = this.frames[s.mode].map((v, i) => r(v, i === 2 ? 4 : 1));
         return out;
@@ -232,23 +246,26 @@ export class VolumeView {
         const { volume, state: s } = this;
         const { legend } = this.reading();
         const [lx, ly, lz] = volume.size;
+        const len = Math.max(this.sectionLength(), 1);
         if (this.dirty.plan) {
-            this.planSlice = volume.plan(s.scenario, legend, s.z);
-            this.planLines = null;
+            this.planSlice = volume.plan(s.scenario, legend, s.z, SOLID_RGB);
+            this.planCut = null;
             this.dirty.plan = false;
-            setTexture(this.hPlane, this.planSlice);
+            setTexture(this.hPlane, this.planeTexture(this.planSlice, lx, ly, this.cutPlan()));
         }
         if (this.dirty.section) {
-            this.sectionSlice = volume.section(s.scenario, legend, s.a, s.b);
-            this.sectionLines = null;
+            this.sectionSlice = volume.section(s.scenario, legend, s.a, s.b, SOLID_RGB);
+            this.sectionCut = null;
             this.dirty.section = false;
-            setTexture(this.vPlane, this.sectionSlice);
+            setTexture(this.vPlane, this.planeTexture(this.sectionSlice, len, lz, this.cutSection()));
         }
-        // the planes in the 3D scene
+        // the 3D scene: planes, dots, colours on the surfaces
         setQuad(this.hPlane, [toGl(0, 0, s.z), toGl(lx, 0, s.z), toGl(lx, ly, s.z), toGl(0, ly, s.z)]);
         setQuad(this.vPlane, [toGl(s.a[0], s.a[1], 0), toGl(s.b[0], s.b[1], 0), toGl(s.b[0], s.b[1], lz), toGl(s.a[0], s.a[1], lz)]);
         this.hPlane.visible = s.h;
         this.vPlane.visible = s.v && this.sectionLength() > 0.5;
+        this.updateDots(legend);
+        this.updateDrape(legend);
         this.updateClip();
         this.viewer.dirty = true; // the viewer draws on demand
 
@@ -258,7 +275,10 @@ export class VolumeView {
             if (this.sceneFor !== s.mode) this.slice.setFrame(this.frames[s.mode]);
             this.sceneFor = s.mode;
         }
-        if (s.mode !== "plan") this.keyPlan.set({ images: this.planScene().images, lines: [{ segs: this.cutPlan().main, color: "#333", width: 0.7 }] }, s.a, s.b);
+        if (s.mode !== "plan") {
+            const cut = this.cutPlan();
+            this.keyPlan.set({ images: [{ canvas: this.planSlice.canvas, rect: [0, 0, lx, ly] }], fills: [{ loops: cut.main.loops, color: SOLID.color }] }, s.a, s.b);
+        }
     }
 
     sectionLength() {
@@ -266,24 +286,42 @@ export class VolumeView {
         return Math.hypot(b[0] - a[0], b[1] - a[1]);
     }
 
-    // ---- 2D drawings ----
+    // ---- Cuts and 2D drawings ----
 
     cutPlan() {
-        if (!this.planLines) {
+        if (!this.planCut) {
             const z = this.state.z;
-            this.planLines = { ...cutModel(this.parts, [0, 0, z], [1, 0, 0], [0, 1, 0], [0, 0, 1]), below: edgesBelow(this.edges, z) };
+            this.planCut = { ...cutModel(this.parts, [0, 0, z], [1, 0, 0], [0, 1, 0], [0, 0, 1]), below: edgesBelow(this.edges, z) };
         }
-        return this.planLines;
+        return this.planCut;
     }
 
+    // In metres along the line (x) and local height (y).
     cutSection() {
-        if (!this.sectionLines) {
+        if (!this.sectionCut) {
             const { a, b } = this.state;
             const len = this.sectionLength() || 1;
             const d = [(b[0] - a[0]) / len, (b[1] - a[1]) / len, 0];
-            this.sectionLines = cutModel(this.parts, [a[0], a[1], 0], d, [0, 0, 1], [d[1], -d[0], 0]);
+            this.sectionCut = cutModel(this.parts, [a[0], a[1], 0], d, [0, 0, 1], [d[1], -d[0], 0]);
         }
-        return this.sectionLines;
+        return this.sectionCut;
+    }
+
+    // A plane of the 3D scene: the field slice with the cut geometry drawn over it, as texture
+    // pixels. The slice covers [0, w] x [0, h] metres, row 0 at the top.
+    planeTexture(slice, w, h, cut) {
+        const W = slice.w * TEXTURE_SCALE, H = slice.h * TEXTURE_SCALE;
+        const canvas = (this.scratch ||= document.createElement("canvas"));
+        canvas.width = W;
+        canvas.height = H;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(slice.canvas, 0, 0, W, H);
+        const kx = W / w, ky = -H / h;
+        drawLoops(ctx, { loops: cut.main.loops, ...SOLID }, kx, 0, ky, H);
+        drawLoops(ctx, { loops: cut.soft.loops, ...CANOPY }, kx, 0, ky, H);
+        return { w: W, h: H, pixels: texturePixels(ctx.getImageData(0, 0, W, H).data, W, H) };
     }
 
     // Room left at the top of a fitted 2D drawing: the controls sit there.
@@ -299,7 +337,8 @@ export class VolumeView {
             extent: [0, 0, lx, ly],
             pad: [this.padTop(), 40, 56, 40],
             images: [{ canvas: this.planSlice.canvas, rect: [0, 0, lx, ly] }],
-            lines: [{ segs: cut.below, ...BELOW_LINE }, { segs: cut.soft, ...SOFT_LINE }, { segs: cut.main, ...CUT_LINE }],
+            fills: [{ loops: cut.main.loops, ...SOLID }, { loops: cut.soft.loops, ...CANOPY }],
+            lines: [{ segs: cut.below, ...BELOW_LINE }, { segs: cut.soft.open, ...SOFT_LINE }, { segs: cut.main.open, ...OPEN_LINE }],
             decorate: (ctx, view) => {
                 const [l, t] = view.px(0, ly), [r, b] = view.px(lx, 0);
                 ctx.save();
@@ -325,7 +364,8 @@ export class VolumeView {
             extent: [0, 0, len, lz * k],
             pad: [this.padTop(), 110, 70, 70],
             images: [{ canvas: this.sectionSlice.canvas, rect: [0, 0, len, lz * k] }],
-            lines: [{ segs: tall(cut.soft), ...SOFT_LINE }, { segs: tall(cut.main), ...CUT_LINE }],
+            fills: [{ loops: tallLoops(cut.main.loops, k), ...SOLID }, { loops: tallLoops(cut.soft.loops, k), ...CANOPY }],
+            lines: [{ segs: tall(cut.soft.open), ...SOFT_LINE }, { segs: tall(cut.main.open), ...OPEN_LINE }],
             clip: [0, -3 * k, len, (lz + 12) * k],
             decorate: (ctx, view) => {
                 const [l, b] = view.px(0, 0), [r, t] = view.px(len, lz * k);
@@ -352,10 +392,14 @@ export class VolumeView {
                 // where the plan cuts
                 const y = Math.round(view.px(0, this.state.z * k)[1]) + 0.5;
                 ctx.setLineDash([6, 4]);
-                ctx.strokeStyle = "rgba(0, 0, 0, 0.55)";
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+                ctx.lineWidth = 2.5;
                 ctx.beginPath();
                 ctx.moveTo(l, y);
                 ctx.lineTo(r + 6, y);
+                ctx.stroke(); // light under dark: readable over the field and over the cut ground
+                ctx.strokeStyle = "rgba(0, 0, 0, 0.6)";
+                ctx.lineWidth = 1;
                 ctx.stroke();
                 ctx.setLineDash([]);
                 ctx.textAlign = "left";
@@ -377,37 +421,48 @@ export class VolumeView {
         };
     }
 
+    // The value at a point of the plan (x, y) or of the section (metres along the line, local
+    // height): NaN inside the cut solids and where nothing is analysed.
+    valueOnPlan(x, y) {
+        if (insideLoops(this.cutPlan().main.loops, x, y)) return NaN;
+        return this.volume.sample(this.state.scenario, x, y, this.state.z, true);
+    }
+
+    valueOnSection(along, height) {
+        const { a, b } = this.state;
+        const len = this.sectionLength() || 1;
+        if (along < 0 || along > len || insideLoops(this.cutSection().main.loops, along, height)) return NaN;
+        return this.volume.sample(this.state.scenario, a[0] + ((b[0] - a[0]) * along) / len, a[1] + ((b[1] - a[1]) * along) / len, height, true);
+    }
+
     hover2d(p, e) {
         if (!p) return this.onHover(null);
-        const { a, b, z, mode, scenario } = this.state;
-        let point;
-        if (mode === "plan") point = [p[0], p[1], z];
-        else {
-            const len = this.sectionLength() || 1;
-            point = [a[0] + ((b[0] - a[0]) * p[0]) / len, a[1] + ((b[1] - a[1]) * p[0]) / len, p[1] / this.state.vx];
-            if (p[0] < 0 || p[0] > len) return this.onHover(null);
-        }
-        const value = this.volume.sample(scenario, ...point);
-        this.onHover(Number.isNaN(value) ? null : { value, z: point[2] + this.volume.worldZ }, e);
+        const plan = this.state.mode === "plan";
+        const height = plan ? this.state.z : p[1] / this.state.vx;
+        const value = plan ? this.valueOnPlan(p[0], p[1]) : this.valueOnSection(p[0], height);
+        this.onHover(Number.isNaN(value) ? null : { value, z: height + this.volume.worldZ }, e);
     }
 
     // ---- 3D scene ----
 
     // The model as plain arrays in local metres: triangles for the cuts, edge lines for the plan.
+    // Canopies get a material of their own (they turn translucent under the colours on the surfaces).
     readModel() {
         this.parts = [];
         this.edges = new Float32Array(0);
         this.meshes = [];
         this.materials = new Set();
+        this.softMaterials = new Set();
+        this.inside = { value: 0 };
         if (!this.model) return;
         const root = this.viewer.root;
         root.updateMatrixWorld(true);
         const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
         const m = new THREE.Matrix4(), p = new THREE.Vector3();
         const edges = [];
+        const softOf = new Map(); // shared material -> its copy for the canopies
         this.model.traverse((node) => {
             if (!node.geometry) return;
-            for (const mat of [node.material].flat()) this.materials.add(mat);
             const attr = node.geometry.getAttribute("position");
             m.multiplyMatrices(inv, node.matrixWorld);
             const pos = new Float32Array(attr.count * 3);
@@ -421,8 +476,15 @@ export class VolumeView {
             if (node.isMesh) {
                 let name = "";
                 for (let n = node; n && n !== this.model && !name; n = n.parent) name = n.userData.name || n.name || "";
+                const soft = SOFT_LAYER.test(name);
+                if (soft && !Array.isArray(node.material)) {
+                    if (!softOf.has(node.material)) softOf.set(node.material, node.material.clone());
+                    node.material = softOf.get(node.material);
+                    this.softMaterials.add(node.material);
+                }
+                node.userData.soft = soft;
                 this.meshes.push(node);
-                this.parts.push({ soft: SOFT_LAYER.test(name), pos, index, d: new Float32Array(attr.count) });
+                this.parts.push({ soft, pos, index, d: new Float32Array(attr.count) });
             } else if (node.isLineSegments) {
                 if (!index) edges.push(pos);
                 else {
@@ -431,23 +493,57 @@ export class VolumeView {
                     edges.push(flat);
                 }
             }
+            for (const mat of [node.material].flat()) this.materials.add(mat);
         });
-        // While the model is cut, the faces seen from behind (the inside of a cut solid) are plain grey.
-        this.inside = { value: 0 };
-        for (const mat of this.materials) {
-            if (!mat.isMeshLambertMaterial && !mat.isMeshStandardMaterial && !mat.isMeshBasicMaterial) continue;
-            mat.onBeforeCompile = (shader) => {
-                shader.uniforms.uInside = this.inside;
-                const grey = `if ( uInside > 0.5 && ! gl_FrontFacing ) gl_FragColor.rgb = vec3( ${INSIDE_GREY} );`;
-                shader.fragmentShader = "uniform float uInside;\n" + shader.fragmentShader.replace("#include <dithering_fragment>", "#include <dithering_fragment>\n\t" + grey);
-            };
-            mat.needsUpdate = true;
-        }
         this.edges = new Float32Array(edges.reduce((n, e) => n + e.length, 0));
         let o = 0;
         for (const e of edges) {
             this.edges.set(e, o);
             o += e.length;
+        }
+        this.patchMaterials();
+    }
+
+    // Two additions to the model's own materials:
+    //  - while the model is cut, the faces seen from behind (the inside of a cut solid) are the
+    //    dark grey of the cut geometry: the cut reads as solid, not as a hollow shell
+    //  - "drape": terrain and buildings take the colour of the field at their surface, read from
+    //    the volume as a 3D texture a little outside the surface (along its normal)
+    patchMaterials() {
+        const { volume, viewer } = this;
+        const lift = 0.4 * Math.min(volume.sx, volume.sy, volume.sz);
+        this.drapeUniforms = {
+            uDrape: { value: 0 },
+            uDrapeField: { value: null },
+            uDrapeLut: { value: null },
+            uDrapeRange: { value: new THREE.Vector2(0, 1) },
+            uDrapeOrigin: { value: viewer.root.position.clone() },
+            uDrapeStep: { value: new THREE.Vector3(volume.sx, volume.sy, volume.sz) },
+            uDrapeSize: { value: new THREE.Vector3(volume.nx, volume.ny, volume.nz) },
+            uDrapeLift: { value: lift },
+        };
+        this.canDrape = viewer.renderer.capabilities.isWebGL2 !== false;
+        const grey = (SOLID_GREY / 255).toFixed(3);
+        for (const mat of this.materials) {
+            const lit = mat.isMeshLambertMaterial || mat.isMeshStandardMaterial;
+            if (!lit && !mat.isMeshBasicMaterial) continue; // the edge lines
+            const drape = lit && this.canDrape && !this.softMaterials.has(mat);
+            mat.onBeforeCompile = (shader) => {
+                shader.uniforms.uInside = this.inside;
+                let head = "uniform float uInside;\n";
+                let tail = `\tif ( uInside > 0.5 && ! gl_FrontFacing ) gl_FragColor.rgb = vec3( ${grey} );\n`;
+                if (drape) {
+                    Object.assign(shader.uniforms, this.drapeUniforms);
+                    shader.vertexShader =
+                        "uniform vec3 uDrapeOrigin;\nuniform vec3 uDrapeStep;\nuniform vec3 uDrapeSize;\nuniform float uDrapeLift;\nvarying vec3 vDrape;\n" +
+                        shader.vertexShader.replace("#include <project_vertex>", "#include <project_vertex>\n" + DRAPE_VERTEX);
+                    head = "precision highp sampler3D;\nuniform float uDrape;\nuniform sampler3D uDrapeField;\nuniform sampler2D uDrapeLut;\nuniform vec2 uDrapeRange;\nvarying vec3 vDrape;\n" + head;
+                    tail = DRAPE_FRAGMENT + tail;
+                }
+                shader.fragmentShader = head + shader.fragmentShader.replace("#include <dithering_fragment>", "#include <dithering_fragment>\n" + tail);
+            };
+            mat.customProgramCacheKey = () => (drape ? "volume-drape" : "volume-plain");
+            mat.needsUpdate = true;
         }
     }
 
@@ -461,8 +557,95 @@ export class VolumeView {
         this.viewer.root.add(this.group);
     }
 
+    // "Dots": every analysed point of the volume as a dot of its colour.
+    updateDots(legend) {
+        const s = this.state;
+        if (!s.dots) {
+            if (this.points) this.points.visible = false;
+            return;
+        }
+        if (!this.points) {
+            const material = new THREE.PointsMaterial({ size: DOT_SIZE * Math.min(this.volume.sx, this.volume.sy, this.volume.sz), vertexColors: true, map: dotTexture(), alphaTest: 0.5 });
+            this.points = new THREE.Points(new THREE.BufferGeometry(), material);
+            this.points.frustumCulled = false;
+            this.group.add(this.points);
+        }
+        if (this.dotsFor !== s.scenario) {
+            const nodes = this.volume.nodes(s.scenario);
+            const n = nodes.length / 4;
+            const position = new Float32Array(n * 3), color = new Float32Array(n * 3);
+            const lut = linearLut(legend);
+            const last = lut.length / 3 - 1, scale = last / (legend.max - legend.min || 1);
+            for (let i = 0; i < n; i++) {
+                position[i * 3] = nodes[i * 4];
+                position[i * 3 + 1] = nodes[i * 4 + 2];
+                position[i * 3 + 2] = -nodes[i * 4 + 1];
+                const t = Math.min(Math.max(Math.round((nodes[i * 4 + 3] - legend.min) * scale), 0), last) * 3;
+                color[i * 3] = lut[t];
+                color[i * 3 + 1] = lut[t + 1];
+                color[i * 3 + 2] = lut[t + 2];
+            }
+            this.points.geometry.dispose();
+            this.points.geometry = new THREE.BufferGeometry();
+            this.points.geometry.setAttribute("position", new THREE.BufferAttribute(position, 3));
+            this.points.geometry.setAttribute("color", new THREE.BufferAttribute(color, 3));
+            this.dotsFor = s.scenario;
+        }
+        this.points.visible = true;
+    }
+
+    // "Drape": the field of the scenario as a 3D texture (value and validity of every node, so the
+    // shader can average the valid ones only) and its legend as a strip of colours.
+    updateDrape(legend) {
+        const s = this.state;
+        const on = s.drape && this.canDrape && !!this.model;
+        const u = this.drapeUniforms;
+        if (!u) return;
+        u.uDrape.value = on ? 1 : 0;
+        for (const mat of this.softMaterials) {
+            if (mat.transparent !== on) mat.needsUpdate = true;
+            mat.transparent = on;
+            mat.opacity = on ? CANOPY_OPACITY : 1;
+            mat.depthWrite = !on;
+        }
+        if (!on) return;
+        this.fieldTextures ||= {};
+        if (!this.fieldTextures[s.scenario]) {
+            const { nx, ny, nz, mask } = this.volume;
+            const f = this.volume.fields[s.scenario];
+            const data = new Uint16Array(f.length * 2);
+            const one = THREE.DataUtils.toHalfFloat(1);
+            for (let i = 0; i < f.length; i++) {
+                if (mask[i] !== 0) continue;
+                data[i * 2] = THREE.DataUtils.toHalfFloat(f[i]);
+                data[i * 2 + 1] = one;
+            }
+            const texture = new THREE.Data3DTexture(data, nx, ny, nz);
+            texture.format = THREE.RGFormat;
+            texture.type = THREE.HalfFloatType;
+            texture.minFilter = texture.magFilter = THREE.LinearFilter;
+            texture.unpackAlignment = 1;
+            texture.needsUpdate = true;
+            this.fieldTextures[s.scenario] = texture;
+        }
+        const id = legend.colors.join();
+        this.lutTextures ||= {};
+        if (!this.lutTextures[id]) {
+            const lut = colourLut(legend, 256);
+            const data = new Uint8Array(256 * 4).fill(255);
+            for (let i = 0; i < 256; i++) data.set(lut.subarray(i * 3, i * 3 + 3), i * 4);
+            const texture = new THREE.DataTexture(data, 256, 1, THREE.RGBAFormat); // written as it is: the shader's output is already sRGB
+            texture.minFilter = texture.magFilter = THREE.LinearFilter;
+            texture.needsUpdate = true;
+            this.lutTextures[id] = texture;
+        }
+        u.uDrapeField.value = this.fieldTextures[s.scenario];
+        u.uDrapeLut.value = this.lutTextures[id];
+        u.uDrapeRange.value.set(legend.min, legend.max);
+    }
+
     // "Cut model": the model between the eye and each shown plane is cut away, so the field is
-    // never hidden behind a building or a slope. The side follows the camera.
+    // never hidden behind a building or a slope. The side follows the camera. The dots too.
     updateClip() {
         const s = this.state;
         const planes = [];
@@ -480,29 +663,44 @@ export class VolumeView {
             }
         }
         this.clipPlanes = planes;
-        if (this.inside) this.inside.value = planes.length ? 1 : 0;
+        this.inside.value = planes.length ? 1 : 0;
         for (const m of this.materials) m.clippingPlanes = planes;
+        if (this.points) this.points.material.clippingPlanes = planes;
     }
 
-    // Value under the pointer on a section plane, once the pointer rests: the planes are tested
-    // first, then the model, which may hide the point.
+    // Value under the pointer, once the pointer rests: on a section plane, or on a surface while
+    // the colours are spread on the model. Whatever of the model is in front hides it.
     bindHover3d() {
         const el = this.viewer.renderer.domElement;
         const ray = new THREE.Raycaster();
         let timer = 0, down = false;
         const probe = (e) => {
+            const s = this.state;
             const rect = el.getBoundingClientRect();
             const ndc = new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
             ray.setFromCamera(ndc, this.viewer.camera);
             const root = this.viewer.root;
+            // the nearest surface of the model still drawn there (canopies are see-through under "drape")
+            const front = ray
+                .intersectObjects(this.meshes.filter((m) => !(s.drape && m.userData.soft)), false)
+                .find((h) => !this.clipPlanes.some((pl) => pl.distanceToPoint(h.point) < 0));
             for (const hit of ray.intersectObjects([this.hPlane, this.vPlane].filter((p) => p.visible), false)) {
-                const p = hit.point.clone().sub(root.position);
-                const value = this.volume.sample(this.state.scenario, p.x, -p.z, p.y);
-                if (Number.isNaN(value)) continue; // an empty part of the plane: see through it
-                const blocked = ray
-                    .intersectObjects(this.meshes, false)
-                    .some((h) => h.distance < hit.distance - 0.05 && !this.clipPlanes.some((pl) => pl.distanceToPoint(h.point) < 0));
-                return this.onHover(blocked ? null : { value, z: p.y + this.volume.worldZ }, e);
+                if (front && front.distance < hit.distance - 0.05) break;
+                const p = hit.point.clone().sub(root.position); // glTF: local (x, y, z) = (p.x, -p.z, p.y)
+                const len = this.sectionLength() || 1;
+                const value =
+                    hit.object === this.hPlane
+                        ? this.valueOnPlan(p.x, -p.z)
+                        : this.valueOnSection(((p.x - s.a[0]) * (s.b[0] - s.a[0]) + (-p.z - s.a[1]) * (s.b[1] - s.a[1])) / len, p.y);
+                if (Number.isNaN(value)) continue; // an empty or solid part of the plane
+                return this.onHover({ value, z: p.y + this.volume.worldZ }, e);
+            }
+            if (s.drape && front && !front.object.userData.soft) {
+                const lift = this.drapeUniforms.uDrapeLift.value;
+                const n = front.face ? front.face.normal : new THREE.Vector3();
+                const p = front.point.clone().sub(root.position).addScaledVector(n, lift);
+                const value = this.volume.sample(s.scenario, p.x, -p.z, p.y, true);
+                if (!Number.isNaN(value)) return this.onHover({ value, z: p.y + this.volume.worldZ }, e);
             }
             this.onHover(null);
         };
@@ -518,7 +716,35 @@ export class VolumeView {
 
 export const elevationText = (e, digits = 1) => `${e < 0 ? "−" : "+"}${Math.abs(e).toFixed(digits)} m`;
 
-// ---- Section planes ----
+// ---- Colours on the surfaces (shader chunks) ----
+
+// The point of the surface, a little outside it, in texture coordinates of the volume.
+const DRAPE_VERTEX = `
+	{
+		vec4 drapeWorld = modelMatrix * vec4( transformed, 1.0 );
+		vec3 drapeNormal = normalize( mat3( modelMatrix ) * objectNormal );
+		vec3 drapePoint = drapeWorld.xyz - uDrapeOrigin + drapeNormal * uDrapeLift;
+		vDrape = ( vec3( drapePoint.x, - drapePoint.z, drapePoint.y ) / uDrapeStep + 0.5 ) / uDrapeSize;
+	}
+`;
+
+// The texture holds (value, 1) on valid nodes and (0, 0) elsewhere: filtered, r / g is the mean
+// of the valid nodes around the point. Not analysed there: a pale grey of the surface's own tone.
+const DRAPE_FRAGMENT = `
+	if ( uDrape > 0.5 ) {
+		vec3 drapeColor = vec3( dot( gl_FragColor.rgb, vec3( 0.299, 0.587, 0.114 ) ) * 0.3 + 0.62 );
+		if ( all( greaterThanEqual( vDrape, vec3( 0.0 ) ) ) && all( lessThanEqual( vDrape, vec3( 1.0 ) ) ) ) {
+			vec2 drapeSample = texture( uDrapeField, vDrape ).rg;
+			if ( drapeSample.g > 0.02 ) {
+				float drapeT = clamp( ( drapeSample.r / drapeSample.g - uDrapeRange.x ) / ( uDrapeRange.y - uDrapeRange.x ), 0.0, 1.0 );
+				drapeColor = texture2D( uDrapeLut, vec2( drapeT, 0.5 ) ).rgb * ( 0.8 + 0.2 * abs( normalize( vNormal ).z ) );
+			}
+		}
+		gl_FragColor.rgb = drapeColor;
+	}
+`;
+
+// ---- Section planes, dots ----
 
 function makePlane() {
     const geometry = new THREE.BufferGeometry();
@@ -544,9 +770,9 @@ function setQuad(mesh, corners) {
     mesh.geometry.computeBoundingBox();
 }
 
-function setTexture(mesh, slice) {
+function setTexture(mesh, { pixels, w, h }) {
     mesh.material.map?.dispose();
-    const texture = new THREE.DataTexture(slice.pixels, slice.w, slice.h, THREE.RGBAFormat);
+    const texture = new THREE.DataTexture(pixels, w, h, THREE.RGBAFormat);
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.magFilter = texture.minFilter = THREE.LinearFilter;
     texture.needsUpdate = true;
@@ -554,49 +780,32 @@ function setTexture(mesh, slice) {
     mesh.material.needsUpdate = true;
 }
 
-// ---- Cuts through the model ----
-
-// Where the plane through `o` with normal `n` crosses the model's triangles: line segments in
-// the plane's own 2D coordinates (along e1 and e2), canopies apart from the rest.
-function cutModel(parts, o, e1, e2, n) {
-    const main = [], soft = [];
-    const no = n[0] * o[0] + n[1] * o[1] + n[2] * o[2];
-    for (const part of parts) {
-        const { pos, index, d } = part;
-        const out = part.soft ? soft : main;
-        let any = 0;
-        for (let v = 0, i = 0; v < d.length; v++, i += 3) {
-            d[v] = pos[i] * n[0] + pos[i + 1] * n[1] + pos[i + 2] * n[2] - no;
-            any |= d[v] >= 0 ? 1 : 2;
-        }
-        if (any !== 3) continue; // the whole layer is on one side
-        const count = index ? index.length : d.length;
-        for (let t = 0; t + 2 < count; t += 3) {
-            const i0 = index ? index[t] : t, i1 = index ? index[t + 1] : t + 1, i2 = index ? index[t + 2] : t + 2;
-            const s0 = d[i0] >= 0, s1 = d[i1] >= 0, s2 = d[i2] >= 0;
-            if (s0 === s1 && s1 === s2) continue;
-            if (s0 !== s1) cross(pos, d, i0, i1, o, e1, e2, out);
-            if (s1 !== s2) cross(pos, d, i1, i2, o, e1, e2, out);
-            if (s2 !== s0) cross(pos, d, i2, i0, o, e1, e2, out);
-        }
+// A round dot for the points (they are squares otherwise).
+let dot = null;
+function dotTexture() {
+    if (!dot) {
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 32;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(16, 16, 15, 0, Math.PI * 2);
+        ctx.fill();
+        dot = new THREE.CanvasTexture(canvas);
     }
-    return { main: new Float32Array(main), soft: new Float32Array(soft) };
+    return dot;
 }
 
-function cross(pos, d, a, b, o, e1, e2, out) {
-    const t = d[a] / (d[a] - d[b]);
-    const x = pos[a * 3] + (pos[b * 3] - pos[a * 3]) * t - o[0];
-    const y = pos[a * 3 + 1] + (pos[b * 3 + 1] - pos[a * 3 + 1]) * t - o[1];
-    const z = pos[a * 3 + 2] + (pos[b * 3 + 2] - pos[a * 3 + 2]) * t - o[2];
-    out.push(x * e1[0] + y * e1[1] + z * e1[2], x * e2[0] + y * e2[1] + z * e2[2]);
-}
-
-// The model's edge lines lying below a plan's height, seen from above.
-function edgesBelow(edges, z) {
-    const out = [];
-    for (let i = 0; i + 5 < edges.length; i += 6) {
-        if (edges[i + 2] > z || edges[i + 5] > z) continue;
-        out.push(edges[i], edges[i + 1], edges[i + 3], edges[i + 4]);
+// The legend's colours as linear values, for vertex colours.
+function linearLut(legend) {
+    const lut = colourLut(legend);
+    const out = new Float32Array(lut.length);
+    const c = new THREE.Color();
+    for (let i = 0; i < lut.length; i += 3) {
+        c.setRGB(lut[i] / 255, lut[i + 1] / 255, lut[i + 2] / 255, THREE.SRGBColorSpace);
+        out[i] = c.r;
+        out[i + 1] = c.g;
+        out[i + 2] = c.b;
     }
-    return new Float32Array(out);
+    return out;
 }
