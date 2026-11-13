@@ -65,6 +65,9 @@ jobs:
       - name: Comparison views and independent composition
         run: node scripts/test-comparison.mjs
 
+      - name: Analysis comparison scales and coordinate alignment
+        run: node scripts/test-analysiscompare.mjs
+
       - name: Integrated preview analysis and table menus
         run: node scripts/test-preview-mode-menus.mjs
 

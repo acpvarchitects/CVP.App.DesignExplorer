@@ -17,6 +17,7 @@ when several studies are open, each is shown as a **method**.
 | Short display names | `/v2/?PROJECT=FOLDER_A:Label A,FOLDER_B:Label B` |
 | Local folder copy (tests) | `/v2/?data=/v2/_test/STUDY/` |
 | The analyses of one study (single option): 2D plans level by level, or a 3D field in 3D / plan / section | `/v2/analysis.html?PROJECT=STUDY` (optional `&an=<key>&level=<key>`) |
+| Two full study analyses, with option tabs and a linked 3D comparison | `/v2/analysis.html?PROJECT=STUDY_A:Option 1,STUDY_B:Option 2&tab=compare` |
 
 `?PROJECT=` loads `data.csv` and its files from the design-explorer API
 (`.../v1/design-explorer/projects/<folder>/`, read only). On dev: `/dev/v2/?PROJECT=…`.
@@ -215,6 +216,21 @@ colours on surfaces, heights, camera or 2D frame), kept in the address (`mode`, 
 with a letter per tick box: `h`, `v`, `c` cut, `p` points, `s` surfaces; `vx`, `cam` / `frame`) and
 copied by **Copy link**; it is the base for saved viewpoints and a PDF of them (not built yet: no
 "Export view" on a 3D analysis). three.js is loaded only when a 3D analysis is opened.
+
+**Two-study analysis dashboard** (`analysiscompare.js`, `analysiscompare-state.js`, `analysiscompare.css`):
+give `analysis.html` exactly two comma-separated `PROJECT` entries (or `data` folder URLs), with optional
+`:Label` suffixes. Each option tab retains its full analysis viewer and controls. Compare shows those
+same viewers side by side (stacked on narrow screens); Expand returns to one full option. Analysis
+details can be shown in the comparison. Link views is on by default, and only links while Compare is
+open: camera, mode, scenario, elevation, section line, vertical scale, display toggles and 2D pan/zoom.
+Local coordinates are translated through each volume's `worldOriginRhino_m`; without known origins
+or matching scenarios the views stay independent. Linked elevations and section endpoints remain
+limited to each volume's bounds. Matching analysis keys, scenario keys and units use one colour scale
+covering both legends, with the first option's palette. Different quantities retain their own scales
+and show an explanation. The shared scenario selector changes both options even with view linking off.
+Copy link retains the active tab, linking/details settings and each 3D view (`view1`/`view2`, `an1`/`an2`).
+Single-study links still open directly. This is a visual comparison; it does not subtract fields or rank
+options by their whole-volume means, which can cover different outdoor points.
 
 Files of a 3D study (written by the Grasshopper "EXPORT | Full noise volume + DesignExplorer assets" component):
 

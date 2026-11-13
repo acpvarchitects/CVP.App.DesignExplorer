@@ -18,6 +18,7 @@
 import { PlanViewer, legendColor } from "./plan2d.js?v=5";
 import { sectionsHtml } from "./about.js?v=4";
 import { exportViewPdf } from "./pdfexport.js?v=8";
+import { studyEntries } from "./analysiscompare-state.js?v=1";
 
 const API_BASE = "http://api-node.acpv.local/dev/v1/design-explorer";
 const $ = (id) => document.getElementById(id);
@@ -32,6 +33,56 @@ let volumeModule = null; // volumeview.js, loaded with the first 3D analysis (it
 const volumes = new Map(); // layer key -> { view, els, ready }
 const VIEW_KEYS = ["mode", "sc", "z", "sec", "planes", "vx", "cam", "frame"]; // address of a 3D view
 const state = { an: params.get("an") || "", level: params.get("level") || "" };
+const embedded = params.get("embedded") === "1" && window.parent !== window;
+let applyingComparison = false;
+let navigationFrame = 0;
+
+function publishNavigation() {
+    if (!embedded || applyingComparison || !vol || navigationFrame) return;
+    navigationFrame = requestAnimationFrame(() => {
+        navigationFrame = 0;
+        if (!applyingComparison) publishView(true);
+    });
+}
+
+function publishView(changed = false, applied = false) {
+    if (!embedded) return;
+    const origin = vol?.volume.meta.coordinates?.worldOriginRhino_m;
+    window.parent.postMessage({ type: "analysis-state", changed, applied, state: vol ? {
+        analysis: state.an,
+        view: vol.view(),
+        reading: vol.nativeReading(),
+        scenarios: vol.scenarios().map(s => s.key),
+        scenarioLabels: Object.fromEntries(vol.scenarios().map(s => [s.key, s.label || s.key])),
+        mean: vol.mean(),
+        origin: Array.isArray(origin) && origin.length === 3 && origin.every(Number.isFinite) ? origin : null,
+    } : null }, location.origin);
+}
+
+if (embedded) {
+    document.body.classList.add("an-embedded");
+    window.addEventListener("message", e => {
+        if (e.source !== window.parent || e.origin !== location.origin || e.data?.type !== "analysis-command") return;
+        const { action, value } = e.data;
+        if (action === "compact") {
+            document.body.classList.toggle("an-compact", !!value);
+            return;
+        }
+        if (!vol) return;
+        applyingComparison = true;
+        try {
+            if (action === "view" && value && vol.scenarios().some(s => s.key === value.scenario)) {
+                if (value.scenario !== vol.state.scenario) vol.setLegend(null);
+                vol.applyView(value);
+            }
+            if (action === "legend") {
+                vol.setLegend(value);
+                renderVolumeInfo(current(), vol);
+            }
+        } finally { applyingComparison = false; }
+        publishView(false, true);
+    });
+}
 
 function resolveStudy() {
     const first = (key) => (params.get(key) || "").split(",").map((s) => s.trim()).filter(Boolean)[0];
@@ -164,6 +215,8 @@ function writeUrl() {
 }
 
 function render() {
+    vol = null;
+    publishView();
     renderControls();
     if (is3d(current())) return showVolume(current());
     vol = null;
@@ -184,6 +237,12 @@ function viewParams(v) {
 }
 
 function viewFromParams() {
+    if (embedded && params.has("initialView")) {
+        try {
+            const view = JSON.parse(params.get("initialView"));
+            if (view && typeof view === "object" && !Array.isArray(view)) return view;
+        } catch { /* use normal view parameters */ }
+    }
     const list = (k, n) => {
         const v = (params.get(k) || "").split(",").map(Number);
         return params.has(k) && v.length === n && v.every(Number.isFinite) ? v : undefined;
@@ -212,7 +271,7 @@ async function showVolume(layer) {
     if (!entry) {
         $("status").textContent = "Loading…";
         try {
-            volumeModule ||= await import("./volumeview.js?v=2");
+            volumeModule ||= await import("./volumeview.js?v=3");
         } catch (e) {
             $("status").textContent = `Cannot load the 3D view: ${e.message}`;
             return;
@@ -226,6 +285,7 @@ async function showVolume(layer) {
             onChange: () => vol === view && volumeChanged(),
             onHover: (hit, e) => vol === view && volumeHover(hit, e),
             onStatus: (text) => current() === layer && ($("status").textContent = text),
+            onNavigate: () => vol === view && publishNavigation(),
         });
         const model = (study.manifest.layers || []).find((l) => l.kind === "geometry" && /\.(glb|gltf)$/i.test(l.file || l.file_pattern || ""));
         // the view in the address belongs to the analysis it was copied from
@@ -242,8 +302,11 @@ async function showVolume(layer) {
     }
     if (current() !== layer) return; // another analysis was picked meanwhile
     vol = entry.view;
+    // Embedded viewers relay camera movement immediately, without a trailing inertia drift.
+    if (embedded) vol.viewer.controls.enableDamping = false;
     $("volElev").max = vol.volume.size[2].toFixed(2);
     volumeChanged();
+    publishView();
 }
 
 // After any change of the 3D view: the controls, the texts and the address follow it.
@@ -267,6 +330,7 @@ function volumeChanged() {
         .join("");
     renderVolumeInfo(current(), vol);
     writeUrl();
+    if (!applyingComparison) publishView(true);
 }
 
 // Left side of a 3D analysis: the mean over the analysed points, the legend of the scenario, the texts.
@@ -312,6 +376,7 @@ function bindVolume() {
     $("volElev").addEventListener("input", (e) => {
         if (!vol) return;
         vol.set({ z: +e.target.value }, { quiet: true });
+        publishNavigation();
         $("volElevValue").textContent = volumeModule.elevationText(vol.state.z + vol.volume.worldZ);
     });
     $("volElev").addEventListener("change", () => vol && volumeChanged());
@@ -415,6 +480,16 @@ function onHover(hit, e) {
 }
 
 async function start() {
+    const entries = studyEntries(params);
+    if (!embedded && entries.length > 1) {
+        if (entries.length !== 2) {
+            showMessage("<h2>Select two studies</h2><p>The analysis comparison opens two studies at a time.</p>");
+            return;
+        }
+        const { startComparison } = await import("./analysiscompare.js?v=1");
+        startComparison(params);
+        return;
+    }
     study = resolveStudy();
     if (!study) {
         showMessage(`<h2>No project selected</h2><p>Add the project to the address, for example <code>?PROJECT=STUDY</code>.</p>`);

@@ -1,0 +1,24 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+const source = await readFile(new URL("../v2/analysiscompare-state.js", import.meta.url), "utf8");
+const { studyEntries, sharedLegend, linkedView } = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
+assert.deepEqual(studyEntries(new URLSearchParams("PROJECT=A:First,B:Second")).map(s => s.label), ["First", "Second"]);
+assert.equal(studyEntries(new URLSearchParams("data=http://localhost/a,http://localhost/b"))[0].entry, "http://localhost/a");
+const a = { analysis: "noise", origin: [10, 20, 30], scenarios: ["exposure"], reading: { key: "exposure", unit: "dB", legend: { min: -30, max: 0, colors: ["#000000", "#ffffff"] } },
+    view: { mode: "plan", scenario: "exposure", z: 4, a: [1, 2], b: [3, 4], camera: [1, 2, 3, 4, 5, 6], frame: [50, 60, .2] } };
+const b = { ...structuredClone(a), origin: [5, 10, 20] };
+b.reading.legend.min = -40;
+assert.equal(sharedLegend(a, b).min, -40);
+assert.equal(sharedLegend(a, { ...b, reading: { ...b.reading, unit: "dB(A)" } }), null);
+assert.equal(sharedLegend(a, { ...b, reading: { ...b.reading, key: "vegetationDelta" } }), null);
+const v = linkedView(a, b);
+assert.equal(v.z, 14);
+assert.deepEqual(v.a, [6, 12]);
+assert.deepEqual(v.camera, [6, 12, -7, 9, 15, -4]);
+assert.deepEqual(v.frame, [55, 70, .2]);
+assert.deepEqual(linkedView({ ...a, view: { ...a.view, mode: "section" } }, b).frame, [50, 70, .2]);
+assert.deepEqual(linkedView({ ...a, view: { ...a.view, mode: "section", vx: 4 } }, b).frame, [50, 100, .2]);
+assert.equal(a.view.z, 4, "source view remains independent");
+assert.equal(linkedView(a, { ...b, origin: null }), null);
+assert.equal(linkedView(a, { ...b, scenarios: ["other"] }), null);
+console.log("PASS shared scales, incompatible quantities, independent state and world-coordinate view translation");

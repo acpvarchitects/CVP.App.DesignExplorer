@@ -1,0 +1,31 @@
+.ac-dashboard { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; padding: 14px 24px; }
+.ac-tabs { align-self: flex-start; flex-shrink: 0; }
+.ac-actions, .ac-legend { flex-shrink: 0; }
+.ac-actions { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.ac-actions label { display: flex; align-items: center; gap: 6px; }
+.ac-legend { display: flex; align-items: center; gap: 12px; font-size: 12px; }
+.ac-gradient { width: 220px; height: 10px; border-radius: 5px; }
+.ac-legend[hidden] { display: none; }
+.ac-panes { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.ac-dashboard[data-tab="compare"] .ac-panes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ac-option { min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; }
+.ac-option > header { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; background: var(--soft); }
+.ac-option > header { gap: 10px; flex-wrap: wrap; }
+.ac-dashboard:not([data-tab="compare"]) .ac-option > header { display: none; }
+.ac-option iframe { width: 100%; flex: 1; min-height: 0; border: 0; }
+.ac-option[hidden], .ac-actions[hidden] { display: none; }
+.an-embedded { height: 100dvh; overflow: hidden; }
+.an-embedded > .topbar { display: none; }
+.an-embedded .an-layout { padding: 10px; grid-template-columns: 260px minmax(0, 1fr); }
+.an-embedded .an-view { height: auto; min-width: 0; }
+.an-embedded.an-compact .an-layout { grid-template-columns: minmax(0, 1fr); }
+.an-embedded.an-compact .an-side { display: none; }
+@media (max-width: 860px) {
+    .an-page:has(> .ac-dashboard) { height: 100dvh; }
+    .ac-dashboard { overflow: auto; padding: 10px; }
+    .ac-dashboard[data-tab="compare"] .ac-panes { grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(2, minmax(680px, 1fr)); flex: none; }
+    .ac-dashboard[data-tab="compare"] .ac-option { min-height: 680px; }
+    .an-embedded:not(.an-compact) .an-layout { overflow: auto; grid-template-columns: minmax(0, 1fr); }
+    .an-embedded:not(.an-compact) .an-side { max-height: 220px; }
+    .an-embedded:not(.an-compact) .an-view { min-height: 460px; }
+}

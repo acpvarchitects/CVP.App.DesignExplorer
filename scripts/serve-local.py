@@ -30,8 +30,8 @@ class Handler(SimpleHTTPRequestHandler):
             except HTTPError as error:self.send_error(error.code)
             except URLError:self.send_error(502,'Study API unavailable')
             return
-        if path=='/v2/app.js':
-            data=(ROOT/'v2/app.js').read_text(encoding='utf-8').replace(API,'/_study-api').encode('utf-8')
+        if path in ('/v2/app.js','/v2/analysis.js'):
+            data=(ROOT/path.lstrip('/')).read_text(encoding='utf-8').replace(API,'/_study-api').encode('utf-8')
             self.send_response(200)
             self.send_header('Content-Type','text/javascript; charset=utf-8')
             self.send_header('Cache-Control','no-store')
