@@ -3210,3 +3210,28 @@ code {
 }
 /* Compare options is a snap section too: at least one view high, so its top can always be aligned. */
 .center-scroll.snap-on .comparison:not([hidden]) { min-height: calc(var(--snap-view, 100vh) - 36px); }
+
+/* Shown from the initial HTML, including inside each comparison frame. */
+.an-loading {
+    position: fixed;
+    inset: 64px 0 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.88);
+    color: var(--text);
+}
+.an-embedded .an-loading { inset: 0; }
+.an-loading[hidden] { display: none; }
+.an-spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid var(--line);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: an-spin 0.8s linear infinite;
+}
+@keyframes an-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .an-spinner { animation-duration: 2s; } }

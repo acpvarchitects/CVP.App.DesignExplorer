@@ -109,7 +109,13 @@ const current = () => analyses().find((l) => l.key === state.an) || analyses()[0
 const levelsOf = (layer) => (study.manifest.levels || []).filter((lv) => (layer.levels || []).includes(lv.key));
 const fmt = (v, unit) => (v == null || Number.isNaN(v) ? "–" : `${(+v).toFixed(Math.abs(v) >= 100 ? 0 : 1)}${unit ? " " + unit : ""}`);
 
+function setLoading(busy) {
+    $("loading").hidden = !busy;
+    $("app")?.setAttribute("aria-busy", String(busy));
+}
+
 function showMessage(html) {
+    setLoading(false);
     $("message").innerHTML = html;
     $("message").hidden = false;
 }
@@ -190,9 +196,11 @@ function renderTexts(layer) {
 }
 
 async function renderPlan() {
+    const request = ++renderRequest;
+    setLoading(true);
     const layer = current();
     const level = (study.manifest.levels || []).find((lv) => lv.key === state.level);
-    if (!level) return;
+    if (!level) { setLoading(false); return; }
     const file = (layer.file_pattern || layer.key + "_<level>.svg").replace("<level>", level.key);
     $("status").textContent = "Loading…";
     try {
@@ -203,6 +211,8 @@ async function renderPlan() {
         $("status").textContent = "";
     } catch (e) {
         $("status").textContent = e.message;
+    } finally {
+        if (request === renderRequest) setLoading(false);
     }
 }
 
@@ -263,51 +273,60 @@ function viewFromParams() {
 }
 
 // Shows a 3D analysis: its panes are created at the first visit and kept (camera, planes, zoom).
+let renderRequest = 0;
+
 async function showVolume(layer) {
-    vol = null;
-    $("tooltip").hidden = true;
-    renderVolumeInfo(layer, null);
-    let entry = volumes.get(layer.key);
-    for (const e of volumes.values()) for (const el of [e.els.pane3d, e.els.pane2d, e.els.key]) el.style.display = e === entry ? "" : "none";
-    if (!entry) {
-        $("status").textContent = "Loading…";
+    const request = ++renderRequest;
+    setLoading(true);
+    try {
+        vol = null;
+        $("tooltip").hidden = true;
+        renderVolumeInfo(layer, null);
+        let entry = volumes.get(layer.key);
+        for (const e of volumes.values()) for (const el of [e.els.pane3d, e.els.pane2d, e.els.key]) el.style.display = e === entry ? "" : "none";
+        if (!entry) {
+            $("status").textContent = "Loading…";
+            try {
+                volumeModule ||= await import("./volumeview.js?v=4");
+            } catch (e) {
+                $("status").textContent = `Cannot load the 3D view: ${e.message}`;
+                return;
+            }
+            entry = volumes.get(layer.key); // asked twice while the module was loading: one view only
+        }
+        if (!entry) {
+            const pane = (parent, cls) => $(parent).appendChild(Object.assign(document.createElement("div"), { className: cls }));
+            const els = { pane3d: pane("vol", "an-vol-pane"), pane2d: pane("vol", "an-vol-pane"), key: pane("volKey", "an-vol-key"), overlay: $("volPanel") };
+            const view = new volumeModule.VolumeView(els, {
+                onChange: () => vol === view && volumeChanged(),
+                onHover: (hit, e) => vol === view && volumeHover(hit, e),
+                onStatus: (text) => current() === layer && ($("status").textContent = text),
+                onNavigate: () => vol === view && publishNavigation(),
+            });
+            const model = (study.manifest.layers || []).find((l) => l.kind === "geometry" && /\.(glb|gltf)$/i.test(l.file || l.file_pattern || ""));
+            // the view in the address belongs to the analysis it was copied from
+            entry = { view, els, ready: view.load(study.base, layer, model, !params.has("an") || params.get("an") === layer.key ? viewFromParams() : {}) };
+            volumes.set(layer.key, entry);
+        }
         try {
-            volumeModule ||= await import("./volumeview.js?v=3");
+            await entry.ready;
         } catch (e) {
-            $("status").textContent = `Cannot load the 3D view: ${e.message}`;
+            volumes.delete(layer.key);
+            for (const el of [entry.els.pane3d, entry.els.pane2d, entry.els.key]) el.remove();
+            if (current() === layer) $("status").textContent = e.message;
             return;
         }
-        entry = volumes.get(layer.key); // asked twice while the module was loading: one view only
+        if (current() !== layer) return; // another analysis was picked meanwhile
+        vol = entry.view;
+        // Embedded viewers relay camera movement immediately, without a trailing inertia drift.
+        if (embedded) vol.viewer.controls.enableDamping = false;
+        $("volElev").max = vol.volume.size[2].toFixed(2);
+        volumeChanged();
+        publishView();
+        $("status").textContent = "";
+    } finally {
+        if (request === renderRequest) setLoading(false);
     }
-    if (!entry) {
-        const pane = (parent, cls) => $(parent).appendChild(Object.assign(document.createElement("div"), { className: cls }));
-        const els = { pane3d: pane("vol", "an-vol-pane"), pane2d: pane("vol", "an-vol-pane"), key: pane("volKey", "an-vol-key"), overlay: $("volPanel") };
-        const view = new volumeModule.VolumeView(els, {
-            onChange: () => vol === view && volumeChanged(),
-            onHover: (hit, e) => vol === view && volumeHover(hit, e),
-            onStatus: (text) => current() === layer && ($("status").textContent = text),
-            onNavigate: () => vol === view && publishNavigation(),
-        });
-        const model = (study.manifest.layers || []).find((l) => l.kind === "geometry" && /\.(glb|gltf)$/i.test(l.file || l.file_pattern || ""));
-        // the view in the address belongs to the analysis it was copied from
-        entry = { view, els, ready: view.load(study.base, layer, model, !params.has("an") || params.get("an") === layer.key ? viewFromParams() : {}) };
-        volumes.set(layer.key, entry);
-    }
-    try {
-        await entry.ready;
-    } catch (e) {
-        volumes.delete(layer.key);
-        for (const el of [entry.els.pane3d, entry.els.pane2d, entry.els.key]) el.remove();
-        if (current() === layer) $("status").textContent = e.message;
-        return;
-    }
-    if (current() !== layer) return; // another analysis was picked meanwhile
-    vol = entry.view;
-    // Embedded viewers relay camera movement immediately, without a trailing inertia drift.
-    if (embedded) vol.viewer.controls.enableDamping = false;
-    $("volElev").max = vol.volume.size[2].toFixed(2);
-    volumeChanged();
-    publishView();
 }
 
 // After any change of the 3D view: the controls, the texts and the address follow it.
@@ -439,14 +458,11 @@ function bind() {
     $("shareBtn").addEventListener("click", copyLink);
 }
 
-// "Copy link": the main link of the analysis on screen - the study (PROJECT or data) and the
-// analysis, without level or zoom, so it always opens fitted. A 3D analysis adds its view (mode,
-// scenario, planes, camera): there the link is what is on screen. Same fallback as the dashboard.
+// Copy the initial study link, without analysis selections or navigation state.
 async function copyLink() {
     const enc = (v) => encodeURI(v).replace(/[&#+]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
     const keep = ["PROJECT", "data"].filter((k) => params.has(k)).map((k) => `${k}=${enc(params.get(k))}`);
-    const view = is3d(current()) && vol ? Object.entries(viewParams(vol.view())).map(([k, v]) => `${k}=${enc(String(v))}`) : [];
-    const url = `${location.origin}${location.pathname}?${[...keep, `an=${enc(state.an)}`, ...view].join("&")}`;
+    const url = `${location.origin}${location.pathname}?${keep.join("&")}`;
     try {
         await navigator.clipboard.writeText(url);
     } catch {
@@ -487,8 +503,9 @@ async function start() {
             showMessage("<h2>Select two studies</h2><p>The analysis comparison opens two studies at a time.</p>");
             return;
         }
-        const { startComparison } = await import("./analysiscompare.js?v=1");
+        const { startComparison } = await import("./analysiscompare.js?v=2");
         startComparison(params);
+        setLoading(false);
         return;
     }
     study = resolveStudy();
@@ -519,4 +536,4 @@ async function start() {
     render();
 }
 
-start();
+start().catch(e => showMessage(`<h2>Cannot load analysis</h2><p>${esc(e.message)}</p>`));

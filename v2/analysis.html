@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="theme/tokens/icons.css?v=1" />
     <link rel="stylesheet" href="theme/tokens/z-index.css?v=1" />
     <link rel="stylesheet" href="theme/fonts.css?v=1" />
-    <link rel="stylesheet" href="style.css?v=114" />
+    <link rel="stylesheet" href="style.css?v=115" />
     <link rel="stylesheet" href="analysiscompare.css?v=1" />
     <!-- three.js is loaded only by a study with a 3D analysis (volumeview.js) -->
     <script type="importmap">
@@ -141,8 +141,10 @@
         </section>
     </main>
 
+    <div id="loading" class="an-loading" role="status" aria-live="polite"><span class="an-spinner" aria-hidden="true"></span><span>Loading analysis...</span></div>
+
     <div id="message" class="message" hidden></div>
 
-    <script type="module" src="analysis.js?v=21"></script>
+    <script type="module" src="analysis.js?v=22"></script>
 </body>
 </html>

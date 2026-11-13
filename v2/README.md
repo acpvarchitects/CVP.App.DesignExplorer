@@ -166,7 +166,7 @@ shown that way in the preview (no level picker yet: one file per cell).
 the level's score, a vector legend, the rooms with their averages (hover = highlight
 in the plan) and the description, always visible. Right: the plan, with the level buttons over it top right
 (highest first); hovering a room shows its name, the value at that point and the room average. Pan and zoom are kept when the level or
-the analysis changes (every level shares one plan frame); Reset view fits the level again. `?an=` / `?level=` keep the view in the address. Room numbers are shown on the plan by default (**Hide labels** / **Show labels**; they keep their screen size). **Copy link** copies the main link of the analysis on screen (`PROJECT` or `data` + `an`, no level or zoom). **Export view** saves the current view (same zoom and pan) as a vector PDF on A3 landscape: rooms, score and legend on the left, the plan with a graphic scale on the right, and the room numbers when labels are shown.
+the analysis changes (every level shares one plan frame); Reset view fits the level again. `?an=` / `?level=` keep the view in the address. Room numbers are shown on the plan by default (**Hide labels** / **Show labels**; they keep their screen size). **Copy link** copies the main link of the analysis on screen (`PROJECT` or `data`, without navigation state). **Export view** saves the current view (same zoom and pan) as a vector PDF on A3 landscape: rooms, score and legend on the left, the plan with a graphic scale on the right, and the room numbers when labels are shown.
 
 Files of a 2D study (written by the Grasshopper "EXPORT | Daylight 2D (SVG)" component):
 
@@ -208,13 +208,13 @@ cell, weights rescaled: the "filled" reading of `volume.js`), so it reaches the 
 of stopping one grid step before them with a stepped edge. The cut geometry is drawn over it, in plan, in
 section and on the 3D planes: terrain, buildings and the rest as one dark grey, canopies as a light green.
 It comes from the model (`meshcut.js`: the cut of each layer chained into closed outlines, filled as their
-union; a surface that is not a closed solid stays a line) and, where the model has nothing closed, from the
-mask (excluded space with an analysed point above it in the same column). The dots use the strict values
+union without outlines; a surface that is not a closed solid stays a line). The coarse mask never defines
+the solid silhouette. The dots use the strict values
 of the nodes. Hovering reads the value at that point. The whole view is one
 serialisable object (`VolumeView.view()`: mode, scenario, plan height, section line, planes, cut, points,
 colours on surfaces, heights, camera or 2D frame), kept in the address (`mode`, `sc`, `z`, `sec`, `planes`
 with a letter per tick box: `h`, `v`, `c` cut, `p` points, `s` surfaces; `vx`, `cam` / `frame`) and
-copied by **Copy link**; it is the base for saved viewpoints and a PDF of them (not built yet: no
+restored by opening that address; it is the base for saved viewpoints and a PDF of them (not built yet: no
 "Export view" on a 3D analysis). three.js is loaded only when a 3D analysis is opened.
 
 **Two-study analysis dashboard** (`analysiscompare.js`, `analysiscompare-state.js`, `analysiscompare.css`):
@@ -229,7 +229,7 @@ independent to preserve its distance axis; linked elevations are limited to the 
 Matching analysis keys, scenario keys and units use one colour scale
 covering both legends, with the first option's palette. Different quantities retain their own scales
 and show an explanation. The shared scenario selector changes both options even with view linking off.
-Copy link retains the active tab, linking/details settings and each 3D view (`view1`/`view2`, `an1`/`an2`).
+Copy link opens the initial study selection, without tab, linking/details or saved view settings. The address bar still retains the current view.
 Single-study links still open directly. This is a visual comparison; it does not subtract fields or rank
 options by their whole-volume means, which can cover different outdoor points.
 
@@ -382,3 +382,21 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 
 Push to `WIP` → `.github/workflows/snapshot.yml` builds the `branch-wip` image (the paths
 filter includes `v2/**`) → the dev container updates → `/dev/v2/`.
+
+### Analysis loading, sections and initial view
+
+The analysis page shows a loading spinner from the initial HTML until its manifest, model,
+field and first view are ready, including each frame in Compare. Errors dismiss the spinner.
+New 3D views enable only **Colours on terrain and buildings**; explicit view parameters in
+existing URLs still restore their settings. **Copy link** copies only `PROJECT` / `data`, in both
+single and comparison pages, so the recipient opens the initial view.
+
+Solid sections use the actual triangle-model cut, filled together with the non-zero rule in
+`#282828`, without strokes. The coarse analysis mask no longer supplies a grey silhouette.
+The key plan is a cached orthographic top view of the complete model in its original colours,
+independent of the analysis, elevation, scenario and clipping planes; only the section line moves.
+
+For ZRCH HotelNoise studies the default plan elevation is **+14 m** in model coordinates
+(user instruction, 2026-11-13); it is converted to local grid height by subtracting the volume
+origin. A layer can set `default_plan_elevation_m` explicitly. A saved URL elevation overrides
+this default, and other studies keep their automatic initial elevation.

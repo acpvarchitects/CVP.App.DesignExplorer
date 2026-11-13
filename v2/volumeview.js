@@ -21,9 +21,8 @@ import { cutModel, edgesBelow, insideLoops, tallLoops } from "./meshcut.js?v=1";
 
 const SOFT_LAYER = /plant|tree|veget/i; // canopies: not solid for the analysis, drawn apart from terrain and buildings
 // Cut geometry, in 2D and on the 3D planes: solids are one dark grey, canopies a light green.
-const SOLID_GREY = 0x4b;
-const SOLID_RGB = [SOLID_GREY, SOLID_GREY, SOLID_GREY]; // also where the mask says ground or building and the model has nothing closed
-const SOLID = { color: `rgb(${SOLID_GREY}, ${SOLID_GREY}, ${SOLID_GREY})`, stroke: "#1c1c1c", width: 1 };
+const SOLID_GREY = 0x28;
+const SOLID = { color: `rgb(${SOLID_GREY}, ${SOLID_GREY}, ${SOLID_GREY})` };
 const CANOPY = { color: "rgba(96, 150, 96, 0.4)", stroke: "rgba(30, 90, 40, 0.85)", width: 0.8 };
 const OPEN_LINE = { color: "#1c1c1c", width: 1.3 }; // a cut surface that is not a closed solid
 const SOFT_LINE = { color: "rgba(30, 90, 40, 0.85)", width: 0.8 };
@@ -44,7 +43,7 @@ export class VolumeView {
         this.onHover = onHover || (() => {});
         this.onStatus = onStatus || (() => {});
         this.onNavigate = onNavigate || (() => {});
-        this.state = { mode: "3d", scenario: "", z: 0, a: [0, 0], b: [1, 1], h: true, v: true, cut: false, dots: false, drape: false, vx: 1 };
+        this.state = { mode: "3d", scenario: "", z: 0, a: [0, 0], b: [1, 1], h: false, v: false, cut: false, dots: false, drape: true, vx: 1 };
         this.frames = { plan: null, section: null }; // pan / zoom of each 2D drawing
         this.dirty = { plan: true, section: true };
         this.means = {};
@@ -64,11 +63,16 @@ export class VolumeView {
         this.model = modelUrl ? await this.viewer.load(modelUrl, "geometry").catch(() => null) : null;
         this.buildPlanes();
         if (!this.viewer.centred) this.frameField();
+        this.keyPlanScene = this.modelPlan();
         this.readModel();
 
         // defaults: 3D, first scenario, a plan just above the ground, a section across the middle (south to north)
         const scenarios = this.scenarios();
-        Object.assign(this.state, { scenario: scenarios[0].key, z: volume.defaultElevation(), a: [lx / 2, 0], b: [lx / 2, ly] });
+        // Model elevations are absolute; slider state is local to the volume origin.
+        // ZRCH HotelNoise default requested on 2026-11-13. Other studies retain automatic fitting.
+        const elevation = layer.default_plan_elevation_m ?? (/\/ZRCH_[^/]*HotelNoise[^/]*\//i.test(base) ? 14 : null);
+        const z = Number.isFinite(elevation) ? Math.max(0, Math.min(volume.size[2], elevation - volume.worldZ)) : volume.defaultElevation();
+        Object.assign(this.state, { scenario: scenarios[0].key, z, a: [lx / 2, 0], b: [lx / 2, ly] });
         const s = { ...initial };
         if (!scenarios.some((sc) => sc.key === s.scenario)) delete s.scenario;
         if (!["3d", "plan", "section"].includes(s.mode)) delete s.mode;
@@ -268,13 +272,14 @@ export class VolumeView {
         const [lx, ly, lz] = volume.size;
         const len = Math.max(this.sectionLength(), 1);
         if (this.dirty.plan) {
-            this.planSlice = volume.plan(s.scenario, legend, s.z, SOLID_RGB);
+            // Only the model cut defines solid boundaries; the coarse mask is never a silhouette.
+            this.planSlice = volume.plan(s.scenario, legend, s.z);
             this.planCut = null;
             this.dirty.plan = false;
             setTexture(this.hPlane, this.planeTexture(this.planSlice, lx, ly, this.cutPlan()));
         }
         if (this.dirty.section) {
-            this.sectionSlice = volume.section(s.scenario, legend, s.a, s.b, SOLID_RGB);
+            this.sectionSlice = volume.section(s.scenario, legend, s.a, s.b);
             this.sectionCut = null;
             this.dirty.section = false;
             setTexture(this.vPlane, this.planeTexture(this.sectionSlice, len, lz, this.cutSection()));
@@ -296,9 +301,48 @@ export class VolumeView {
             this.sceneFor = s.mode;
         }
         if (s.mode !== "plan") {
-            const cut = this.cutPlan();
-            this.keyPlan.set({ images: [{ canvas: this.planSlice.canvas, rect: [0, 0, lx, ly] }], fills: [{ loops: cut.main.loops, color: SOLID.color }] }, s.a, s.b);
+            this.keyPlan.set(this.keyPlanScene, s.a, s.b);
         }
+    }
+
+    // An independent, uncut top view of the model, captured before analysis shaders are added.
+    // A render target leaves the interactive camera and its canvas untouched.
+    modelPlan() {
+        const [lx, ly] = this.volume.size;
+        if (!this.model) return { images: [] };
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xffffff);
+        for (const light of this.viewer.scene.children.filter(node => node.isLight)) scene.add(light.clone());
+        this.viewer.root.updateMatrixWorld(true);
+        const model = this.model.clone(true);
+        model.matrixAutoUpdate = false;
+        model.matrix.copy(new THREE.Matrix4().copy(this.viewer.root.matrixWorld).invert().multiply(this.model.matrixWorld));
+        scene.add(model);
+        const box = new THREE.Box3().setFromObject(model);
+        const camera = new THREE.OrthographicCamera(-lx / 2, lx / 2, ly / 2, -ly / 2, 0.1, box.max.y - box.min.y + 20);
+        camera.position.set(lx / 2, box.max.y + 10, -ly / 2);
+        camera.up.set(0, 0, -1);
+        camera.lookAt(lx / 2, box.min.y, -ly / 2);
+        const w = 1024, h = Math.max(1, Math.round(w * ly / lx));
+        const target = new THREE.WebGLRenderTarget(w, h, { samples: 4 });
+        target.texture.colorSpace = THREE.SRGBColorSpace;
+        const renderer = this.viewer.renderer, previous = renderer.getRenderTarget();
+        const pixels = new Uint8Array(w * h * 4);
+        try {
+            renderer.setRenderTarget(target);
+            renderer.render(scene, camera);
+            renderer.readRenderTargetPixels(target, 0, 0, w, h, pixels);
+        } finally {
+            renderer.setRenderTarget(previous);
+            target.dispose();
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d"), image = ctx.createImageData(w, h);
+        for (let y = 0; y < h; y++) image.data.set(pixels.subarray((h - y - 1) * w * 4, (h - y) * w * 4), y * w * 4);
+        ctx.putImageData(image, 0, 0);
+        return { images: [{ canvas, rect: [0, 0, lx, ly] }] };
     }
 
     sectionLength() {
