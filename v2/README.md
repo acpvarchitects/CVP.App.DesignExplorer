@@ -387,7 +387,7 @@ filter includes `v2/**`) → the dev container updates → `/dev/v2/`.
 
 The analysis page shows a loading spinner from the initial HTML until its manifest, model,
 field and first view are ready, including each frame in Compare. Errors dismiss the spinner.
-New 3D views enable only **Colours on terrain and buildings**; explicit view parameters in
+New 3D views enable **Vertical plane** and **Colours on terrain and buildings**; explicit view parameters in
 existing URLs still restore their settings. **Copy link** copies only `PROJECT` / `data`, in both
 single and comparison pages, so the recipient opens the initial view.
 

@@ -42,7 +42,7 @@ export class VolumeView {
         this.onHover = onHover || (() => {});
         this.onStatus = onStatus || (() => {});
         this.onNavigate = onNavigate || (() => {});
-        this.state = { mode: "3d", scenario: "", z: 0, a: [0, 0], b: [1, 1], h: false, v: false, cut: false, dots: false, drape: true, planGuide: true, sectionGuide: true, vx: 1 };
+        this.state = { mode: "3d", scenario: "", z: 0, a: [0, 0], b: [1, 1], h: false, v: true, cut: false, dots: false, drape: true, planGuide: true, sectionGuide: true, vx: 1 };
         this.frames = { plan: null, section: null }; // pan / zoom of each 2D drawing
         this.dirty = { plan: true, section: true };
         this.means = {};

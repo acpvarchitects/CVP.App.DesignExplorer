@@ -19,8 +19,9 @@ let browser;
     for (const frame of frames()) {
         assert.equal(await frame.locator('#loading').isVisible(), false);
         assert.equal(await frame.locator('#volDrape').isChecked(), true);
+        assert.equal(await frame.locator('#volV').isChecked(), true);
         assert.equal(await frame.locator('#volElevValue').inputValue(), '14');
-        for (const id of ['volH', 'volV', 'volCut', 'volDots']) assert.equal(await frame.locator('#' + id).isChecked(), false);
+        for (const id of ['volH', 'volCut', 'volDots']) assert.equal(await frame.locator('#' + id).isChecked(), false);
     }
     await page.locator('#shareBtn').click();
     const copied = new URL(await page.evaluate(() => window.copiedLink));
