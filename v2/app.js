@@ -27,6 +27,7 @@ import { Viewer } from "./viewer.js?v=46";
 import { rankGoals } from "./compare.js?v=37";
 import { comparisonHtml, comparisonViews } from "./comparison.js?v=44";
 import { ComparisonFocus } from "./comparison-focus.js?v=3";
+import { PreviewModeMenus } from "./preview-mode-menus.js?v=1";
 import { ComparisonMedia } from "./comparison-media.js?v=16";
 import { Box3 as THREE_Box3, Vector3 as THREE_Vector3 } from "three";
 import { mixConfig, mixGroupKeys, mixHtml, mixUnits, programCount, programKey, programMatch, programTableHtml } from "./unit-mix.js?v=4";
@@ -95,6 +96,7 @@ let plan2d; // 2D plan viewer (an analysis cell holding an .svg)
 let chart;
 let comparisonMedia;
 let comparisonFocus;
+let previewModeMenus;
 let mediaKey = null; // what the preview media currently shows, to avoid reloading 3D
 let lastView = null; // the view of the latest render (for chart callbacks)
 const cards = new Map(); // option index -> gallery card element
@@ -886,6 +888,7 @@ function renderPreview(view) {
     $("preview").hidden = !o;
     $("sidesheet").hidden = !o;
     if (!o) {
+        previewModeMenus?.close();
         if (viewer) viewer.clear();
         mediaKey = null;
         return;
@@ -907,14 +910,11 @@ function renderPreview(view) {
     expand.setAttribute("aria-label", expand.title);
     expand.setAttribute("aria-expanded", state.expanded);
 
-    $("modeButtons").innerHTML = MODES.map((m) => {
-        const has = layersOf(m.key).length > 0;
-        return `<button type="button" data-mode="${m.key}" class="${m.key === state.mode ? "on" : ""}" aria-pressed="${m.key === state.mode}" ${
-            has ? "" : `disabled title="No ${m.label.toLowerCase()} files in this study"`
-        }>${m.label}</button>`;
-    }).join("");
+    previewModeMenus ||= new PreviewModeMenus({host:$("modeButtons"),modes:MODES,layersOf,getState:()=>state,esc,
+        choose:(key,index)=>{state.mode=key;if(index!==undefined)state.layer[key]=index;render();}});
+    previewModeMenus.render();
     const list = layersOf();
-    $("layerSelect").hidden = list.length < 2;
+    $("layerSelect").hidden = ["analysis","table"].includes(state.mode) || list.length < 2;
     $("layerSelect").innerHTML = list.map((l, i) => `<option value="${i}">${esc(l.label)}</option>`).join("");
     $("layerSelect").value = String(state.layer[state.mode]);
 
@@ -2061,12 +2061,6 @@ function bindEvents() {
     }
     $("prevOption").addEventListener("click", () => step(-1));
     $("nextOption").addEventListener("click", () => step(1));
-    $("modeButtons").addEventListener("click", (e) => {
-        const b = e.target.closest("[data-mode]");
-        if (!b || b.disabled) return;
-        state.mode = b.dataset.mode;
-        render();
-    });
     $("layerSelect").addEventListener("change", (e) => {
         state.layer[state.mode] = +e.target.value;
         render();

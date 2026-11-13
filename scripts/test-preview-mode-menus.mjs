@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+const source=await readFile(new URL('../v2/preview-mode-menus.js',import.meta.url),'utf8');
+const {previewModesHtml}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const modes=[{key:'image',label:'Image'},{key:'model',label:'3D model'},{key:'analysis',label:'3D analysis'},{key:'table',label:'Table'}];
+const lists={image:[{label:'Plan'},{label:'Axonometric'}],model:[{label:'Model'}],analysis:[{label:'Winter sun'},{label:'Privacy <&>'}],table:[{label:'Building schedule'}]};
+const esc=s=>s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+const render=state=>previewModesHtml({modes,layersOf:key=>lists[key],state,esc});
+let html=render({mode:'analysis',layer:{analysis:1,table:0}});
+assert.ok(html.includes('Privacy &lt;&amp;&gt;'));
+assert.equal((html.match(/aria-haspopup="menu"/g)||[]).length,2);
+html=render({mode:'model',layer:{analysis:1,table:0}});
+assert.ok(!html.includes('preview-mode-current'));
+html=render({mode:'table',layer:{analysis:1,table:0}});
+assert.ok(html.includes('preview-mode-current">Building schedule'));
+lists.analysis=[];
+assert.match(render({mode:'model',layer:{analysis:0,table:0}}),/data-mode="analysis"[^]*?disabled/);
+console.log('PASS integrated analysis/table menu labels, neutral inactive states, escaping and disabled empty categories');

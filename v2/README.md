@@ -260,6 +260,12 @@ Files of a 3D study (written by the Grasshopper "EXPORT | Full noise volume + De
 3. **Preview**, hidden until an option is clicked: one row with the option's name, Image / 3D model /
    3D analysis and, at the right, one group `← → ⤢ ✕` (previous, next, full height / compact, close);
    ← → and Escape on the keyboard. It opens at the full height of the centre card (compact: 420px).
+   **3D analysis ▾** and **Table ▾** open their choices directly from the mode button. Once a
+   choice is active, its title appears in that same button (`3D analysis · Winter sun ▾`).
+   Switching to another mode restores the inactive button's neutral label while retaining the
+   remembered layer. These two modes no longer show a separate view dropdown. Menus support
+   arrow keys, Home/End, Enter/Space, Escape, Tab and outside-click dismissal, and stay within
+   the viewport. Other modes retain their existing view selector when more than one view exists.
    **Section snapping** (`scroll-snap.js`, while the centre card scrolls inside itself): the card
    never rests with the edge between two sections (chart, open option, gallery, Compare options)
    inside the view. One wheel step that would show the next section goes all the way to it, any
@@ -324,6 +330,7 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 | `compare.js` | "about the same" and win rules |
 | `comparison.js` | the Compare options section (radar, strengths, values table) |
 | `comparison-focus.js` | hover preview and pinned option emphasis, without rebuilding media |
+| `preview-mode-menus.js` | integrated analysis/table menus, current-title labels and keyboard navigation |
 | `comparison-media.js` | independent media and viewer lifecycle for the shared Compare view selector |
 | `parallel.js` | parallel-coordinates chart (d3) |
 | `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera, picking and emphasis (Program tab). Draws a frame only when the camera moves or something changes; the pieces of a layer that share a material are merged at load into one mesh (a layer used to be one draw call per glTF primitive), and the Program tab draws the apartments in one mesh per state |

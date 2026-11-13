@@ -1082,6 +1082,39 @@ html.nav-collapsed .left-panel .drawer {
     margin-left: auto;
 }
 
+#modeButtons { max-width: 100%; flex-wrap: wrap; }
+#modeButtons button { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.preview-mode-current { max-width: min(240px, 32vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.preview-mode-menu {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    padding: 6px;
+    min-width: 220px;
+    max-width: min(420px, calc(100vw - 16px));
+    overflow: auto;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--card);
+    color: var(--text);
+    box-shadow: var(--acpv-sys-shadow-3);
+}
+.preview-mode-menu button {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    border-radius: var(--radius);
+    padding: 8px 10px;
+    background: transparent;
+    font-size: 13px;
+}
+.preview-mode-menu button:hover, .preview-mode-menu button:focus-visible { background: var(--accent-soft); }
+.preview-mode-menu button[aria-checked="true"] { color: var(--accent); font-weight: 600; }
+.preview-mode-menu button > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.preview-mode-check { flex: none; width: 1em; }
+
 .preview-nav button {
     display: inline-flex;
     align-items: center;
