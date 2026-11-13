@@ -157,7 +157,7 @@ export class VolumeView {
             this.frames.section = null; // another drawing
             if (s.mode === "section") this.sceneFor = null;
         }
-        if (s.a !== before.a || s.b !== before.b) {
+        if (s.a.some((n, i) => n !== before.a[i]) || s.b.some((n, i) => n !== before.b[i])) {
             this.dirty.section = true;
             this.frames.section = null; // a new line is a new drawing: fitted again
             if (s.mode === "section") this.sceneFor = null;

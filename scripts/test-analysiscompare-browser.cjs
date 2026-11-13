@@ -66,6 +66,24 @@ let browser;
     await page.waitForFunction(() => document.querySelector('#scoreValue').textContent.includes('dB'), {}, { timeout: 180000 });
     assert.equal(await page.locator('iframe').count(), 0);
     assert.equal(await page.locator('.an-side').isVisible(), true);
+    // Mixed-analysis links retain individual 2D selections and levels without a volume.
+    await page.route('**/layers.json*', route => route.fulfill({ json: {
+        levels: [{ key: 'L1', label: 'Level 1', elevation_m: 0 }, { key: 'L2', label: 'Level 2', elevation_m: 3 }],
+        layers: ['daylight', 'sun'].map(key => ({ key, label: key, kind: 'analysis', dim: '2d', levels: ['L1', 'L2'], scores: { L1: 1, L2: 2 } }))
+    } }));
+    await page.route(/\/(daylight|sun|plan)_.*\.svg/, route => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#ddd"/></svg>' }));
+    await page.goto(`${base}/v2/analysis.html?${new URLSearchParams({ PROJECT: project, an1: 'daylight', view1: '{"mode":"3d"}' })}`);
+    await page.waitForFunction(() => new URLSearchParams(location.search).get('an2') === 'daylight');
+    const first2d = frames()[0];
+    await first2d.locator('#analysisSelect').selectOption('sun');
+    await first2d.locator('[data-level="L2"]').click();
+    await page.waitForFunction(() => {
+        const p = new URLSearchParams(location.search);
+        return p.get('an1') === 'sun' && p.get('level1') === 'L2' && !p.has('view1');
+    });
+    await page.reload();
+    await page.waitForFunction(() => new URLSearchParams(location.search).get('an2') === 'daylight');
+    await frames()[0].waitForFunction(() => document.querySelector('#analysisSelect')?.value === 'sun' && document.querySelector('[data-level="L2"]')?.classList.contains('on'));
     assert.deepEqual(errors, []);
     console.log('PASS real studies: full tabs, linked plan/section/elevation, scenario scales, unlink/relink, expand, URL restore, responsive layout, single-study regression');
     await browser.close();

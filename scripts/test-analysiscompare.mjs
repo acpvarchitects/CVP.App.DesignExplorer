@@ -21,4 +21,16 @@ assert.deepEqual(linkedView({ ...a, view: { ...a.view, mode: "section", vx: 4 } 
 assert.equal(a.view.z, 4, "source view remains independent");
 assert.equal(linkedView(a, { ...b, origin: null }), null);
 assert.equal(linkedView(a, { ...b, scenarios: ["other"] }), null);
+assert.equal(sharedLegend({ analysis: "daylight", level: "L1", view: null }, b), null);
+assert.equal(linkedView(a, { ...b, size: [5, 5, 10] }), null, "outside endpoints never silently clamp");
+assert.equal(linkedView({ ...a, view: { ...a.view, a: [-30, 0], b: [30, 0] } }, { ...a, size: [10, 10, 10] }), null, "crossing line with both endpoints outside stays independent");
+// Exercise the real state methods without WebGL: unchanged cloned endpoints must not dirty a section.
+const viewerSource = (await readFile(new URL("../v2/volumeview.js", import.meta.url), "utf8")).replace(/^import .*;\r?$/gm, "");
+const { VolumeView } = await import("data:text/javascript;base64," + Buffer.from(viewerSource).toString("base64"));
+const viewer = Object.create(VolumeView.prototype);
+Object.assign(viewer, { volume: { size: [100, 100, 50] }, state: structuredClone(a.view), dirty: { plan: false, section: false }, frames: {}, refresh() {}, onNavigate() {}, onChange() {}, applyMode() {} });
+viewer.set({ a: [...viewer.state.a], b: [...viewer.state.b] });
+assert.equal(viewer.dirty.section, false);
+viewer.set({ a: [2, 2] });
+assert.equal(viewer.dirty.section, true);
 console.log("PASS shared scales, incompatible quantities, independent state and world-coordinate view translation");

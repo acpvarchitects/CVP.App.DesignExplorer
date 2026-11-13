@@ -224,8 +224,9 @@ same viewers side by side (stacked on narrow screens); Expand returns to one ful
 details can be shown in the comparison. Link views is on by default, and only links while Compare is
 open: camera, mode, scenario, elevation, section line, vertical scale, display toggles and 2D pan/zoom.
 Local coordinates are translated through each volume's `worldOriginRhino_m`; without known origins
-or matching scenarios the views stay independent. Linked elevations and section endpoints remain
-limited to each volume's bounds. Matching analysis keys, scenario keys and units use one colour scale
+or matching scenarios the views stay independent. A section outside the target volume also stays
+independent to preserve its distance axis; linked elevations are limited to the target's bounds.
+Matching analysis keys, scenario keys and units use one colour scale
 covering both legends, with the first option's palette. Different quantities retain their own scales
 and show an explanation. The shared scenario selector changes both options even with view linking off.
 Copy link retains the active tab, linking/details settings and each 3D view (`view1`/`view2`, `an1`/`an2`).

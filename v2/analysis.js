@@ -55,8 +55,9 @@ function publishView(changed = false, applied = false) {
         scenarios: vol.scenarios().map(s => s.key),
         scenarioLabels: Object.fromEntries(vol.scenarios().map(s => [s.key, s.label || s.key])),
         mean: vol.mean(),
+        size: vol.volume.size,
         origin: Array.isArray(origin) && origin.length === 3 && origin.every(Number.isFinite) ? origin : null,
-    } : null }, location.origin);
+    } : { analysis: state.an, level: state.level, view: null } }, location.origin);
 }
 
 if (embedded) {
@@ -216,8 +217,8 @@ function writeUrl() {
 
 function render() {
     vol = null;
-    publishView();
     renderControls();
+    publishView();
     if (is3d(current())) return showVolume(current());
     vol = null;
     renderInfo();

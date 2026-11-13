@@ -32,14 +32,17 @@ export function startComparison(params) {
         // Each study's complete view survives a copied link, including independent views.
         slots.forEach((s, i) => {
             if (s.state) {
-                p.set(`view${i + 1}`, JSON.stringify(s.state.view));
+                if (s.state.view) p.set(`view${i + 1}`, JSON.stringify(s.state.view));
+                else p.delete(`view${i + 1}`);
                 p.set(`an${i + 1}`, s.state.analysis);
+                if (s.state.level) p.set(`level${i + 1}`, s.state.level);
+                else p.delete(`level${i + 1}`);
             }
         });
         history.replaceState(null, "", "?" + p);
     };
     const scale = () => {
-        const [a, b] = slots.map(s => s.state);
+        const [a, b] = slots.map(s => s.state?.view ? s.state : null);
         const legend = tab === "compare" ? sharedLegend(a, b) : null;
         slots.forEach((s, i) => send(i, "legend", legend));
         const select = $("acScenario");
@@ -63,10 +66,11 @@ export function startComparison(params) {
             bar.append(label, gradient, end);
         }
         $("acStatus").textContent = tab !== "compare" ? "" : !a || !b ? "Waiting for both 3D analyses…" : legend ? "Same colour scale in both options" : "Choose the same analysis and scenario in both options to compare colours.";
+        if (tab === "compare" && linked && a && b && !linkedView(a, b)) $("acStatus").textContent += " Views stay independent: matching scenarios, known origins and section lines inside both volumes are needed.";
     };
     const sync = from => {
         const a = slots[from].state, b = slots[1 - from].state;
-        if (!a || !b || a.analysis !== b.analysis) return;
+        if (!a?.view || !b?.view || a.analysis !== b.analysis) return;
         const view = linkedView(a, b);
         if (view) send(1 - from, "view", view);
         else $("acStatus").textContent = "Views cannot be linked: matching scenarios and model origins are needed.";
@@ -103,7 +107,7 @@ export function startComparison(params) {
         if (i < 0) return;
         const previousReading = JSON.stringify(slots[i].state?.reading);
         slots[i].state = e.data.state;
-        slots[i].summary.textContent = e.data.state ? `Mean · ${e.data.state.reading.label}: ${e.data.state.mean.toFixed(1)} ${e.data.state.reading.unit || ""}` : "";
+        slots[i].summary.textContent = e.data.state?.reading ? `Mean · ${e.data.state.reading.label}: ${e.data.state.mean.toFixed(1)} ${e.data.state.reading.unit || ""}` : "";
         if (e.data.changed) active = i;
         if (tab === "compare" && linked && e.data.changed) sync(i);
         else if (tab === "compare" && linked && slots.every(s => s.state) && !e.data.applied) sync(active);
@@ -127,10 +131,11 @@ export function startComparison(params) {
         const frame = document.createElement("iframe");
         frame.title = `${entry.label} analysis`;
         const p = new URLSearchParams(params);
-        ["PROJECT", "data", "tab", "linked", "details", "view1", "view2", "an1", "an2"].forEach(k => p.delete(k));
+        ["PROJECT", "data", "tab", "linked", "details", "view1", "view2", "an1", "an2", "level1", "level2"].forEach(k => p.delete(k));
         p.set(entry.key, entry.entry);
         p.set("embedded", "1");
         if (params.has(`an${i + 1}`)) p.set("an", params.get(`an${i + 1}`));
+        if (params.has(`level${i + 1}`)) p.set("level", params.get(`level${i + 1}`));
         if (params.has(`view${i + 1}`)) p.set("initialView", params.get(`view${i + 1}`));
         frame.src = "analysis.html?" + p;
         slots[i].frame = frame;
@@ -145,7 +150,7 @@ export function startComparison(params) {
     $("acLink").onchange = () => { linked = $("acLink").checked; if (linked) sync(active); save(); };
     $("acDetails").onchange = () => select(tab);
     $("acScenario").onchange = () => slots.forEach((s, i) => {
-        if (s.state) send(i, "view", { ...s.state.view, scenario: $("acScenario").value });
+        if (s.state?.view) send(i, "view", { ...s.state.view, scenario: $("acScenario").value });
     });
     $("shareBtn").onclick = async () => {
         save();
