@@ -10,11 +10,11 @@
 //           colour maps, which are then covered by the cut geometry; a cell with no valid node stays empty.
 //   const vol = await loadVolume(base, "volume.json")
 //   vol.sample("exposure", x, y, z, filled)         -> value | NaN
-// A slice may also paint the excluded space that lies under an analysed point (below the ground,
-// inside a building: there is a valid node higher up in the same column) in one plain colour, so the
-// ground reads as solid even where the model has no closed geometry to draw over it.
-//   vol.plan("exposure", legend, z, solid)          -> { w, h, canvas }, row 0 = north edge; solid = [r, g, b] | null
-//   vol.section("exposure", legend, [ax,ay], [bx,by]) -> { w, h, canvas }, A on the left, row 0 = top
+// A slice also marks the excluded space that lies under an analysed point (below the ground, inside
+// a building: there is a valid node higher up in the same column): `excluded`, one byte per pixel.
+// The view paints it as solid up to the cut geometry (volumeview.js, sealVoids).
+//   vol.plan("exposure", legend, z)                 -> { w, h, canvas, excluded }, row 0 = north edge
+//   vol.section("exposure", legend, [ax,ay], [bx,by]) -> { w, h, canvas, excluded }, A on the left, row 0 = top
 
 const PLAN_PX_PER_CELL = 4; // raster resolution of a slice, in pixels per grid step
 const SECTION_PX_PER_CELL = 8; // vertical resolution of a section (it is seen much closer)
@@ -113,7 +113,8 @@ export class Volume {
 
     // Colour map of a planar slice, as RGBA pixels: pixel (px, py) is the point
     // origin + u*(px+0.5) + v*(py+0.5) (metres). Empty where the mask excludes: alpha 0.
-    raster(key, legend, origin, u, v, w, h, filled = true, solid = null) {
+    // excluded: Uint8Array(w * h) | null, set to 1 where nothing is analysed under an analysed point.
+    raster(key, legend, origin, u, v, w, h, filled = true, excluded = null) {
         const f = this.fields[key];
         const { nx, ny, nz, mask } = this;
         const out = new Uint8ClampedArray(w * h * 4);
@@ -126,7 +127,7 @@ export class Volume {
         const ox = origin[0] / this.sx + (ux + vx) / 2, oy = origin[1] / this.sy + (uy + vy) / 2, oz = origin[2] / this.sz + (uz + vz) / 2;
         const mx = nx - 1 + EPS, my = ny - 1 + EPS, mz = nz - 1 + EPS;
         const row = nx, slab = nx * ny;
-        const top = solid ? this.tops() : null;
+        const top = excluded ? this.tops() : null;
         for (let py = 0; py < h; py++) {
             for (let px = 0; px < w; px++) {
                 const gx = ox + ux * px + vx * py, gy = oy + uy * px + vy * py, gz = oz + uz * px + vz * py;
@@ -152,13 +153,8 @@ export class Volume {
                 }
                 const o = (px + py * w) * 4;
                 if (!ok || valid <= MIN_VALID) {
-                    // nothing analysed here: solid if an analysed point lies above in this column
-                    if (solid && top[Math.min(Math.round(gx), nx - 1) + row * Math.min(Math.round(gy), ny - 1)] > gz) {
-                        out[o] = solid[0];
-                        out[o + 1] = solid[1];
-                        out[o + 2] = solid[2];
-                        out[o + 3] = 255;
-                    }
+                    // nothing analysed here: ground or building if an analysed point lies above in this column
+                    if (excluded && top[Math.min(Math.round(gx), nx - 1) + row * Math.min(Math.round(gy), ny - 1)] > gz) excluded[px + py * w] = 1;
                     continue;
                 }
                 sum /= valid;
@@ -174,19 +170,21 @@ export class Volume {
     }
 
     // Horizontal slice at local height z over the whole grid, north at the top.
-    plan(key, legend, z, solid = null) {
+    plan(key, legend, z) {
         const [lx, ly] = this.size;
         const w = (this.nx - 1) * PLAN_PX_PER_CELL, h = (this.ny - 1) * PLAN_PX_PER_CELL;
-        return slice(this.raster(key, legend, [0, ly, z], [lx / w, 0, 0], [0, -ly / h, 0], w, h, true, solid), w, h);
+        const excluded = new Uint8Array(w * h);
+        return slice(this.raster(key, legend, [0, ly, z], [lx / w, 0, 0], [0, -ly / h, 0], w, h, true, excluded), w, h, excluded);
     }
 
     // Vertical slice from a to b (plan points), over the whole height.
-    section(key, legend, a, b, solid = null) {
+    section(key, legend, a, b) {
         const length = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
         const lz = this.size[2];
         const w = Math.max(2, Math.round((length / this.sx) * PLAN_PX_PER_CELL)), h = (this.nz - 1) * SECTION_PX_PER_CELL;
         const u = [(b[0] - a[0]) / w, (b[1] - a[1]) / w, 0];
-        return slice(this.raster(key, legend, [a[0], a[1], lz], u, [0, 0, -lz / h], w, h, true, solid), w, h);
+        const excluded = new Uint8Array(w * h);
+        return slice(this.raster(key, legend, [a[0], a[1], lz], u, [0, 0, -lz / h], w, h, true, excluded), w, h, excluded);
     }
 }
 
@@ -207,13 +205,13 @@ export function colourLut(legend, n = 1024) {
     return luts.get(id);
 }
 
-// A slice: the canvas, for 2D drawing.
-function slice(px, w, h) {
+// A slice: the canvas, for 2D drawing, and its excluded pixels.
+function slice(px, w, h, excluded) {
     const canvas = document.createElement("canvas");
     canvas.width = w;
     canvas.height = h;
     canvas.getContext("2d").putImageData(new ImageData(px, w, h), 0, 0);
-    return { w, h, canvas };
+    return { w, h, canvas, excluded };
 }
 
 // RGBA pixels for a texture: the empty pixels next to a coloured one take its colour (still

@@ -15,18 +15,21 @@
 //   vx = heights drawn 1, 2 or 4 times larger in the 2D section (a long site is a very thin strip at true scale).
 import * as THREE from "three";
 import { Viewer } from "./viewer.js?v=46";
-import { loadVolume, colourLut, texturePixels } from "./volume.js?v=2";
+import { loadVolume, colourLut, texturePixels } from "./volume.js?v=3";
 import { SliceView, KeyPlan, drawLoops, drawScaleBar, drawSectionLine, snapSectionEnd } from "./slice2d.js?v=6";
 import { cutModel, insideLoops, tallLoops } from "./meshcut.js?v=2";
 
 const SOFT_LAYER = /plant|tree|veget/i; // canopies: not solid for the analysis, drawn apart from terrain and buildings
 // Cut geometry, in 2D and on the 3D planes: solids are one dark grey, canopies a light green.
 const SOLID_GREY = 0x28;
-const SOLID = { color: `rgb(${SOLID_GREY}, ${SOLID_GREY}, ${SOLID_GREY})`, separate: true };
+// The outline in the fill's own colour closes the light seam antialiasing leaves between two solids that touch.
+const SOLID = { color: `rgb(${SOLID_GREY}, ${SOLID_GREY}, ${SOLID_GREY})`, stroke: `rgb(${SOLID_GREY}, ${SOLID_GREY}, ${SOLID_GREY})`, width: 1, separate: true };
 const CANOPY = { color: "rgba(96, 150, 96, 0.4)", stroke: "rgba(30, 90, 40, 0.85)", width: 0.8 };
 const OPEN_LINE = { color: "#1c1c1c", width: 1.3 }; // a cut surface that is not a closed solid
 const SOFT_LINE = { color: "rgba(30, 90, 40, 0.85)", width: 0.8 };
 const FRAME_COLOR = 0x222222;
+const VOID_PX = 0.1; // the excluded space of a slice is resolved to this many metres per pixel, at its finest
+const VOID_MAX = 4e6; // and to this many pixels at most
 const TEXTURE_SCALE = 2; // a plane's texture, in pixels per pixel of the field slice: sharper cut geometry
 const DOT_SIZE = 0.4; // dot diameter, in grid steps
 const CANOPY_OPACITY = 0.28; // canopies while the colours are on the surfaces
@@ -271,15 +274,16 @@ export class VolumeView {
         const [lx, ly, lz] = volume.size;
         const len = Math.max(this.sectionLength(), 1);
         if (this.dirty.plan) {
-            // Only the model cut defines solid boundaries; the coarse mask is never a silhouette.
-            this.planSlice = volume.plan(s.scenario, legend, s.z);
+            // The model cut defines the solid boundaries; the space the analysis excludes (inside a
+            // building, below the ground) is filled up to them, never left empty.
             this.planCut = null;
+            this.planSlice = this.sealVoids(volume.plan(s.scenario, legend, s.z), lx, ly, this.cutPlan());
             this.dirty.plan = false;
             setTexture(this.hPlane, this.planeTexture(this.planSlice, lx, ly, this.cutPlan()));
         }
         if (this.dirty.section) {
-            this.sectionSlice = volume.section(s.scenario, legend, s.a, s.b);
             this.sectionCut = null;
+            this.sectionSlice = this.sealVoids(volume.section(s.scenario, legend, s.a, s.b), len, lz, this.cutSection());
             this.dirty.section = false;
             setTexture(this.vPlane, this.planeTexture(this.sectionSlice, len, lz, this.cutSection()));
         }
@@ -446,6 +450,85 @@ export class VolumeView {
         return this.sectionCut;
     }
 
+    // The slice with the space the analysis excludes painted as solid. The mask of the volume is
+    // coarse (one grid step) and the field is read a little past it, so a room cut by the plane
+    // would show a stepped hole with a rim of colour inside its walls. The excluded pixels grow
+    // by one grid step instead, stopped by the cut geometry: the solid ends on the faces of the
+    // model wherever it has any, and on the mask only where it has none.
+    // The slice covers [0, w] x [0, h] metres, row 0 at the top. `solid` >= 2 marks those pixels.
+    sealVoids(slice, w, h, cut) {
+        const fit = n => Math.max(1, Math.round(n / VOID_PX));
+        let kx = fit(w / slice.w), ky = fit(h / slice.h);
+        while (slice.w * kx * slice.h * ky > VOID_MAX && (kx > 1 || ky > 1)) kx >= ky ? kx-- : ky--;
+        const W = slice.w * kx, H = slice.h * ky;
+        const scratch = (this.voidScratch ||= document.createElement("canvas"));
+        scratch.width = W;
+        scratch.height = H;
+        const ctx = scratch.getContext("2d", { willReadFrequently: true });
+        const sx = W / w, sy = H / h;
+        drawLoops(ctx, { loops: cut.main.loops, color: "#000", stroke: "#000", width: 1, separate: true }, sx, 0, -sy, H);
+        const open = cut.main.open;
+        ctx.beginPath();
+        for (let i = 0; i + 3 < open.length; i += 4) {
+            ctx.moveTo(open[i] * sx, H - open[i + 1] * sy);
+            ctx.lineTo(open[i + 2] * sx, H - open[i + 3] * sy);
+        }
+        ctx.stroke();
+        const image = ctx.getImageData(0, 0, W, H), px = image.data;
+        // 0 = open air, 1 = cut geometry, 2 = excluded space, 3 = cut geometry bounding it
+        const solid = new Uint8Array(W * H);
+        let front = [];
+        for (let y = 0, i = 0; y < H; y++) {
+            const row = ((y / ky) | 0) * slice.w;
+            for (let x = 0; x < W; x++, i++) {
+                if (px[i * 4 + 3]) solid[i] = 1;
+                else if (slice.excluded[row + ((x / kx) | 0)]) {
+                    solid[i] = 2;
+                    front.push(i);
+                }
+            }
+        }
+        const steps = Math.ceil(Math.max(this.volume.sx, this.volume.sy, this.volume.sz) / Math.min(w / W, h / H)) + 1;
+        for (let step = 0; step < steps && front.length; step++) {
+            const next = [];
+            const reach = (j) => {
+                if (solid[j] === 0) {
+                    solid[j] = 2;
+                    next.push(j);
+                } else if (solid[j] === 1) solid[j] = 3; // painted, not crossed
+            };
+            const wall = (j) => solid[j] === 1 || solid[j] === 3;
+            for (const i of front) {
+                const x = i % W, y = (i - x) / W;
+                const l = x > 0, r = x < W - 1, u = y > 0, d = y < H - 1;
+                if (l) reach(i - 1);
+                if (r) reach(i + 1);
+                if (u) reach(i - W);
+                if (d) reach(i + W);
+                // diagonally only through a real gap, never between two pixels of a thin wall
+                if (l && u && !wall(i - 1) && !wall(i - W)) reach(i - W - 1);
+                if (r && u && !wall(i + 1) && !wall(i - W)) reach(i - W + 1);
+                if (l && d && !wall(i - 1) && !wall(i + W)) reach(i + W - 1);
+                if (r && d && !wall(i + 1) && !wall(i + W)) reach(i + W + 1);
+            }
+            front = next;
+        }
+        for (let i = 0, o = 0; i < solid.length; i++, o += 4) {
+            px[o] = px[o + 1] = px[o + 2] = SOLID_GREY;
+            px[o + 3] = solid[i] >= 2 ? 255 : 0;
+        }
+        ctx.putImageData(image, 0, 0);
+        const canvas = document.createElement("canvas");
+        canvas.width = W;
+        canvas.height = H;
+        const out = canvas.getContext("2d");
+        out.imageSmoothingEnabled = true;
+        out.imageSmoothingQuality = "high";
+        out.drawImage(slice.canvas, 0, 0, W, H);
+        out.drawImage(scratch, 0, 0);
+        return { w: slice.w, h: slice.h, canvas, solid, sw: W, sh: H };
+    }
+
     // A plane of the 3D scene: the field slice with the cut geometry drawn over it, as texture
     // pixels. The slice covers [0, w] x [0, h] metres, row 0 at the top.
     planeTexture(slice, w, h, cut) {
@@ -522,17 +605,13 @@ export class VolumeView {
         const cut = this.cutSection();
         const world = this.volume.worldZ;
         const k = this.state.vx;
-        const drawingKey = [...this.state.a, ...this.state.b].join();
-        if (this.sectionDrawingKey !== drawingKey) {
-            this.sectionDrawing = this.modelPlan("section");
-            this.sectionDrawingKey = drawingKey;
-        }
+        // Only what the plane cuts: the model beyond it is not projected onto the section.
         const tall = (segs) => (k === 1 ? segs : segs.map((v, i) => (i & 1 ? v * k : v)));
         return {
             pick: (point, view) => this.pickGuide(point, view),
             extent: [0, 0, len, lz * k],
             pad: [this.padTop(), 110, 70, 70],
-            images: [{ canvas: this.sectionSlice.canvas, rect: [0, 0, len, lz * k] }, ...this.sectionDrawing.edges.map(image => ({ ...image, rect: [0, 0, len, lz * k] }))],
+            images: [{ canvas: this.sectionSlice.canvas, rect: [0, 0, len, lz * k] }],
             fills: [{ loops: tallLoops(cut.main.loops, k), ...SOLID }, { loops: tallLoops(cut.soft.loops, k), ...CANOPY }],
             lines: [{ segs: tall(cut.soft.open), ...SOFT_LINE }, { segs: tall(cut.main.open), ...OPEN_LINE }],
             clip: [0, -3 * k, len, (lz + 12) * k],
@@ -595,14 +674,15 @@ export class VolumeView {
     // The value at a point of the plan (x, y) or of the section (metres along the line, local
     // height): NaN inside the cut solids and where nothing is analysed.
     valueOnPlan(x, y) {
-        if (insideLoops(this.cutPlan().main.loops, x, y)) return NaN;
+        const [lx, ly] = this.volume.size;
+        if (insideLoops(this.cutPlan().main.loops, x, y) || sealed(this.planSlice, x / lx, 1 - y / ly)) return NaN;
         return this.volume.sample(this.state.scenario, x, y, this.state.z, true);
     }
 
     valueOnSection(along, height) {
         const { a, b } = this.state;
         const len = this.sectionLength() || 1;
-        if (along < 0 || along > len || insideLoops(this.cutSection().main.loops, along, height)) return NaN;
+        if (along < 0 || along > len || insideLoops(this.cutSection().main.loops, along, height) || sealed(this.sectionSlice, along / len, 1 - height / this.volume.size[2])) return NaN;
         return this.volume.sample(this.state.scenario, a[0] + ((b[0] - a[0]) * along) / len, a[1] + ((b[1] - a[1]) * along) / len, height, true);
     }
 
@@ -979,4 +1059,10 @@ function linearLut(legend) {
         out[i + 2] = c.b;
     }
     return out;
+}
+
+// The point at (u, v) of a slice (0..1 from its left and top) lies in the space painted as solid.
+function sealed(slice, u, v) {
+    if (!slice?.solid || !(u >= 0 && u <= 1 && v >= 0 && v <= 1)) return false;
+    return slice.solid[Math.min(slice.sw - 1, (u * slice.sw) | 0) + slice.sw * Math.min(slice.sh - 1, (v * slice.sh) | 0)] >= 2;
 }

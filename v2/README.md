@@ -200,16 +200,20 @@ sidebar is the same (analysis menu, mean over the analysed points, legend, descr
   canopies turn translucent, what lies outside the analysed box is pale grey).
 - **2D Plan**: the field at the chosen elevation, with the model cut at that height, the edges below it
   (light) and the section line.
-- **2D Section**: the vertical cut along the section line, with the cut terrain and buildings, model
-  elevations on the left and the plan's height as a dashed line. "Heights" draws them ×1, ×2 or ×4.
+- **2D Section**: the vertical cut along the section line, with the cut terrain and buildings only (the
+  model beyond the plane is not projected), model elevations on the left and the plan's height as a
+  dashed line. "Heights" draws them ×1, ×2 or ×4.
 
 The field on a plane is a colour map sampled from the volume (trilinear between the valid nodes of each
 cell, weights rescaled: the "filled" reading of `volume.js`), so it reaches the ground and the walls instead
 of stopping one grid step before them with a stepped edge. The cut geometry is drawn over it, in plan, in
 section and on the 3D planes: terrain, buildings and the rest as one dark grey, canopies as a light green.
 It comes from the model (`meshcut.js`: the cut of each layer chained into closed outlines, filled as their
-union without outlines; a surface that is not a closed solid stays a line). The coarse mask never defines
-the solid silhouette. The dots use the strict values
+union without outlines; a surface that is not a closed solid stays a line). The space the analysis excludes
+under an analysed point (a room, the ground beyond the terrain mesh) is the same dark grey, never a hole:
+its pixels grow by one grid step and stop at the cut geometry (`sealVoids` in `volumeview.js`), so the
+solid ends on the faces of the model wherever it has any and on the coarse mask only where it has none.
+The dots use the strict values
 of the nodes. Hovering reads the value at that point. The whole view is one
 serialisable object (`VolumeView.view()`: mode, scenario, plan height, section line, planes, cut, points,
 colours on surfaces, heights, camera or 2D frame), kept in the address (`mode`, `sc`, `z`, `sec`, `planes`
@@ -392,7 +396,9 @@ existing URLs still restore their settings. **Copy link** copies only `PROJECT` 
 single and comparison pages, so the recipient opens the initial view.
 
 Solid sections use the actual triangle-model cut: each contour is filled independently in
-`#282828`, without strokes or boolean unions. Overlapping dark shapes cannot cancel each other. The coarse analysis mask no longer supplies a grey silhouette.
+`#282828` with a 1 px outline of the same colour (it closes the seam between touching solids), without
+boolean unions. Overlapping dark shapes cannot cancel each other. The space the analysis excludes is
+painted the same grey up to the cut geometry (`sealVoids`), so rooms and uncovered ground are never holes.
 The key plan is a cached orthographic top view of the complete model in its original colours,
 independent of the analysis, elevation, scenario and clipping planes; only the section line moves.
 
@@ -409,7 +415,8 @@ In 2D Section, **Hide/Show plan** toggles the draggable horizontal plan line. In
 **Hide/Show section** toggles the section line: drag the line to translate it or its endpoints
 to rotate it. Both the plan and key plan snap within 8 degrees of either site axis;
 In the key plan, dragging the existing line translates it; clicks away from the line and endpoints never create or move a section. Other drags still pan the drawing. Guide visibility is kept in the view address.
-Plans and sections show the analysis, dark cut fill and exposed model edges only. Uncut
+Plans show the analysis, dark cut fill and exposed model edges only; sections show the analysis
+and the cut fill, with no projection of the model beyond the plane (user instruction, 2026-11-13). Uncut
 surfaces write depth to hide lines behind nearer geometry; their shading/colours are never
 composited into the drawing. The separate key plan retains the model's original colours.
 Section endpoints stay inset from the key-plan border so both handles remain reachable.

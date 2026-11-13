@@ -46,7 +46,24 @@ const assert = require('node:assert/strict');
                 }
                 return { x, open: cut.open.length, checked, white };
             });
-            return { overlap, canopyCancelled, canopyAlpha, cuts };
+            // the space the analysis excludes (rooms, ground beyond the terrain mesh) is never a hole
+            const holes = s => {
+                const d = s.canvas.getContext('2d').getImageData(0, 0, s.sw, s.sh).data;
+                let empty = 0, sealed = 0;
+                for (let i = 0; i < s.solid.length; i++) {
+                    if (s.solid[i] >= 2) sealed++;
+                    else if (s.solid[i] === 0 && d[i * 4 + 3] < 128) empty++;
+                }
+                return { empty, sealed };
+            };
+            const voids = [];
+            for (const x of [248.7, 306.7]) {
+                v.set({ a: [x, 0], b: [x, 283] }, { quiet: true });
+                v.update();
+                voids.push({ x, ...holes(v.sectionSlice), projected: v.sectionScene().images.length - 1 });
+            }
+            voids.push({ x: 'plan', ...holes(v.planSlice), projected: 0 });
+            return { overlap, canopyCancelled, canopyAlpha, cuts, voids };
         });
         assert.deepEqual(result.overlap, [40, 40, 40, 255], 'opposite-winding overlapping solids never cancel');
         assert.equal(result.canopyCancelled, 0, 'shared translucent fill behavior stays unchanged');
@@ -55,6 +72,11 @@ const assert = require('node:assert/strict');
             assert.equal(cut.open, 0, `terrain remains closed at x=${cut.x}`);
             assert.ok(cut.checked > 100, `terrain sampling at x=${cut.x} is substantial`);
             assert.equal(cut.white, 0, `terrain interior has no white samples at x=${cut.x}`);
+        }
+        for (const cut of result.voids) {
+            assert.equal(cut.empty, 0, `no empty pixel inside the analysed box at ${cut.x}`);
+            assert.ok(cut.sealed > 0, `excluded space is painted solid at ${cut.x}`);
+            assert.equal(cut.projected, 0, `the section at ${cut.x} shows no projected model`);
         }
         await page.screenshot({ path: 'v2/_test/section-fixed-306p7.png' });
         console.log(`PASS independent fills, original trees, ${result.cuts.length} real terrain cuts with no white interior samples`);
