@@ -8,7 +8,7 @@
 //   insideLoops(loops, x, y) -> the point is inside one of the outlines
 //   edgesBelow(edges, z)     -> the edge lines lying below a plan's height, seen from above
 
-const SNAP = 1000; // outline points closer than 1 mm are the same point
+const SNAP = 1000; // geometric endpoint tolerance: 1 mm
 
 export function cutModel(parts, o, e1, e2, n) {
     const out = { main: { loops: [], open: [] }, soft: { loops: [], open: [] } };
@@ -51,20 +51,53 @@ function cross(pos, d, a, b, o, e1, e2, out) {
 // Joins segments [x1, y1, x2, y2, …] end to end: closed outlines go to `loops`, the rest to `open`.
 function chain(segs, loops, open) {
     const n = segs.length >> 2;
-    const key = (i) => (Math.round(segs[i] * SNAP) + 1e7) * 4e7 + Math.round(segs[i + 1] * SNAP) + 1e7;
-    const ends = new Map(); // point -> ends of segments there (segment * 2 + end)
+    const key = i => (Math.round(segs[i] * SNAP) + 1e7) * 4e7 + Math.round(segs[i + 1] * SNAP) + 1e7;
+    const ends = new Map();
     const keys = new Float64Array(n * 2);
     const used = new Uint8Array(n);
+    const add = (k, id) => {
+        if (!ends.has(k)) ends.set(k, []);
+        ends.get(k).push(id);
+    };
     for (let s = 0; s < n; s++) {
         const a = (keys[s * 2] = key(s * 4)), b = (keys[s * 2 + 1] = key(s * 4 + 2));
-        if (a === b) {
-            used[s] = 1; // no length
-            continue;
+        if (a === b) { used[s] = 1; continue; }
+        add(a, s * 2);
+        add(b, s * 2 + 1);
+    }
+    // Repair only dangling endpoints. Closed contours keep their original topology, even
+    // where two separate surfaces run less than 1 mm apart. Quantisation alone can leave
+    // near-identical endpoints in adjacent buckets.
+    const dangling = [...ends].filter(([, ids]) => ids.length === 1);
+    const buckets = new Map(), joined = new Map();
+    for (const [k, [id]] of dangling) {
+        const x = segs[id * 2], y = segs[id * 2 + 1];
+        const bx = Math.floor(x * SNAP), by = Math.floor(y * SNAP);
+        let nearest = null, distance = 1 / (SNAP * SNAP);
+        for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+            for (const p of buckets.get(`${bx + dx},${by + dy}`) || []) {
+                if (joined.has(p.k)) continue;
+                const d = (p.x - x) ** 2 + (p.y - y) ** 2;
+                if (d <= distance) { nearest = p; distance = d; }
+            }
         }
-        for (const [k, id] of [[a, s * 2], [b, s * 2 + 1]]) {
-            const list = ends.get(k);
-            if (list) list.push(id);
-            else ends.set(k, [id]);
+        if (nearest) {
+            joined.set(k, nearest.k);
+            joined.set(nearest.k, nearest.k);
+        } else {
+            const bucket = `${bx},${by}`;
+            if (!buckets.has(bucket)) buckets.set(bucket, []);
+            buckets.get(bucket).push({ k, x, y });
+        }
+    }
+    if (joined.size) {
+        ends.clear();
+        for (let s = 0; s < n; s++) {
+            if (used[s]) continue;
+            for (const id of [s * 2, s * 2 + 1]) {
+                keys[id] = joined.get(keys[id]) ?? keys[id];
+                add(keys[id], id);
+            }
         }
     }
     // follows unused segments from a point; returns the far ends, in order
@@ -84,7 +117,7 @@ function chain(segs, loops, open) {
     for (let s = 0; s < n; s++) {
         if (used[s]) continue;
         used[s] = 1;
-        const path = [segs[s * 4], segs[s * 4 + 1], segs[s * 4 + 2], segs[s * 4 + 3]];
+        let path = [segs[s * 4], segs[s * 4 + 1], segs[s * 4 + 2], segs[s * 4 + 3]];
         if (walk(keys[s * 2 + 1], keys[s * 2], path) && path.length >= 8) {
             path.length -= 2; // the last point is the first again
             loops.push(loop(path));
@@ -93,13 +126,15 @@ function chain(segs, loops, open) {
         // not closed: also backwards from the start, then kept as plain lines
         const back = [];
         walk(keys[s * 2], NaN, back);
-        for (let i = back.length - 2; i >= 0; i -= 2) path.unshift(back[i], back[i + 1]);
+        const head = [];
+        for (let i = back.length - 2; i >= 0; i -= 2) head.push(back[i], back[i + 1]);
+        path = head.concat(path);
         for (let i = 0; i + 3 < path.length; i += 2) open.push(path[i], path[i + 1], path[i + 2], path[i + 3]);
     }
 }
 
-// Every outline turns the same way (anticlockwise), so that filling them together with the
-// non-zero rule gives their union: a solid inside another solid stays filled.
+// Keep a consistent orientation for shared translucent fills. Opaque solids are drawn
+// independently, so overlaps never rely on a compound path or a boolean union.
 function loop(path) {
     let area = 0;
     for (let i = 0, j = path.length - 2; i < path.length; j = i, i += 2) area += path[j] * path[i + 1] - path[i] * path[j + 1];

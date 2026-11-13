@@ -391,8 +391,8 @@ New 3D views enable **Vertical plane** and **Colours on terrain and buildings**;
 existing URLs still restore their settings. **Copy link** copies only `PROJECT` / `data`, in both
 single and comparison pages, so the recipient opens the initial view.
 
-Solid sections use the actual triangle-model cut, filled together with the non-zero rule in
-`#282828`, without strokes. The coarse analysis mask no longer supplies a grey silhouette.
+Solid sections use the actual triangle-model cut: each contour is filled independently in
+`#282828`, without strokes or boolean unions. Overlapping dark shapes cannot cancel each other. The coarse analysis mask no longer supplies a grey silhouette.
 The key plan is a cached orthographic top view of the complete model in its original colours,
 independent of the analysis, elevation, scenario and clipping planes; only the section line moves.
 
@@ -418,3 +418,10 @@ section can still be freely rotated by an intentional drag.
 
 Projection edges use the original light 22% black appearance. Cut tree canopies keep their
 original translucent green fill and outline.
+
+Section contour assembly repairs dangling endpoints within 1 mm by checking their geometric
+distance across rounding buckets. Existing closed contours are left alone; larger openings
+remain open. Open contours retain the original segment order when traced backwards.
+`test-meshcut.mjs` covers these cases in CI. `test-section-fill-browser.cjs` also checks opposite
+winding, unchanged tree translucency, and 46 cuts of the ZRCH SectionFixed terrain (including
+x=306.7 m), sampling their interiors for missing or white fill pixels.

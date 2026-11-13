@@ -16,13 +16,13 @@
 import * as THREE from "three";
 import { Viewer } from "./viewer.js?v=46";
 import { loadVolume, colourLut, texturePixels } from "./volume.js?v=2";
-import { SliceView, KeyPlan, drawLoops, drawScaleBar, drawSectionLine, snapSectionEnd } from "./slice2d.js?v=5";
-import { cutModel, insideLoops, tallLoops } from "./meshcut.js?v=1";
+import { SliceView, KeyPlan, drawLoops, drawScaleBar, drawSectionLine, snapSectionEnd } from "./slice2d.js?v=6";
+import { cutModel, insideLoops, tallLoops } from "./meshcut.js?v=2";
 
 const SOFT_LAYER = /plant|tree|veget/i; // canopies: not solid for the analysis, drawn apart from terrain and buildings
 // Cut geometry, in 2D and on the 3D planes: solids are one dark grey, canopies a light green.
 const SOLID_GREY = 0x28;
-const SOLID = { color: `rgb(${SOLID_GREY}, ${SOLID_GREY}, ${SOLID_GREY})` };
+const SOLID = { color: `rgb(${SOLID_GREY}, ${SOLID_GREY}, ${SOLID_GREY})`, separate: true };
 const CANOPY = { color: "rgba(96, 150, 96, 0.4)", stroke: "rgba(30, 90, 40, 0.85)", width: 0.8 };
 const OPEN_LINE = { color: "#1c1c1c", width: 1.3 }; // a cut surface that is not a closed solid
 const SOFT_LINE = { color: "rgba(30, 90, 40, 0.85)", width: 0.8 };
