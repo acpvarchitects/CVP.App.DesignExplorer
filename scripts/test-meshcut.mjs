@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 const source = await readFile(new URL('../v2/meshcut.js', import.meta.url), 'utf8');
-const { cutModel } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+const { cutModel, insideLoops } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
 
 function walls(segments) {
     const vertices = [];
@@ -33,4 +33,20 @@ const rect = (x0, y0, x1, y1) => [[[x0, y0], [x1, y0]], [[x1, y0], [x1, y1]], [[
 const neighbours = cut([...rect(0, 0, 1.0001, 1), ...rect(1.0009, 0.1, 2, 0.9)]);
 assert.equal(neighbours.loops.length, 2, 'already closed nearby shapes remain independent');
 assert.equal(neighbours.open.length, 0);
-console.log('PASS mesh cuts: sub-mm seam, real openings, independent solids, open-chain geometry');
+const reversed = segments => segments.map(([a, b]) => [b, a]).reverse();
+const patio = cut([...rect(0, 0, 3, 3), ...reversed(rect(1, 1, 2, 2))]);
+assert.equal(patio.loops.length, 1, 'a contour running the other way inside a solid is its hole');
+assert.equal(patio.loops[0].holes.length, 1);
+assert.equal(insideLoops(patio.loops, 0.5, 0.5), true, 'the solid around a patio is solid');
+assert.equal(insideLoops(patio.loops, 1.5, 1.5), false, 'a patio is open air');
+const flipped = cut([...reversed(rect(0, 0, 3, 3)), ...rect(1, 1, 2, 2)]);
+assert.equal(flipped.loops.length, 1, 'holes do not depend on which way the whole model is wound');
+assert.equal(flipped.loops[0].holes.length, 1);
+const inner = cut([...rect(0, 0, 3, 3), ...rect(1, 1, 2, 2)]);
+assert.equal(inner.loops.length, 2, 'a solid inside another one stays a solid');
+assert.equal(insideLoops(inner.loops, 1.5, 1.5), true);
+const island = cut([...rect(0, 0, 5, 5), ...reversed(rect(1, 1, 4, 4)), ...rect(2, 2, 3, 3)]);
+assert.equal(island.loops.length, 2, 'what stands inside a patio is a solid of its own');
+assert.equal(insideLoops(island.loops, 2.5, 2.5), true);
+assert.equal(insideLoops(island.loops, 1.5, 1.5), false);
+console.log('PASS mesh cuts: sub-mm seam, real openings, independent solids, patios, open-chain geometry');
