@@ -261,7 +261,8 @@ Files of a 3D study (written by the Grasshopper "EXPORT | Full noise volume + De
    3D analysis and, at the right, one group `← → ⤢ ✕` (previous, next, full height / compact, close);
    ← → and Escape on the keyboard. It opens at the full height of the centre card (compact: 420px).
    **3D analysis ▾** and **Table ▾** open their choices directly from the mode button. Once a
-   choice is active, its title appears in that same button (`3D analysis · Winter sun ▾`).
+   choice is active, only its title appears in that same button (`Winter sun ▾`). The category
+   remains available in the accessible label and full-text hover title.
    Switching to another mode restores the inactive button's neutral label while retaining the
    remembered layer. These two modes no longer show a separate view dropdown. Menus support
    arrow keys, Home/End, Enter/Space, Escape, Tab and outside-click dismissal, and stay within

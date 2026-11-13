@@ -7,8 +7,8 @@ export function previewModesHtml({modes,layersOf,state,esc}) {
         const title=mode.label+(current?' · '+current:'');
         return `<button type="button" data-mode="${mode.key}" class="${active?'on':''}" aria-pressed="${active}"
             ${hasMenu?'aria-haspopup="menu" aria-expanded="false" aria-controls="previewModeMenu"':''}
-            ${list.length?'':`disabled`} title="${esc(list.length?title:'No '+mode.label.toLowerCase()+' files in this study')}">
-            <span>${mode.label}</span>${current?`<span aria-hidden="true">·</span><span class="preview-mode-current">${esc(current)}</span>`:''}
+            ${list.length?'':`disabled`} aria-label="${esc(title)}" title="${esc(list.length?title:'No '+mode.label.toLowerCase()+' files in this study')}">
+            ${current?`<span class="preview-mode-current">${esc(current)}</span>`:`<span>${mode.label}</span>`}
             ${hasMenu?'<span aria-hidden="true">▾</span>':''}</button>`;
     }).join('');
 }

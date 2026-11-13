@@ -8,11 +8,14 @@ const esc=s=>s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&g
 const render=state=>previewModesHtml({modes,layersOf:key=>lists[key],state,esc});
 let html=render({mode:'analysis',layer:{analysis:1,table:0}});
 assert.ok(html.includes('Privacy &lt;&amp;&gt;'));
+assert.ok(html.includes('<span class="preview-mode-current">Privacy &lt;&amp;&gt;</span>'));
+assert.ok(!html.includes('<span>3D analysis</span>'),'active analysis shows only its title');
 assert.equal((html.match(/aria-haspopup="menu"/g)||[]).length,2);
 html=render({mode:'model',layer:{analysis:1,table:0}});
 assert.ok(!html.includes('preview-mode-current'));
 html=render({mode:'table',layer:{analysis:1,table:0}});
 assert.ok(html.includes('preview-mode-current">Building schedule'));
+assert.ok(!html.includes('<span>Table</span>'),'active table shows only its title');
 lists.analysis=[];
 assert.match(render({mode:'model',layer:{analysis:0,table:0}}),/data-mode="analysis"[^]*?disabled/);
 console.log('PASS integrated analysis/table menu labels, neutral inactive states, escaping and disabled empty categories');
