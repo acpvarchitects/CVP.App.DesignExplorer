@@ -122,6 +122,7 @@ export class SliceView {
             const rect = c.getBoundingClientRect();
             const interaction = this.scene.pick?.(this.metres(e.clientX - rect.left, e.clientY - rect.top), this);
             drag = interaction ? { interaction } : { x: e.clientX, y: e.clientY, frame: [...this.frame] };
+            this.onHover(null);
             c.setPointerCapture(e.pointerId);
             c.classList.add("dragging");
         });
@@ -356,7 +357,8 @@ export class KeyPlan {
             this.w = W;
             this.h = H;
             const center = this.center || [(x0 + x1) / 2, (y0 + y1) / 2];
-            this.frame = [...center, (x1 - x0) / (W * this.zoom)];
+            this.fitMpp = Math.max((x1 - x0) / Math.max(W - 16, 1), (y1 - y0) / Math.max(H - 16, 1));
+            this.frame = [...center, this.fitMpp / this.zoom];
             this.refit.hidden = Math.abs(this.zoom - 1) < 1e-6 && !this.center;
             const ctx = c.getContext("2d");
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -381,7 +383,7 @@ export class KeyPlan {
             const [cx, cy, mpp] = this.frame;
             const delta = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? this.h : 1);
             const zoom = Math.max(0.25, Math.min(16, this.zoom * Math.exp(-delta * 0.002)));
-            const next = (this.bounds[2] - this.bounds[0]) / (this.w * zoom);
+            const next = this.fitMpp / zoom;
             this.center = [cx + (x - this.w / 2) * (mpp - next), cy - (y - this.h / 2) * (mpp - next)];
             this.zoom = zoom;
             this.frame = [...this.center, next];
@@ -420,8 +422,8 @@ export class KeyPlan {
                 return;
             }
             const m = this.metres(...at(e));
-            if (drag.kind === "a") this.a = snapSectionEnd(m, this.b, this.bounds);
-            else if (drag.kind === "b") this.b = snapSectionEnd(m, this.a, this.bounds);
+            if (drag.kind === "a") this.a = snapSectionEnd(m, this.b, this.bounds, 8 * this.frame[2]);
+            else if (drag.kind === "b") this.b = snapSectionEnd(m, this.a, this.bounds, 8 * this.frame[2]);
             this.draw();
             this.onLine(this.a, this.b, false);
         });
@@ -438,11 +440,11 @@ export class KeyPlan {
 }
 
 // Prefer the site's longitudinal/transverse axes within 8 degrees, leaving oblique cuts possible.
-export function snapSectionEnd(point, anchor, bounds) {
+export function snapSectionEnd(point, anchor, bounds, radius = Infinity) {
     const p = point.map((n, i) => Math.max(bounds[i], Math.min(bounds[i + 2], n)));
     const dx = Math.abs(p[0] - anchor[0]), dy = Math.abs(p[1] - anchor[1]);
     const tolerance = Math.tan(8 * Math.PI / 180);
-    if (dx <= dy * tolerance) p[0] = anchor[0];
-    else if (dy <= dx * tolerance) p[1] = anchor[1];
+    if (dx <= dy * tolerance && dx <= radius) p[0] = anchor[0];
+    else if (dy <= dx * tolerance && dy <= radius) p[1] = anchor[1];
     return p;
 }

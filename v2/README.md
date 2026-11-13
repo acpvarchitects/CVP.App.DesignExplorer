@@ -409,7 +409,9 @@ In 2D Section, **Hide/Show plan** toggles the draggable horizontal plan line. In
 **Hide/Show section** toggles the section line: drag only its endpoints
 to move or rotate it. Both the plan and key plan snap within 8 degrees of either site axis;
 clicks or drags away from the key-plan endpoints never create or move a section. Other drags still pan the drawing. Guide visibility is kept in the view address.
-Uncut model geometry in plans and sections is rendered as surfaces with a depth buffer:
-hidden edges do not show through nearer faces, and geometry in front of the cutting plane is
-removed. The analysis colours and the dark cut fill are overlaid on that visible model; a separate
-depth-tested edge pass keeps only the visible outlines over the analysis colours.
+Plans and sections show the analysis, dark cut fill and exposed model edges only. Uncut
+surfaces write depth to hide lines behind nearer geometry; their shading/colours are never
+composited into the drawing. The separate key plan retains the model's original colours.
+Section endpoints stay inset from the key-plan border so both handles remain reachable.
+Orthogonal snapping is limited to 8 screen pixels as well as the angle threshold, so a long
+section can still be freely rotated by an intentional drag.

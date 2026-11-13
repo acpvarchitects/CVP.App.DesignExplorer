@@ -16,7 +16,7 @@
 import * as THREE from "three";
 import { Viewer } from "./viewer.js?v=46";
 import { loadVolume, colourLut, texturePixels } from "./volume.js?v=2";
-import { SliceView, KeyPlan, drawLoops, drawScaleBar, drawSectionLine, snapSectionEnd } from "./slice2d.js?v=3";
+import { SliceView, KeyPlan, drawLoops, drawScaleBar, drawSectionLine, snapSectionEnd } from "./slice2d.js?v=4";
 import { cutModel, insideLoops, tallLoops } from "./meshcut.js?v=1";
 
 const SOFT_LAYER = /plant|tree|veget/i; // canopies: not solid for the analysis, drawn apart from terrain and buildings
@@ -379,7 +379,7 @@ export class VolumeView {
         try {
             renderer.setClearAlpha(0);
             renderer.setRenderTarget(target);
-            const images = [capture()];
+            const images = mode === "key" ? [capture()] : [];
             const edges = [];
             if (mode !== "key") {
                 // Invisible surfaces still write depth: only exposed edges survive over the field.
@@ -464,7 +464,7 @@ export class VolumeView {
         if (s.mode !== "plan" || !s.sectionGuide) return null;
         const near = p => Math.hypot(p[0] - point[0], p[1] - point[1]) <= tolerance;
         const end = near(s.a) ? "a" : near(s.b) ? "b" : null;
-        if (end) return { cursor: "crosshair", move: p => this.set({ [end]: snapSectionEnd(p, s[end === "a" ? "b" : "a"], [0, 0, ...this.volume.size.slice(0, 2)]) }, { quiet: true }), end: () => this.onChange() };
+        if (end) return { cursor: "crosshair", move: p => this.set({ [end]: snapSectionEnd(p, s[end === "a" ? "b" : "a"], [0, 0, ...this.volume.size.slice(0, 2)], 8 * view.frame[2]) }, { quiet: true }), end: () => this.onChange() };
         return null;
     }
 
@@ -479,7 +479,7 @@ export class VolumeView {
             pick: (point, view) => this.pickGuide(point, view),
             extent: [0, 0, lx, ly],
             pad: [this.padTop(), 40, 56, 40],
-            images: [...this.planDrawing.images, { canvas: this.planSlice.canvas, rect: [0, 0, lx, ly] }, ...this.planDrawing.edges],
+            images: [{ canvas: this.planSlice.canvas, rect: [0, 0, lx, ly] }, ...this.planDrawing.edges],
             fills: [{ loops: cut.main.loops, ...SOLID }, { loops: cut.soft.loops, ...CANOPY }],
             lines: [{ segs: cut.soft.open, ...SOFT_LINE }, { segs: cut.main.open, ...OPEN_LINE }],
             decorate: (ctx, view) => {
@@ -512,7 +512,7 @@ export class VolumeView {
             pick: (point, view) => this.pickGuide(point, view),
             extent: [0, 0, len, lz * k],
             pad: [this.padTop(), 110, 70, 70],
-            images: [...this.sectionDrawing.images.map(image => ({ ...image, rect: [0, 0, len, lz * k] })), { canvas: this.sectionSlice.canvas, rect: [0, 0, len, lz * k] }, ...this.sectionDrawing.edges.map(image => ({ ...image, rect: [0, 0, len, lz * k] }))],
+            images: [{ canvas: this.sectionSlice.canvas, rect: [0, 0, len, lz * k] }, ...this.sectionDrawing.edges.map(image => ({ ...image, rect: [0, 0, len, lz * k] }))],
             fills: [{ loops: tallLoops(cut.main.loops, k), ...SOLID }, { loops: tallLoops(cut.soft.loops, k), ...CANOPY }],
             lines: [{ segs: tall(cut.soft.open), ...SOFT_LINE }, { segs: tall(cut.main.open), ...OPEN_LINE }],
             clip: [0, -3 * k, len, (lz + 12) * k],
