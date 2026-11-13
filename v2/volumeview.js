@@ -16,8 +16,8 @@
 import * as THREE from "three";
 import { Viewer } from "./viewer.js?v=46";
 import { loadVolume, colourLut, texturePixels } from "./volume.js?v=3";
-import { SliceView, KeyPlan, drawLoops, drawScaleBar, drawSectionLine, snapSectionEnd } from "./slice2d.js?v=6";
-import { cutModel, insideLoops, tallLoops } from "./meshcut.js?v=2";
+import { SliceView, KeyPlan, drawLoops, drawScaleBar, drawSectionLine, snapSectionEnd } from "./slice2d.js?v=8";
+import { cutModel, insideLoops, tallLoops } from "./meshcut.js?v=5";
 
 const SOFT_LAYER = /plant|tree|veget/i; // canopies: not solid for the analysis, drawn apart from terrain and buildings
 // Cut geometry, in 2D and on the 3D planes: solids are one dark grey, canopies a light green.

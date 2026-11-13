@@ -290,7 +290,7 @@ async function showVolume(layer) {
         if (!entry) {
             $("status").textContent = "Loading…";
             try {
-                volumeModule ||= await import("./volumeview.js?v=12");
+                volumeModule ||= await import("./volumeview.js?v=15");
             } catch (e) {
                 $("status").textContent = `Cannot load the 3D view: ${e.message}`;
                 return;

@@ -13,8 +13,8 @@ const assert = require('node:assert/strict');
         await page.goto(`${base}/v2/analysis.html?PROJECT=ZRCH_261113_HotelNoise_Option02_Updated_Paths_Grid1p6_SectionFixed_v1&mode=section&sec=306.7,0,306.7,283&z=17.31`);
         await page.waitForFunction(() => window.testVolume?.slice && document.querySelector('#loading').hidden, {}, { timeout: 180000 });
         const result = await page.evaluate(async () => {
-            const { drawLoops } = await import('/v2/slice2d.js?v=6');
-            const { cutModel, insideLoops } = await import('/v2/meshcut.js?v=2');
+            const { drawLoops } = await import('/v2/slice2d.js?v=8');
+            const { cutModel, insideLoops } = await import('/v2/meshcut.js?v=5');
             const canvas = document.createElement('canvas');
             canvas.width = canvas.height = 80;
             const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -35,7 +35,7 @@ const assert = require('node:assert/strict');
                 const cut = cutModel([terrain], [x, 0, 0], [0, 1, 0], [0, 0, 1], [1, 0, 0]).main;
                 canvas.width = 2400;
                 canvas.height = 260;
-                drawLoops(ctx, { loops: cut.loops, color: '#282828', separate: true }, 5, 0, -5, 240);
+                drawLoops(ctx, { loops: cut.loops, color: '#282828', stroke: '#282828', width: 1, separate: true }, 5, 0, -5, 240);
                 const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
                 let checked = 0, white = 0;
                 for (let along = 5; along < 455; along += 3) for (let z = 1; z < 40; z += 2) {

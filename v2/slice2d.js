@@ -3,7 +3,7 @@
 //   const v = new SliceView(container, { onHover(point|null, event), onFrame() })
 //   v.show({ extent: [x0, y0, x1, y1],            // what "fit" frames
 //            images: [{ canvas, rect: [x0, y0, x1, y1] }],
-//            fills:  [{ loops: [{ p: Float32Array [x,y,…] }], color, stroke, width, separate }],  // independent opaque solids or shared translucent fill
+//            fills:  [{ loops: [{ p: Float32Array [x,y,…], holes: [{ p }] }], color, stroke, width, separate }],  // independent opaque solids or shared translucent fill
 //            lines:  [{ segs: Float32Array [x1,y1,x2,y2,…], color, width, dash }],
 //            clip:   [x0, y0, x1, y1] | null,      // lines are drawn inside it only
 //            decorate(ctx, view) })                // screen-space extras; view.px(x, y) -> [px, py]
@@ -203,7 +203,8 @@ export function paintScene(ctx, scene, view) {
 }
 
 // Solid contours may be painted independently: overlapping dark shapes stay filled regardless
-// of the winding of neighbouring contours. Translucent canopies retain their shared fill.
+// of the winding of neighbouring contours, and each keeps its own holes (a patio stays open).
+// Translucent canopies retain their shared fill, holes included.
 // A point (x, y) is drawn at (ox + x * kx, oy + y * ky).
 export function drawLoops(ctx, { loops, color, stroke, width, separate = false }, kx, ox, ky, oy) {
     if (!loops || !loops.length) return;
@@ -212,17 +213,28 @@ export function drawLoops(ctx, { loops, color, stroke, width, separate = false }
         for (let i = 2; i < p.length; i += 2) ctx.lineTo(ox + p[i] * kx, oy + p[i + 1] * ky);
         ctx.closePath();
     };
+    // a hole runs against its outline (both are stored the same way round), so the non-zero fill
+    // leaves it open while a contour overlapping itself stays filled
+    const carve = p => {
+        ctx.moveTo(ox + p[p.length - 2] * kx, oy + p[p.length - 1] * ky);
+        for (let i = p.length - 4; i >= 0; i -= 2) ctx.lineTo(ox + p[i] * kx, oy + p[i + 1] * ky);
+        ctx.closePath();
+    };
     if (color) ctx.fillStyle = color;
     if (separate && color) {
-        for (const { p } of loops) {
+        for (const { p, holes } of loops) {
             ctx.beginPath();
             trace(p);
+            for (const hole of holes || []) carve(hole.p);
             ctx.fill("nonzero");
         }
     }
     if (!separate || stroke) {
         ctx.beginPath();
-        for (const { p } of loops) trace(p);
+        for (const { p, holes } of loops) {
+            trace(p);
+            for (const hole of holes || []) trace(hole.p);
+        }
         if (!separate && color) ctx.fill("nonzero");
         if (stroke) {
             ctx.strokeStyle = stroke;

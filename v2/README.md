@@ -397,7 +397,8 @@ single and comparison pages, so the recipient opens the initial view.
 
 Solid sections use the actual triangle-model cut: each contour is filled independently in
 `#282828` with a 1 px outline of the same colour (it closes the seam between touching solids), without
-boolean unions. Overlapping dark shapes cannot cancel each other. The space the analysis excludes is
+boolean unions. Overlapping dark shapes cannot cancel each other; a contour inside another of the same
+layer that runs the other way round is its hole (a patio, a courtyard) and stays open. The space the analysis excludes is
 painted the same grey up to the cut geometry (`sealVoids`), so rooms and uncovered ground are never holes.
 The key plan is a cached orthographic top view of the complete model in its original colours,
 independent of the analysis, elevation, scenario and clipping planes; only the section line moves.
