@@ -193,17 +193,26 @@ sidebar is the same (analysis menu, mean over the analysed points, legend, descr
 - **3D**: the model (`model.glb`, its own colours and edge lines) with the field on a horizontal and a
   vertical section plane. The elevation slider moves the horizontal plane, the key plan places the
   vertical one. "Cut the model at the planes" removes the model between the eye and each plane (the inside
-  of a cut solid is plain grey).
-- **2D Plan**: the field at the chosen elevation, with the model cut at that height (dark lines), the
-  edges below it (light) and the section line.
-- **2D Section**: the vertical cut along the section line, with the profile of terrain and buildings,
-  model elevations on the left and the plan's height as a dashed line. "Heights" draws them ×1, ×2 or ×4.
+  of a cut solid is the dark grey of the cut geometry). Two more ways to read the field, each with its
+  tick box: "Points in the whole volume" draws every analysed point as a dot of its colour; "Colours on
+  terrain and buildings" spreads the field on the model's surfaces (read a little outside each surface;
+  canopies turn translucent, what lies outside the analysed box is pale grey).
+- **2D Plan**: the field at the chosen elevation, with the model cut at that height, the edges below it
+  (light) and the section line.
+- **2D Section**: the vertical cut along the section line, with the cut terrain and buildings, model
+  elevations on the left and the plan's height as a dashed line. "Heights" draws them ×1, ×2 or ×4.
 
-The field on a plane is a colour map sampled from the volume (trilinear), drawn only where every
-contributing node is valid: nothing is bridged across an excluded node, so the field stops up to one grid
-step before the ground and the buildings. Hovering reads the value at that point. The whole view is one
-serialisable object (`VolumeView.view()`: mode, scenario, plan height, section line, planes, cut, heights,
-camera or 2D frame), kept in the address (`mode`, `sc`, `z`, `sec`, `planes`, `vx`, `cam` / `frame`) and
+The field on a plane is a colour map sampled from the volume (trilinear between the valid nodes of each
+cell, weights rescaled: the "filled" reading of `volume.js`), so it reaches the ground and the walls instead
+of stopping one grid step before them with a stepped edge. The cut geometry is drawn over it, in plan, in
+section and on the 3D planes: terrain, buildings and the rest as one dark grey, canopies as a light green.
+It comes from the model (`meshcut.js`: the cut of each layer chained into closed outlines, filled as their
+union; a surface that is not a closed solid stays a line) and, where the model has nothing closed, from the
+mask (excluded space with an analysed point above it in the same column). The dots use the strict values
+of the nodes. Hovering reads the value at that point. The whole view is one
+serialisable object (`VolumeView.view()`: mode, scenario, plan height, section line, planes, cut, points,
+colours on surfaces, heights, camera or 2D frame), kept in the address (`mode`, `sc`, `z`, `sec`, `planes`
+with a letter per tick box: `h`, `v`, `c` cut, `p` points, `s` surfaces; `vx`, `cam` / `frame`) and
 copied by **Copy link**; it is the base for saved viewpoints and a PDF of them (not built yet: no
 "Export view" on a 3D analysis). three.js is loaded only when a 3D analysis is opened.
 
@@ -260,6 +269,19 @@ Files of a 3D study (written by the Grasshopper "EXPORT | Full noise volume + De
 3. **Preview**, hidden until an option is clicked: one row with the option's name, Image / 3D model /
    3D analysis and, at the right, one group `← → ⤢ ✕` (previous, next, full height / compact, close);
    ← → and Escape on the keyboard. It opens at the full height of the centre card (compact: 420px).
+   **3D analysis ▾** and **Table ▾** open their choices directly from the mode button. Once a
+   choice is active, only its title appears in that same button (`Winter sun ▾`). The category
+   remains available in the accessible label and full-text hover title.
+   Switching to another mode restores the inactive button's neutral label while retaining the
+   remembered layer. These two modes no longer show a separate view dropdown. Menus support
+   arrow keys, Home/End, Enter/Space, Escape, Tab and outside-click dismissal, and stay within
+   the viewport. Other modes retain their existing view selector when more than one view exists.
+   Header wrapping reserves room for the entire controls row, including previous/next,
+   compact/expand and close: the batch label moves above first, then Index joins it if needed.
+   After wrapping, the remaining controls align left; only at still smaller widths may the
+   controls row itself wrap. This follows the actual available width, including sidebar changes.
+   "Where this option stands" can be collapsed to a narrow right rail; on smaller screens its
+   content below the image can be folded with the same control. The choice survives option changes.
    **Section snapping** (`scroll-snap.js`, while the centre card scrolls inside itself): the card
    never rests with the edge between two sections (chart, open option, gallery, Compare options)
    inside the view. One wheel step that would show the next section goes all the way to it, any
@@ -324,13 +346,16 @@ instead: only `PROJECT` / `data` (which studies are open), none of the current s
 | `compare.js` | "about the same" and win rules |
 | `comparison.js` | the Compare options section (radar, strengths, values table) |
 | `comparison-focus.js` | hover preview and pinned option emphasis, without rebuilding media |
+| `preview-mode-menus.js` | integrated analysis/table menus, current-title labels and keyboard navigation |
+| `preview-header-layout.js` | measured header wrapping, preserving room for the complete navigation group |
 | `comparison-media.js` | independent media and viewer lifecycle for the shared Compare view selector |
 | `parallel.js` | parallel-coordinates chart (d3) |
 | `viewer.js` | three.js viewer: layer composition, GLB + legacy JSON, colors, camera, picking and emphasis (Program tab). Draws a frame only when the camera moves or something changes; the pieces of a layer that share a material are merged at load into one mesh (a layer used to be one draw call per glTF primitive), and the Program tab draws the apartments in one mesh per state |
 | `plan2d.js` | 2D plan viewer (SVG layers, pan / zoom by viewBox, room hover) and `legendColor()` |
 | `analysis.html` / `analysis.js` | single-analysis page: the analyses of one study (2D plans level by level, 3D fields) |
 | `volumeview.js` | a 3D analysis: the 3D scene (reuses `viewer.js`) with the two section planes, the 2D plan and section, the cuts through the model, the view state |
-| `volume.js` | reader of `volume.json` + `field.bin`: mask-aware sampling and colour-map slices |
+| `volume.js` | reader of `volume.json` + `field.bin`: mask-aware sampling (strict or filled) and colour-map slices |
+| `meshcut.js` | cuts of the model by a plane, chained into closed outlines (the solid cut geometry of plans, sections and 3D planes) |
 | `slice2d.js` | canvas drawing of a slice (image + line work, pan / zoom) and the key plan of the section line |
 | `pdfexport.js` | "Export view" on the analysis page: vector PDF (A3 landscape) of the plan as framed, with legend, rooms, score and a graphic scale; loads jsPDF 2.5.1 + svg2pdf.js 2.2.3 from jsdelivr on first use |
 | `style.css` | all styles; its colour/radius/font names are aliases of the `@acpvarchitects/ui` tokens |

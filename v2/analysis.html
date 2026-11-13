@@ -105,6 +105,8 @@
                     <label><input id="volH" type="checkbox" /> Horizontal plane</label>
                     <label><input id="volV" type="checkbox" /> Vertical plane</label>
                     <label><input id="volCut" type="checkbox" /> Cut the model at the planes</label>
+                    <label title="Every analysed point of the volume as a dot of its colour"><input id="volDots" type="checkbox" /> Points in the whole volume</label>
+                    <label title="Terrain and buildings take the colour of the field at their surface"><input id="volDrape" type="checkbox" /> Colours on terrain and buildings</label>
                 </div>
                 <!-- 2D section only: a long site is a thin strip at true scale -->
                 <div class="an-vol-row an-vol-heights">
@@ -140,6 +142,6 @@
 
     <div id="message" class="message" hidden></div>
 
-    <script type="module" src="analysis.js?v=19"></script>
+    <script type="module" src="analysis.js?v=20"></script>
 </body>
 </html>
