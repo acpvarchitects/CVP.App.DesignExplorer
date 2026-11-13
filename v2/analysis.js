@@ -31,7 +31,7 @@ let viewer; // PlanViewer of the 2D analyses
 let vol = null; // VolumeView of the 3D analysis on screen (null while it loads)
 let volumeModule = null; // volumeview.js, loaded with the first 3D analysis (it brings three.js)
 const volumes = new Map(); // layer key -> { view, els, ready }
-const VIEW_KEYS = ["mode", "sc", "z", "sec", "planes", "vx", "cam", "frame"]; // address of a 3D view
+const VIEW_KEYS = ["mode", "sc", "z", "sec", "planes", "vx", "cam", "frame", "guides"]; // address of a 3D view
 const state = { an: params.get("an") || "", level: params.get("level") || "" };
 const embedded = params.get("embedded") === "1" && window.parent !== window;
 let applyingComparison = false;
@@ -109,7 +109,13 @@ const current = () => analyses().find((l) => l.key === state.an) || analyses()[0
 const levelsOf = (layer) => (study.manifest.levels || []).filter((lv) => (layer.levels || []).includes(lv.key));
 const fmt = (v, unit) => (v == null || Number.isNaN(v) ? "–" : `${(+v).toFixed(Math.abs(v) >= 100 ? 0 : 1)}${unit ? " " + unit : ""}`);
 
+function setLoading(busy) {
+    $("loading").hidden = !busy;
+    $("app")?.setAttribute("aria-busy", String(busy));
+}
+
 function showMessage(html) {
+    setLoading(false);
     $("message").innerHTML = html;
     $("message").hidden = false;
 }
@@ -190,9 +196,11 @@ function renderTexts(layer) {
 }
 
 async function renderPlan() {
+    const request = ++renderRequest;
+    setLoading(true);
     const layer = current();
     const level = (study.manifest.levels || []).find((lv) => lv.key === state.level);
-    if (!level) return;
+    if (!level) { setLoading(false); return; }
     const file = (layer.file_pattern || layer.key + "_<level>.svg").replace("<level>", level.key);
     $("status").textContent = "Loading…";
     try {
@@ -203,6 +211,8 @@ async function renderPlan() {
         $("status").textContent = "";
     } catch (e) {
         $("status").textContent = e.message;
+    } finally {
+        if (request === renderRequest) setLoading(false);
     }
 }
 
@@ -221,6 +231,7 @@ function render() {
     publishView();
     if (is3d(current())) return showVolume(current());
     vol = null;
+    $("guideBtn").hidden = true;
     renderInfo();
     renderPlan();
     writeUrl();
@@ -231,6 +242,7 @@ function render() {
 // A view (VolumeView.view()) as address parameters, and back.
 function viewParams(v) {
     const out = { mode: v.mode, sc: v.scenario, z: v.z, sec: [...v.a, ...v.b].join(","), planes: (v.h ? "h" : "") + (v.v ? "v" : "") + (v.cut ? "c" : "") + (v.dots ? "p" : "") + (v.drape ? "s" : "") || "0" };
+    if (v.planGuide === false || v.sectionGuide === false) out.guides = (v.planGuide ? "p" : "") + (v.sectionGuide ? "s" : "") || "0";
     if (v.vx !== 1) out.vx = v.vx;
     if (v.camera) out.cam = v.camera.join(",");
     if (v.frame) out.frame = v.frame.join(",");
@@ -256,6 +268,7 @@ function viewFromParams() {
         z: list("z", 1)?.[0],
         ...(sec ? { a: sec.slice(0, 2), b: sec.slice(2) } : {}),
         ...(planes != null ? { h: planes.includes("h"), v: planes.includes("v"), cut: planes.includes("c"), dots: planes.includes("p"), drape: planes.includes("s") } : {}),
+        ...(params.has("guides") ? { planGuide: params.get("guides").includes("p"), sectionGuide: params.get("guides").includes("s") } : {}),
         vx: list("vx", 1)?.[0],
         camera: list("cam", 6),
         frame: list("frame", 3),
@@ -263,60 +276,72 @@ function viewFromParams() {
 }
 
 // Shows a 3D analysis: its panes are created at the first visit and kept (camera, planes, zoom).
+let renderRequest = 0;
+
 async function showVolume(layer) {
-    vol = null;
-    $("tooltip").hidden = true;
-    renderVolumeInfo(layer, null);
-    let entry = volumes.get(layer.key);
-    for (const e of volumes.values()) for (const el of [e.els.pane3d, e.els.pane2d, e.els.key]) el.style.display = e === entry ? "" : "none";
-    if (!entry) {
-        $("status").textContent = "Loading…";
+    const request = ++renderRequest;
+    setLoading(true);
+    try {
+        vol = null;
+        $("tooltip").hidden = true;
+        renderVolumeInfo(layer, null);
+        let entry = volumes.get(layer.key);
+        for (const e of volumes.values()) for (const el of [e.els.pane3d, e.els.pane2d, e.els.key]) el.style.display = e === entry ? "" : "none";
+        if (!entry) {
+            $("status").textContent = "Loading…";
+            try {
+                volumeModule ||= await import("./volumeview.js?v=8");
+            } catch (e) {
+                $("status").textContent = `Cannot load the 3D view: ${e.message}`;
+                return;
+            }
+            entry = volumes.get(layer.key); // asked twice while the module was loading: one view only
+        }
+        if (!entry) {
+            const pane = (parent, cls) => $(parent).appendChild(Object.assign(document.createElement("div"), { className: cls }));
+            const els = { pane3d: pane("vol", "an-vol-pane"), pane2d: pane("vol", "an-vol-pane"), key: pane("volKey", "an-vol-key"), overlay: $("volPanel") };
+            const view = new volumeModule.VolumeView(els, {
+                onChange: () => vol === view && volumeChanged(),
+                onHover: (hit, e) => vol === view && volumeHover(hit, e),
+                onStatus: (text) => current() === layer && ($("status").textContent = text),
+                onNavigate: () => { if (vol === view) { syncElevation(); publishNavigation(); } },
+            });
+            const model = (study.manifest.layers || []).find((l) => l.kind === "geometry" && /\.(glb|gltf)$/i.test(l.file || l.file_pattern || ""));
+            // the view in the address belongs to the analysis it was copied from
+            entry = { view, els, ready: view.load(study.base, layer, model, !params.has("an") || params.get("an") === layer.key ? viewFromParams() : {}) };
+            volumes.set(layer.key, entry);
+        }
         try {
-            volumeModule ||= await import("./volumeview.js?v=3");
+            await entry.ready;
         } catch (e) {
-            $("status").textContent = `Cannot load the 3D view: ${e.message}`;
+            volumes.delete(layer.key);
+            for (const el of [entry.els.pane3d, entry.els.pane2d, entry.els.key]) el.remove();
+            if (current() === layer) $("status").textContent = e.message;
             return;
         }
-        entry = volumes.get(layer.key); // asked twice while the module was loading: one view only
+        if (current() !== layer) return; // another analysis was picked meanwhile
+        vol = entry.view;
+        // Embedded viewers relay camera movement immediately, without a trailing inertia drift.
+        if (embedded) vol.viewer.controls.enableDamping = false;
+        $("volElev").max = vol.volume.size[2].toFixed(2);
+        volumeChanged();
+        publishView();
+        $("status").textContent = "";
+    } finally {
+        if (request === renderRequest) setLoading(false);
     }
-    if (!entry) {
-        const pane = (parent, cls) => $(parent).appendChild(Object.assign(document.createElement("div"), { className: cls }));
-        const els = { pane3d: pane("vol", "an-vol-pane"), pane2d: pane("vol", "an-vol-pane"), key: pane("volKey", "an-vol-key"), overlay: $("volPanel") };
-        const view = new volumeModule.VolumeView(els, {
-            onChange: () => vol === view && volumeChanged(),
-            onHover: (hit, e) => vol === view && volumeHover(hit, e),
-            onStatus: (text) => current() === layer && ($("status").textContent = text),
-            onNavigate: () => vol === view && publishNavigation(),
-        });
-        const model = (study.manifest.layers || []).find((l) => l.kind === "geometry" && /\.(glb|gltf)$/i.test(l.file || l.file_pattern || ""));
-        // the view in the address belongs to the analysis it was copied from
-        entry = { view, els, ready: view.load(study.base, layer, model, !params.has("an") || params.get("an") === layer.key ? viewFromParams() : {}) };
-        volumes.set(layer.key, entry);
-    }
-    try {
-        await entry.ready;
-    } catch (e) {
-        volumes.delete(layer.key);
-        for (const el of [entry.els.pane3d, entry.els.pane2d, entry.els.key]) el.remove();
-        if (current() === layer) $("status").textContent = e.message;
-        return;
-    }
-    if (current() !== layer) return; // another analysis was picked meanwhile
-    vol = entry.view;
-    // Embedded viewers relay camera movement immediately, without a trailing inertia drift.
-    if (embedded) vol.viewer.controls.enableDamping = false;
-    $("volElev").max = vol.volume.size[2].toFixed(2);
-    volumeChanged();
-    publishView();
 }
 
 // After any change of the 3D view: the controls, the texts and the address follow it.
 function volumeChanged() {
     const s = vol.state;
     $("view").dataset.mode = s.mode;
+    $("guideBtn").hidden = s.mode === "3d";
+    const guide = s.mode === "section" ? "planGuide" : "sectionGuide";
+    $("guideBtn").textContent = `${s[guide] ? "Hide" : "Show"} ${s.mode === "section" ? "plan" : "section"}`;
+    $("guideBtn").setAttribute("aria-pressed", String(s[guide]));
     for (const b of $("volModes").children) b.classList.toggle("on", b.dataset.mode === s.mode);
-    $("volElev").value = s.z;
-    $("volElevValue").textContent = volumeModule.elevationText(s.z + vol.volume.worldZ);
+    syncElevation();
     $("volElevLabel").textContent = s.mode === "3d" ? "Horizontal plane" : "Plan elevation";
     $("volH").checked = s.h;
     $("volV").checked = s.v;
@@ -360,7 +385,35 @@ function volumeHover(hit, e) {
     tip.hidden = false;
 }
 
+function syncElevation() {
+    const input = $("volElevValue");
+    $("volElev").value = vol.state.z;
+    input.min = +vol.volume.worldZ.toFixed(2);
+    input.max = +(vol.volume.worldZ + vol.volume.size[2]).toFixed(2);
+    input.value = +(vol.state.z + vol.volume.worldZ).toFixed(2);
+}
+
+function commitElevation() {
+    if (!vol) return;
+    const value = $("volElevValue").valueAsNumber;
+    if (Number.isFinite(value)) {
+        const z = Math.max(0, Math.min(vol.volume.size[2], value - vol.volume.worldZ));
+        vol.set({ z });
+    }
+    syncElevation(); // also restores a cleared or invalid value
+}
+
 function bindVolume() {
+    $("guideBtn").addEventListener("click", () => {
+        if (!vol) return;
+        const key = vol.state.mode === "section" ? "planGuide" : "sectionGuide";
+        vol.set({ [key]: !vol.state[key] });
+    });
+    $("volElevValue").addEventListener("change", commitElevation);
+    $("volElevValue").addEventListener("keydown", e => {
+        if (e.key === "Enter") { e.preventDefault(); commitElevation(); e.target.blur(); }
+        if (e.key === "Escape" && vol) { syncElevation(); e.target.blur(); }
+    });
     $("volModes").addEventListener("click", (e) => {
         const b = e.target.closest("button[data-mode]");
         if (b && vol) vol.set({ mode: b.dataset.mode });
@@ -378,7 +431,7 @@ function bindVolume() {
         if (!vol) return;
         vol.set({ z: +e.target.value }, { quiet: true });
         publishNavigation();
-        $("volElevValue").textContent = volumeModule.elevationText(vol.state.z + vol.volume.worldZ);
+        syncElevation();
     });
     $("volElev").addEventListener("change", () => vol && volumeChanged());
     for (const [id, key] of [["volH", "h"], ["volV", "v"], ["volCut", "cut"], ["volDots", "dots"], ["volDrape", "drape"]]) {
@@ -439,14 +492,11 @@ function bind() {
     $("shareBtn").addEventListener("click", copyLink);
 }
 
-// "Copy link": the main link of the analysis on screen - the study (PROJECT or data) and the
-// analysis, without level or zoom, so it always opens fitted. A 3D analysis adds its view (mode,
-// scenario, planes, camera): there the link is what is on screen. Same fallback as the dashboard.
+// Copy the initial study link, without analysis selections or navigation state.
 async function copyLink() {
     const enc = (v) => encodeURI(v).replace(/[&#+]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
     const keep = ["PROJECT", "data"].filter((k) => params.has(k)).map((k) => `${k}=${enc(params.get(k))}`);
-    const view = is3d(current()) && vol ? Object.entries(viewParams(vol.view())).map(([k, v]) => `${k}=${enc(String(v))}`) : [];
-    const url = `${location.origin}${location.pathname}?${[...keep, `an=${enc(state.an)}`, ...view].join("&")}`;
+    const url = `${location.origin}${location.pathname}?${keep.join("&")}`;
     try {
         await navigator.clipboard.writeText(url);
     } catch {
@@ -487,8 +537,9 @@ async function start() {
             showMessage("<h2>Select two studies</h2><p>The analysis comparison opens two studies at a time.</p>");
             return;
         }
-        const { startComparison } = await import("./analysiscompare.js?v=1");
+        const { startComparison } = await import("./analysiscompare.js?v=2");
         startComparison(params);
+        setLoading(false);
         return;
     }
     study = resolveStudy();
@@ -519,4 +570,4 @@ async function start() {
     render();
 }
 
-start();
+start().catch(e => showMessage(`<h2>Cannot load analysis</h2><p>${esc(e.message)}</p>`));

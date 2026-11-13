@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="theme/tokens/icons.css?v=1" />
     <link rel="stylesheet" href="theme/tokens/z-index.css?v=1" />
     <link rel="stylesheet" href="theme/fonts.css?v=1" />
-    <link rel="stylesheet" href="style.css?v=114" />
+    <link rel="stylesheet" href="style.css?v=117" />
     <link rel="stylesheet" href="analysiscompare.css?v=1" />
     <!-- three.js is loaded only by a study with a 3D analysis (volumeview.js) -->
     <script type="importmap">
@@ -99,7 +99,7 @@
             <div id="volPanel" class="an-vol-panel">
                 <div class="an-vol-row">
                     <span id="volElevLabel" class="eyebrow">Elevation</span>
-                    <output id="volElevValue" for="volElev"></output>
+                    <label class="an-elevation-input"><input id="volElevValue" type="number" step="any" aria-labelledby="volElevLabel" /><span>m</span></label>
                 </div>
                 <input id="volElev" type="range" min="0" max="1" step="0.1" aria-labelledby="volElevLabel" />
                 <div id="volPlanes" class="an-vol-checks">
@@ -121,7 +121,7 @@
                 <div id="volKeyBox" class="an-vol-keybox">
                     <span class="eyebrow">Section line</span>
                     <div id="volKey"></div>
-                    <p class="muted small">Drag to draw the line, or move its ends</p>
+                    <p class="muted small">Drag the line to move it, or A/B to rotate it; snaps to site axes. Scroll to zoom; right-drag to pan.</p>
                 </div>
             </div>
             <!-- Levels over the plan, top right: highest first, like a section -->
@@ -133,6 +133,7 @@
             <div class="an-tools">
                 <button id="zoomIn" type="button" aria-label="Zoom in">+</button>
                 <button id="zoomOut" type="button" aria-label="Zoom out">−</button>
+                <button id="guideBtn" type="button" hidden aria-pressed="true">Hide section</button>
                 <button id="labelsBtn" type="button" aria-pressed="true">Hide labels</button>
                 <button id="resetView" type="button">Reset view</button>
             </div>
@@ -141,8 +142,10 @@
         </section>
     </main>
 
+    <div id="loading" class="an-loading" role="status" aria-live="polite"><span class="an-spinner" aria-hidden="true"></span><span>Loading analysis...</span></div>
+
     <div id="message" class="message" hidden></div>
 
-    <script type="module" src="analysis.js?v=21"></script>
+    <script type="module" src="analysis.js?v=27"></script>
 </body>
 </html>

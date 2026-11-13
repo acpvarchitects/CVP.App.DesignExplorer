@@ -5,6 +5,9 @@ let browser;
 (async () => {
     browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--enable-unsafe-swiftshader', '--no-proxy-server'] });
     const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
+    await page.addInitScript(() => {
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText: async text => { window.copiedLink = text; } } });
+    });
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     const base = process.env.ANALYSIS_PREVIEW_URL || 'http://127.0.0.1:8127';
@@ -13,11 +16,40 @@ let browser;
     const frames = () => page.frames().filter(f => f.parentFrame() === page.mainFrame());
     await page.waitForFunction(() => ['view1', 'view2'].every(k => new URLSearchParams(location.search).has(k)), { }, { timeout: 180000 });
     assert.equal(frames().length, 2);
+    for (const frame of frames()) {
+        assert.equal(await frame.locator('#loading').isVisible(), false);
+        assert.equal(await frame.locator('#volDrape').isChecked(), true);
+        assert.equal(await frame.locator('#volV').isChecked(), true);
+        assert.equal(await frame.locator('#volElevValue').inputValue(), '14');
+        for (const id of ['volH', 'volCut', 'volDots']) assert.equal(await frame.locator('#' + id).isChecked(), false);
+    }
+    await page.locator('#shareBtn').click();
+    const copied = new URL(await page.evaluate(() => window.copiedLink));
+    assert.deepEqual([...copied.searchParams.keys()], ['PROJECT']);
+    assert.equal(copied.searchParams.get('PROJECT'), project);
     await page.locator('.ac-tabs button').filter({ hasText: /^Compare$/ }).click();
     await page.waitForFunction(() => document.querySelector('#acStatus').textContent.includes('Same colour'));
     assert.equal(await page.locator('.ac-option:visible').count(), 2);
     const [left, right] = frames();
     await page.screenshot({ path: path.resolve('v2/_test/noise-comparison-3d.png') });
+    const elevation = left.locator('#volElevValue');
+    await elevation.fill('16.25');
+    await elevation.press('Enter');
+    await right.waitForFunction(() => +document.querySelector('#volElevValue').value === 16.25);
+    assert.ok(Math.abs(+(await left.locator('#volElev').inputValue()) - 25.75) < 0.11, 'model elevation converts to local grid height');
+    await elevation.fill('-1000');
+    await elevation.press('Enter');
+    assert.equal(+(await left.locator('#volElev').inputValue()), 0, 'below range clamps to minimum');
+    await elevation.fill('1000');
+    await elevation.press('Tab');
+    await left.waitForFunction(() => +document.querySelector('#volElev').value > 40);
+    assert.ok(Math.abs(+(await left.locator('#volElev').inputValue()) - +(await left.locator('#volElev').getAttribute('max'))) < 0.11, 'above range clamps to maximum within slider step');
+    const clamped = await elevation.inputValue();
+    await elevation.fill('');
+    await elevation.press('Enter');
+    assert.equal(await elevation.inputValue(), clamped, 'empty input restores current elevation');
+    await elevation.fill('14');
+    await elevation.press('Enter');
     await left.locator('#zoomIn').click();
     await page.waitForFunction(() => {
         const p = new URLSearchParams(location.search);
@@ -28,12 +60,14 @@ let browser;
     await left.locator('#volDots').uncheck();
     await left.locator('[data-mode="plan"]').click();
     await right.waitForFunction(() => document.querySelector('#view').dataset.mode === 'plan');
+    const keyPlan = await left.locator('.slice2d-key').evaluate(c => c.toDataURL());
     await left.locator('#volElev').fill('18');
     await left.locator('#volElev').dispatchEvent('change');
     await right.waitForFunction(() => +document.querySelector('#volElev').value === 18);
     await page.locator('#acScenario').selectOption('vegetationDelta');
     for (const frame of frames()) await frame.waitForFunction(() => new URLSearchParams(location.search).get('sc') === 'vegetationDelta');
     await page.waitForFunction(() => document.querySelector('#acLegend').textContent.includes('3 dB'));
+    assert.equal(await left.locator('.slice2d-key').evaluate(c => c.toDataURL()), keyPlan, 'key plan is independent of elevation and scenario');
     await page.locator('#acLink').uncheck();
     await left.locator('[data-mode="section"]').click();
     assert.equal(await right.locator('#view').getAttribute('data-mode'), 'plan');
@@ -66,6 +100,8 @@ let browser;
     await page.waitForFunction(() => document.querySelector('#scoreValue').textContent.includes('dB'), {}, { timeout: 180000 });
     assert.equal(await page.locator('iframe').count(), 0);
     assert.equal(await page.locator('.an-side').isVisible(), true);
+    await page.locator('#shareBtn').click();
+    assert.deepEqual([...new URL(await page.evaluate(() => window.copiedLink)).searchParams.keys()], ['PROJECT']);
     // Mixed-analysis links retain individual 2D selections and levels without a volume.
     await page.route('**/layers.json*', route => route.fulfill({ json: {
         levels: [{ key: 'L1', label: 'Level 1', elevation_m: 0 }, { key: 'L2', label: 'Level 2', elevation_m: 3 }],
@@ -83,6 +119,7 @@ let browser;
     });
     await page.reload();
     await page.waitForFunction(() => new URLSearchParams(location.search).get('an2') === 'daylight');
+    await page.locator('iframe').first().waitFor();
     await frames()[0].waitForFunction(() => document.querySelector('#analysisSelect')?.value === 'sun' && document.querySelector('[data-level="L2"]')?.classList.contains('on'));
     assert.deepEqual(errors, []);
     console.log('PASS real studies: full tabs, linked plan/section/elevation, scenario scales, unlink/relink, expand, URL restore, responsive layout, single-study regression');

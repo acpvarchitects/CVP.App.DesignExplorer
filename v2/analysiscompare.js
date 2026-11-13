@@ -153,11 +153,12 @@ export function startComparison(params) {
         if (s.state?.view) send(i, "view", { ...s.state.view, scenario: $("acScenario").value });
     });
     $("shareBtn").onclick = async () => {
-        save();
-        try { await navigator.clipboard.writeText(location.href); }
+        const initial = new URL(location.pathname, location.origin);
+        for (const key of ["PROJECT", "data"]) if (params.has(key)) initial.searchParams.set(key, params.get(key));
+        try { await navigator.clipboard.writeText(initial.href); }
         catch {
             const t = document.createElement("textarea");
-            t.value = location.href;
+            t.value = initial.href;
             document.body.append(t); t.select(); document.execCommand("copy"); t.remove();
         }
         $("shareBtn").textContent = "Copied";
