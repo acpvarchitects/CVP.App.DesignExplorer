@@ -38,11 +38,12 @@ const toGl = (x, y, z, out = new THREE.Vector3()) => out.set(x, z, -y);
 
 export class VolumeView {
     // els: { pane3d, pane2d, key, overlay (the controls over the view: a 2D drawing is fitted below them) }; onChange() after any change of the view; onHover({ value, z } | null, event)
-    constructor(els, { onChange, onHover, onStatus } = {}) {
+    constructor(els, { onChange, onHover, onStatus, onNavigate } = {}) {
         this.els = els;
         this.onChange = onChange || (() => {});
         this.onHover = onHover || (() => {});
         this.onStatus = onStatus || (() => {});
+        this.onNavigate = onNavigate || (() => {});
         this.state = { mode: "3d", scenario: "", z: 0, a: [0, 0], b: [1, 1], h: true, v: true, cut: false, dots: false, drape: false, vx: 1 };
         this.frames = { plan: null, section: null }; // pan / zoom of each 2D drawing
         this.dirty = { plan: true, section: true };
@@ -86,7 +87,7 @@ export class VolumeView {
         });
         if (initial.frame && this.state.mode !== "3d") this.frames[this.state.mode] = initial.frame;
         if (initial.camera) this.setCamera(initial.camera);
-        this.viewer.controls.addEventListener("change", () => this.updateClip());
+        this.viewer.controls.addEventListener("change", () => { this.updateClip(); this.onNavigate(); });
         this.viewer.controls.addEventListener("end", () => this.onChange());
         this.bindHover3d();
         this.applyMode();
@@ -102,9 +103,22 @@ export class VolumeView {
 
     // The current scenario read as a layer: its own label / unit / legend, or the layer's.
     reading() {
+        const reading = this.nativeReading();
+        return this.legendOverride ? { ...reading, legend: this.legendOverride } : reading;
+    }
+
+    nativeReading() {
         const sc = this.scenarios().find((s) => s.key === this.state.scenario) || {};
         const { layer } = this;
         return { key: sc.key, label: sc.label || layer.label, unit: sc.unit ?? layer.unit, better: sc.better ?? layer.better, legend: sc.legend || layer.legend };
+    }
+
+    setLegend(legend) {
+        if (JSON.stringify(this.legendOverride || null) === JSON.stringify(legend || null)) return;
+        this.legendOverride = legend;
+        this.dirty.plan = this.dirty.section = true;
+        this.dotsFor = null;
+        this.refresh();
     }
 
     // Mean of a scenario over the analysed points.
@@ -143,13 +157,14 @@ export class VolumeView {
             this.frames.section = null; // another drawing
             if (s.mode === "section") this.sceneFor = null;
         }
-        if (s.a !== before.a || s.b !== before.b) {
+        if (s.a.some((n, i) => n !== before.a[i]) || s.b.some((n, i) => n !== before.b[i])) {
             this.dirty.section = true;
             this.frames.section = null; // a new line is a new drawing: fitted again
             if (s.mode === "section") this.sceneFor = null;
         }
         if (s.mode !== before.mode) this.applyMode();
         this.refresh();
+        if (quiet) this.onNavigate();
         if (!quiet) this.onChange();
     }
 
@@ -167,8 +182,13 @@ export class VolumeView {
     }
 
     applyView(view) {
-        if (view.frame && view.mode !== "3d") this.frames[view.mode] = [...view.frame];
         this.set(view, { quiet: true });
+        // set() may reset a section frame when its line or vertical scale changes.
+        if (view.mode !== "3d") {
+            this.frames[this.state.mode] = view.frame ? [...view.frame] : null;
+            this.sceneFor = null;
+            this.refresh();
+        }
         if (view.camera) this.setCamera(view.camera);
         this.onChange();
     }
