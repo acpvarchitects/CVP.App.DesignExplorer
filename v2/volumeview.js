@@ -18,7 +18,7 @@
 import * as THREE from "three";
 import { Viewer } from "./viewer.js?v=46";
 import { loadVolume, colourLut, texturePixels } from "./volume.js?v=3";
-import { SliceView, KeyPlan, drawLoops, drawScaleBar, drawSectionLine, snapSectionEnd } from "./slice2d.js?v=9";
+import { SliceView, KeyPlan, drawLoops, drawScaleBar, drawSectionLine, snapSectionEnd } from "./slice2d.js?v=10";
 import { cutModel, insideLoops, tallLoops } from "./meshcut.js?v=5";
 
 const SOFT_LAYER = /plant|tree|veget/i; // canopies: not solid for the analysis, drawn apart from terrain and buildings
@@ -533,7 +533,8 @@ export class VolumeView {
             const r = Math.floor(((h - (rect[3] - (y + 0.5) / sy)) / h) * slice.h);
             rows[y] = r >= 0 && r < slice.h ? r * slice.w : -1;
         }
-        // 0 = open air, 1 = cut geometry, 2 = excluded space, 3 = cut geometry bounding it
+        // 0 = open air, 1 = cut geometry, 2 = excluded space, 3 = cut geometry bounding it,
+        // 4 = cut geometry away from the open air
         const solid = new Uint8Array(W * H);
         for (let y = 0, i = 0; y < H; y++) {
             const row = rows[y];
@@ -574,6 +575,18 @@ export class VolumeView {
                 if (r && d && !wall(i + 1) && !wall(i + W)) reach(i + W + 1);
             }
             front = next;
+        }
+        // The cut geometry is painted here too, except its rim on the open air (drawn over this, with a
+        // smooth edge). Two solids about a pixel apart, or a hole that thin, are only half covered by
+        // their own edges: without this the page under them shows as a light line at some zooms.
+        for (let y = 0, i = 0; y < H; y++) {
+            for (let x = 0; x < W; x++, i++) {
+                if (solid[i] !== 1) continue;
+                const l = x > 0, r = x < W - 1, u = y > 0, d = y < H - 1;
+                if ((l && !solid[i - 1]) || (r && !solid[i + 1]) || (u && !solid[i - W]) || (d && !solid[i + W])) continue;
+                if ((l && u && !solid[i - W - 1]) || (r && u && !solid[i - W + 1]) || (l && d && !solid[i + W - 1]) || (r && d && !solid[i + W + 1])) continue;
+                solid[i] = 4;
+            }
         }
         for (let i = 0, o = 0; i < solid.length; i++, o += 4) {
             px[o] = px[o + 1] = px[o + 2] = SOLID_GREY;

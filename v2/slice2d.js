@@ -128,16 +128,21 @@ export class SliceView {
         const { clientWidth: W, clientHeight: H } = this.container;
         if (!W || !H || !this.scene || !this.frame) return;
         const dpr = window.devicePixelRatio || 1, mpp = this.frame[2];
-        const [left, top] = this.metres(0, 0), [right, bottom] = this.metres(W, H);
         const images = (this.scene.images || []).filter((im) => im.sharp);
         for (const key of [...this.sharp.keys()]) if (!images.some((im) => im.key === key)) this.sharp.delete(key);
         let changed = false;
         for (const im of images) {
             const sig = this.signature(im);
             if (this.sharp.get(im.key)?.sig === sig) continue;
-            const rect = [Math.max(im.rect[0], left), Math.max(im.rect[1], bottom), Math.min(im.rect[2], right), Math.min(im.rect[3], top)];
-            if (rect[2] <= rect[0] || rect[3] <= rect[1]) continue;
-            let w = ((rect[2] - rect[0]) / mpp) * dpr, h = ((rect[3] - rect[1]) / mpp) * dpr;
+            // the part in view, on whole pixels of the screen: drawn back one to one, nothing is resampled
+            // (a rendering shifted by a fraction of a pixel would leave seams against the vector fills)
+            const [l, t] = this.px(im.rect[0], im.rect[3]), [r, b] = this.px(im.rect[2], im.rect[1]);
+            const L = Math.floor(Math.max(l, 0) * dpr), T = Math.floor(Math.max(t, 0) * dpr);
+            const R = Math.ceil(Math.min(r, W) * dpr), B = Math.ceil(Math.min(b, H) * dpr);
+            if (R <= L || B <= T) continue;
+            const [x0, y1] = this.metres(L / dpr, T / dpr), [x1, y0] = this.metres(R / dpr, B / dpr);
+            const rect = [x0, y0, x1, y1];
+            let w = R - L, h = B - T;
             const fit = Math.min(1, 4096 / w, 4096 / h, Math.sqrt(6e6 / (w * h))); // a very large screen: a little less than its pixels
             w = Math.max(1, Math.round(w * fit));
             h = Math.max(1, Math.round(h * fit));
