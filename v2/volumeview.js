@@ -287,7 +287,9 @@ export class VolumeView {
             // The model cut defines the solid boundaries; the space the analysis excludes (inside a
             // building, below the ground) is filled up to them, never left empty.
             this.planCut = null;
-            this.planSlice = this.sealVoids(volume.plan(s.scenario, legend, s.z), lx, ly, this.cutPlan());
+            const field = volume.plan(s.scenario, legend, s.z);
+            this.planSlice = this.sealVoids(field, lx, ly, this.cutPlan());
+            this.planSlice.raw = field; // the field alone, for the sharp rendering
             this.planSlice.id = this.sliceId = (this.sliceId || 0) + 1;
             this.dirty.plan = false;
             this.planTextureFor = null;
@@ -298,7 +300,9 @@ export class VolumeView {
         }
         if (this.dirty.section && (s.mode === "section" || showV)) {
             this.sectionCut = null;
-            this.sectionSlice = this.sealVoids(volume.section(s.scenario, legend, s.a, s.b), len, lz, this.cutSection());
+            const field = volume.section(s.scenario, legend, s.a, s.b);
+            this.sectionSlice = this.sealVoids(field, len, lz, this.cutSection());
+            this.sectionSlice.raw = field;
             this.sectionSlice.id = this.sliceId = (this.sliceId || 0) + 1;
             this.dirty.section = false;
             this.sectionTextureFor = null;
@@ -561,15 +565,23 @@ export class VolumeView {
         return { w: slice.w, h: slice.h, canvas, solid, sw: W, sh: H };
     }
 
-    // A part of a sealed slice at the screen's resolution: the same picture (the field and the excluded
-    // space are smooth, enlarging them loses nothing and decides nothing anew), plus the inside of the
-    // cut geometry painted solid under the vector fills. Two solids a pixel or two apart, or a hole that
-    // thin, are only half covered by their own antialiased edges: without this the page under them
-    // shows as a light line at some zooms. Only pixels the geometry covers, with geometry all around,
-    // are painted: nothing is ever added outside the cut geometry.
+    // A part of a sealed slice at the screen's resolution, with a sharp edge. What is solid is NOT decided
+    // again here: it is read from the picture of the whole drawing (sealVoids), which is the same at every
+    // zoom. Nothing outside the cut geometry is painted unless that picture has it solid there, so nothing
+    // can appear or vanish with the zoom. Three kinds of pixel:
+    //  - where the picture has excluded space: solid, with the rim smoothed (not the picture's own pixels)
+    //  - in its last pixel against the geometry (the picture cannot tell the two sides of a wall apart
+    //    there): solid, except what is open to the air on this side of the wall, found at this resolution
+    //  - on the cut geometry: solid under the vector fills, except its rim on the open air, so two solids
+    //    a pixel or two apart do not show a light line between them
     // part: { rect: [x0, y0, x1, y1] metres (y up), w, h pixels }; the slice covers [0, w] x [0, h] metres.
     sharpSlice(slice, w, h, cut, part) {
-        const W = part.w, H = part.h, rect = part.rect;
+        const base = slice.solid, bw = slice.sw, bh = slice.sh;
+        // worked out two pixels of the picture wider on every side, for what is open to the air next to the part
+        const px0 = (part.rect[2] - part.rect[0]) / part.w, py0 = (part.rect[3] - part.rect[1]) / part.h;
+        const mx = Math.ceil((2 * w) / bw / px0) + 2, my = Math.ceil((2 * h) / bh / py0) + 2;
+        const rect = [part.rect[0] - mx * px0, part.rect[1] - my * py0, part.rect[2] + mx * px0, part.rect[3] + my * py0];
+        const W = part.w + 2 * mx, H = part.h + 2 * my;
         const scratch = (this.voidScratch ||= document.createElement("canvas"));
         scratch.width = W;
         scratch.height = H;
@@ -577,30 +589,106 @@ export class VolumeView {
         const sx = W / (rect[2] - rect[0]), sy = H / (rect[3] - rect[1]);
         const ox = -rect[0] * sx, oy = rect[3] * sy; // a point (x, y) is the pixel (ox + x * sx, oy - y * sy)
         drawLoops(ctx, { loops: cut.main.loops, color: "#000", stroke: "#000", width: 1, separate: true }, sx, ox, -sy, oy);
+        const open = cut.main.open;
+        ctx.beginPath();
+        for (let i = 0; i + 3 < open.length; i += 4) {
+            ctx.moveTo(ox + open[i] * sx, oy - open[i + 1] * sy);
+            ctx.lineTo(ox + open[i + 2] * sx, oy - open[i + 3] * sy);
+        }
+        ctx.stroke();
         const image = ctx.getImageData(0, 0, W, H), px = image.data;
-        const covered = new Uint8Array(W * H);
-        for (let i = 0; i < covered.length; i++) covered[i] = px[i * 4 + 3] ? 1 : 0;
+        // where each column and row falls in the picture, for a reading between its pixels
+        const ci = new Int32Array(W), cf = new Float32Array(W), ri = new Int32Array(H), rf = new Float32Array(H);
+        for (let x = 0; x < W; x++) {
+            const f = ((rect[0] + (x + 0.5) / sx) / w) * bw - 0.5;
+            ci[x] = Math.floor(f);
+            cf[x] = f - ci[x];
+        }
+        for (let y = 0; y < H; y++) {
+            const f = ((h - (rect[3] - (y + 0.5) / sy)) / h) * bh - 0.5;
+            ri[y] = Math.floor(f);
+            rf[y] = f - ri[y];
+        }
+        const at = (i, j) => (i < 0 || j < 0 || i >= bw || j >= bh ? 0 : base[i + j * bw]);
+        // 0 = open air, 1 = cut geometry, 2 = excluded space, 5 = its last pixel against the geometry,
+        // 6 = that last pixel, open to the air
+        const state = new Uint8Array(W * H);
+        for (let y = 0, i = 0; y < H; y++) {
+            const j = ri[y], fy = rf[y];
+            for (let x = 0; x < W; x++, i++) {
+                if (px[i * 4 + 3]) {
+                    state[i] = 1;
+                    continue;
+                }
+                const c = ci[x], fx = cf[x];
+                const a = at(c, j), b = at(c + 1, j), d = at(c, j + 1), e = at(c + 1, j + 1);
+                if (!(a | b | d | e)) continue; // nothing of the picture near: open air
+                const w00 = (1 - fx) * (1 - fy), w10 = fx * (1 - fy), w01 = (1 - fx) * fy, w11 = fx * fy;
+                const solid = (a >= 2 ? w00 : 0) + (b >= 2 ? w10 : 0) + (d >= 2 ? w01 : 0) + (e >= 2 ? w11 : 0);
+                if (solid < 0.5) continue;
+                const core = (a === 2 ? w00 : 0) + (b === 2 ? w10 : 0) + (d === 2 ? w01 : 0) + (e === 2 ? w11 : 0);
+                state[i] = core >= 0.5 ? 2 : 5;
+            }
+        }
+        // the open air enters the last pixel of the picture, never the excluded space itself, and stops at the geometry
+        let front = [];
+        const enter = (j) => {
+            if (state[j] === 5) {
+                state[j] = 6;
+                front.push(j);
+            }
+        };
         for (let y = 0, i = 0; y < H; y++) {
             for (let x = 0; x < W; x++, i++) {
+                if (state[i]) continue;
+                if (x > 0) enter(i - 1);
+                if (x < W - 1) enter(i + 1);
+                if (y > 0) enter(i - W);
+                if (y < H - 1) enter(i + W);
+            }
+        }
+        while (front.length) {
+            const now = front;
+            front = [];
+            for (const i of now) {
+                const x = i % W, y = (i - x) / W;
                 const l = x > 0, r = x < W - 1, u = y > 0, d = y < H - 1;
-                const inside = covered[i] &&
-                    (!l || covered[i - 1]) && (!r || covered[i + 1]) && (!u || covered[i - W]) && (!d || covered[i + W]) &&
-                    (!l || !u || covered[i - W - 1]) && (!r || !u || covered[i - W + 1]) && (!l || !d || covered[i + W - 1]) && (!r || !d || covered[i + W + 1]);
+                if (l) enter(i - 1);
+                if (r) enter(i + 1);
+                if (u) enter(i - W);
+                if (d) enter(i + W);
+                // diagonally only through a real gap, never between two pixels of a thin wall
+                if (l && u && state[i - 1] !== 1 && state[i - W] !== 1) enter(i - W - 1);
+                if (r && u && state[i + 1] !== 1 && state[i - W] !== 1) enter(i - W + 1);
+                if (l && d && state[i - 1] !== 1 && state[i + W] !== 1) enter(i + W - 1);
+                if (r && d && state[i + 1] !== 1 && state[i + W] !== 1) enter(i + W + 1);
+            }
+        }
+        const air = (j) => state[j] === 0 || state[j] === 6;
+        for (let y = 0, i = 0; y < H; y++) {
+            for (let x = 0; x < W; x++, i++) {
+                let paint = state[i] === 2 || state[i] === 5;
+                if (state[i] === 1) {
+                    const l = x > 0, r = x < W - 1, u = y > 0, d = y < H - 1;
+                    paint = !((l && air(i - 1)) || (r && air(i + 1)) || (u && air(i - W)) || (d && air(i + W)) ||
+                        (l && u && air(i - W - 1)) || (r && u && air(i - W + 1)) || (l && d && air(i + W - 1)) || (r && d && air(i + W + 1)));
+                }
                 const o = i * 4;
                 px[o] = px[o + 1] = px[o + 2] = SOLID_GREY;
-                px[o + 3] = inside ? 255 : 0;
+                px[o + 3] = paint ? 255 : 0;
             }
         }
         ctx.putImageData(image, 0, 0);
         const canvas = document.createElement("canvas");
-        canvas.width = W;
-        canvas.height = H;
+        canvas.width = part.w;
+        canvas.height = part.h;
         const out = canvas.getContext("2d");
         out.imageSmoothingEnabled = true;
         out.imageSmoothingQuality = "high";
-        const kx = slice.canvas.width / w, ky = slice.canvas.height / h;
-        out.drawImage(slice.canvas, rect[0] * kx, (h - rect[3]) * ky, (rect[2] - rect[0]) * kx, (rect[3] - rect[1]) * ky, 0, 0, W, H);
-        out.drawImage(scratch, 0, 0);
+        // the field alone under it (smooth: enlarging it loses nothing), then what is solid
+        const field = slice.raw.canvas, kx = field.width / w, ky = field.height / h;
+        out.drawImage(field, part.rect[0] * kx, (h - part.rect[3]) * ky, (part.rect[2] - part.rect[0]) * kx, (part.rect[3] - part.rect[1]) * ky, 0, 0, part.w, part.h);
+        out.drawImage(scratch, mx, my, part.w, part.h, 0, 0, part.w, part.h);
         return canvas;
     }
 
@@ -659,7 +747,7 @@ export class VolumeView {
             pad: [this.padTop(), 40, 56, 40],
             // the model's edges: a coarse picture of the whole plan, replaced by the part in view at screen resolution
             // the field with the excluded space painted solid: one picture of the whole plan; for the part
-            // in view, the inside of the cut geometry is added under the vector fills (sharpSlice)
+            // in view, the same with a sharp edge (sharpSlice: bounded by that picture)
             images: [{
                 canvas: this.planSlice.canvas,
                 rect: [0, 0, lx, ly],
