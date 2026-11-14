@@ -44,7 +44,7 @@ const assert = require('node:assert/strict');
         await key.click({ position: { x: 70, y: 50 } });
         assert.equal(await page.evaluate(() => JSON.stringify([testVolume.state.a, testVolume.state.b])), originalLine, 'arbitrary key-plan clicks do not create sections');
         const snap = await page.evaluate(async () => {
-            const { snapSectionEnd } = await import('/v2/slice2d.js?v=8');
+            const { snapSectionEnd } = await import('/v2/slice2d.js?v=9');
             return [[3, 90], [90, 3], [45, 60]].map(p => snapSectionEnd(p, [0, 0], [0, 0, 100, 100]));
         });
         assert.deepEqual(snap, [[0, 90], [90, 0], [45, 60]], 'orthogonal snap prefers both site axes and permits diagonal sections');

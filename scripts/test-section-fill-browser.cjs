@@ -13,7 +13,7 @@ const assert = require('node:assert/strict');
         await page.goto(`${base}/v2/analysis.html?PROJECT=ZRCH_261113_HotelNoise_Option02_Updated_Paths_Grid1p6_SectionFixed_v1&mode=section&sec=306.7,0,306.7,283&z=17.31`);
         await page.waitForFunction(() => window.testVolume?.slice && document.querySelector('#loading').hidden, {}, { timeout: 180000 });
         const result = await page.evaluate(async () => {
-            const { drawLoops } = await import('/v2/slice2d.js?v=8');
+            const { drawLoops } = await import('/v2/slice2d.js?v=9');
             const { cutModel, insideLoops } = await import('/v2/meshcut.js?v=5');
             const canvas = document.createElement('canvas');
             canvas.width = canvas.height = 80;
