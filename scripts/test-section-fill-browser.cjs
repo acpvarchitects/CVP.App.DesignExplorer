@@ -93,7 +93,7 @@ const assert = require('node:assert/strict');
         for (const cut of result.withDepth) {
             assert.equal(cut.projected, 1, `with view depth the section at ${cut.x} projects the model beyond the plane`);
             assert.ok(cut.lines > 0, `the projection at ${cut.x} has edge lines`);
-            assert.ok(cut.strongest <= Math.ceil(255 * 0.3) + 2, `the projection at ${cut.x} stays light (alpha ${cut.strongest})`);
+            assert.ok(cut.strongest <= Math.ceil(255 * 0.22) + 2, `the projection at ${cut.x} stays light where lines overlap (alpha ${cut.strongest})`);
         }
         await page.screenshot({ path: 'v2/_test/section-fixed-306p7.png' });
         console.log(`PASS independent fills, original trees, ${result.cuts.length} real terrain cuts with no white interior samples`);

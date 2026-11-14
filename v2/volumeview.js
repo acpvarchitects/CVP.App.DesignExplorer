@@ -4,7 +4,7 @@
 //              point, or spread on terrain and buildings
 //   "plan"     the field at one elevation, with the model cut at that height
 //   "section"  the vertical cut along the section line, with the cut terrain and buildings and,
-//              within the view depth, the edge lines of the model beyond the plane (lighter with distance)
+//              within the view depth, the edge lines of the model beyond the plane (uniformly light)
 // The field on a plane is a colour map sampled from the volume (volume.js, "filled" reading): it
 // reaches the cut geometry, which is drawn over it as a solid dark grey (canopies apart, lighter).
 //
@@ -35,7 +35,7 @@ const VOID_MAX = 4e6; // and to this many pixels at most
 const TEXTURE_SCALE = 2; // a plane's texture, in pixels per pixel of the field slice: sharper cut geometry
 const DOT_SIZE = 0.4; // dot diameter, in grid steps
 const CANOPY_OPACITY = 0.28; // canopies while the colours are on the surfaces
-const PROJECTION_OPACITY = 0.3; // edge lines beyond a section, at the plane; they fade to nothing at the view depth
+const PROJECTION_OPACITY = 0.22; // edge lines beyond a section: one light tone, whatever their distance
 const VIEW_DEPTH = [1, 500]; // metres
 
 // local metres (Rhino, Z up) -> the model's glTF coordinates (Y up)
@@ -49,7 +49,7 @@ export class VolumeView {
         this.onHover = onHover || (() => {});
         this.onStatus = onStatus || (() => {});
         this.onNavigate = onNavigate || (() => {});
-        this.state = { mode: "3d", scenario: "", z: 0, a: [0, 0], b: [1, 1], h: false, v: true, cut: false, dots: false, drape: true, planGuide: true, sectionGuide: true, vx: 1, viewDepth: true, viewDepthM: 30 };
+        this.state = { mode: "3d", scenario: "", z: 0, a: [0, 0], b: [1, 1], h: false, v: true, cut: false, dots: false, drape: true, planGuide: true, sectionGuide: true, vx: 1, viewDepth: true, viewDepthM: 15 };
         this.frames = { plan: null, section: null }; // pan / zoom of each 2D drawing
         this.dirty = { plan: true, section: true };
         this.means = {};
@@ -350,19 +350,6 @@ export class VolumeView {
                 };
                 node.material = Array.isArray(node.material) ? node.material.map(copy) : copy(node.material);
             });
-            // The edge lines can fade with the distance from the camera (the projection of a section).
-            this.fade = { uFadeStart: { value: 0 }, uFadeRange: { value: 1e9 } };
-            for (const material of this.drawingMaterials) {
-                if (!material.isLineBasicMaterial) continue;
-                material.onBeforeCompile = (shader) => {
-                    Object.assign(shader.uniforms, this.fade);
-                    shader.vertexShader = "varying float vFade;\n" + shader.vertexShader.replace("#include <project_vertex>", "#include <project_vertex>\n\tvFade = - mvPosition.z;");
-                    shader.fragmentShader =
-                        "uniform float uFadeStart;\nuniform float uFadeRange;\nvarying float vFade;\n" +
-                        shader.fragmentShader.replace("#include <opaque_fragment>", "#include <opaque_fragment>\n\tgl_FragColor.a *= clamp( 1.0 - ( vFade - uFadeStart ) / uFadeRange, 0.0, 1.0 );");
-                };
-                material.customProgramCacheKey = () => "volume-projection";
-            }
             this.drawingScene.add(model);
             this.drawingBox = new THREE.Box3().setFromObject(model);
         }
@@ -373,19 +360,14 @@ export class VolumeView {
         const depth = box.getSize(new THREE.Vector3()).length() + 20;
         const camera = new THREE.OrthographicCamera(-len / 2, len / 2, height / 2, -height / 2, 0.1, depth * 2);
         const planes = [];
-        this.fade.uFadeStart.value = 0;
-        this.fade.uFadeRange.value = 1e9; // no fading
         if (section) {
-            // Seen from in front of the plane: only what lies behind it, up to the view depth, and
-            // lighter the farther it is.
+            // Seen from in front of the plane: only what lies behind it, up to the view depth.
             const { a, b, viewDepthM } = this.state;
             const normal = new THREE.Vector3((b[1] - a[1]) / len, 0, (b[0] - a[0]) / len);
             const center = toGl((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, lz / 2);
             camera.position.copy(center).addScaledVector(normal, depth);
             camera.lookAt(center);
             planes.push(new THREE.Plane(normal.clone().negate(), normal.dot(center)), new THREE.Plane(normal.clone(), viewDepthM - normal.dot(center)));
-            this.fade.uFadeStart.value = depth;
-            this.fade.uFadeRange.value = viewDepthM;
         } else {
             camera.position.set(lx / 2, box.max.y + 10, -ly / 2);
             camera.up.set(0, 0, -1);

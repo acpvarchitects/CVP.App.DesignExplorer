@@ -14,7 +14,7 @@
 // URL: ?PROJECT=<folder> (or ?data=<folder url>) [&an=<layer key>] [&level=<level key>]
 //   a 3D analysis keeps its view in the address: mode (3d | plan | section), sc (scenario), z (plan height),
 //   sec (ax,ay,bx,by of the section line), planes (h, v, c = cut, p = points, s = colours on the surfaces),
-//   vd (view depth of the section in metres, 0 = off; absent = 30), vx (heights of the section × 1, 2, 4),
+//   vd (view depth of the section in metres, 0 = off; absent = 15), vx (heights of the section × 1, 2, 4),
 //   cam or frame (3D camera, 2D pan / zoom)
 import { PlanViewer, legendColor } from "./plan2d.js?v=5";
 import { sectionsHtml } from "./about.js?v=4";
@@ -246,7 +246,7 @@ function viewParams(v) {
     if (v.planGuide === false || v.sectionGuide === false) out.guides = (v.planGuide ? "p" : "") + (v.sectionGuide ? "s" : "") || "0";
     if (v.vx !== 1) out.vx = v.vx;
     if (!v.viewDepth) out.vd = 0; // view depth of the section: off, or its metres when not the default
-    else if (v.viewDepthM !== 30) out.vd = v.viewDepthM;
+    else if (v.viewDepthM !== 15) out.vd = v.viewDepthM;
     if (v.camera) out.cam = v.camera.join(",");
     if (v.frame) out.frame = v.frame.join(",");
     return out;
@@ -294,7 +294,7 @@ async function showVolume(layer) {
         if (!entry) {
             $("status").textContent = "Loading…";
             try {
-                volumeModule ||= await import("./volumeview.js?v=16");
+                volumeModule ||= await import("./volumeview.js?v=17");
             } catch (e) {
                 $("status").textContent = `Cannot load the 3D view: ${e.message}`;
                 return;

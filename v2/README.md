@@ -202,10 +202,10 @@ sidebar is the same (analysis menu, mean over the analysed points, legend, descr
   (light) and the section line.
 - **2D Section**: the vertical cut along the section line, with the cut terrain and buildings, model
   elevations on the left and the plan's height as a dashed line. "Heights" draws them ×1, ×2 or ×4.
-  **View depth** (tick box and metres, bottom right, 30 m by default): with the tick, the edge lines of
-  the model beyond the plane are drawn up to that depth, very light and lighter with distance (lines
-  only, hidden where a nearer surface covers them, never the surfaces' shading); without it, only what
-  the plane cuts.
+  **View depth** (tick box and metres, bottom right, 15 m by default): with the tick, the edge lines of
+  the model beyond the plane are drawn up to that depth, all in the same very light tone (lines only,
+  hidden where a nearer surface covers them, never the surfaces' shading); without it, only what the
+  plane cuts.
 
 The field on a plane is a colour map sampled from the volume (trilinear between the valid nodes of each
 cell, weights rescaled: the "filled" reading of `volume.js`), so it reaches the ground and the walls instead
@@ -422,11 +422,12 @@ In the key plan, dragging the existing line translates it; clicks away from the 
 Plans show the analysis, dark cut fill and exposed model edges only; sections show the analysis,
 the cut fill and, when **View depth** is ticked, the projection of the model's edge lines beyond the
 plane up to the chosen depth (user instruction, 2026-11-14; they had been removed on 2026-11-13). The
-projection is 30% black at the plane and fades linearly to nothing at the view depth (a per-fragment
-fade on the line material of the drawing scene, `modelPlan("section")`). Uncut
+projection is one light tone, 22% black like the plan's edges, with no fading by distance (a fade was
+tried and removed the same day: user instruction), and overlapping lines do not add up: each pixel
+keeps its darkest line (`modelPlan("section")`). Uncut
 surfaces write depth to hide lines behind nearer geometry; their shading/colours are never
 composited into the drawing. The separate key plan retains the model's original colours.
-The view depth is part of the view (`viewDepth`, `viewDepthM`; address `vd`: metres, 0 = off, absent = 30),
+The view depth is part of the view (`viewDepth`, `viewDepthM`; address `vd`: metres, 0 = off, absent = 15),
 so linked comparison views share it.
 Section endpoints stay inset from the key-plan border so both handles remain reachable.
 Orthogonal snapping is limited to 8 screen pixels as well as the angle threshold, so a long
