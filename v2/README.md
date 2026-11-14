@@ -200,9 +200,12 @@ sidebar is the same (analysis menu, mean over the analysed points, legend, descr
   canopies turn translucent, what lies outside the analysed box is pale grey).
 - **2D Plan**: the field at the chosen elevation, with the model cut at that height, the edges below it
   (light) and the section line.
-- **2D Section**: the vertical cut along the section line, with the cut terrain and buildings only (the
-  model beyond the plane is not projected), model elevations on the left and the plan's height as a
-  dashed line. "Heights" draws them ×1, ×2 or ×4.
+- **2D Section**: the vertical cut along the section line, with the cut terrain and buildings, model
+  elevations on the left and the plan's height as a dashed line. "Heights" draws them ×1, ×2 or ×4.
+  **View depth** (tick box and metres, bottom right, 30 m by default): with the tick, the edge lines of
+  the model beyond the plane are drawn up to that depth, very light and lighter with distance (lines
+  only, hidden where a nearer surface covers them, never the surfaces' shading); without it, only what
+  the plane cuts.
 
 The field on a plane is a colour map sampled from the volume (trilinear between the valid nodes of each
 cell, weights rescaled: the "filled" reading of `volume.js`), so it reaches the ground and the walls instead
@@ -416,16 +419,25 @@ In 2D Section, **Hide/Show plan** toggles the draggable horizontal plan line. In
 **Hide/Show section** toggles the section line: drag the line to translate it or its endpoints
 to rotate it. Both the plan and key plan snap within 8 degrees of either site axis;
 In the key plan, dragging the existing line translates it; clicks away from the line and endpoints never create or move a section. Other drags still pan the drawing. Guide visibility is kept in the view address.
-Plans show the analysis, dark cut fill and exposed model edges only; sections show the analysis
-and the cut fill, with no projection of the model beyond the plane (user instruction, 2026-11-13). Uncut
+Plans show the analysis, dark cut fill and exposed model edges only; sections show the analysis,
+the cut fill and, when **View depth** is ticked, the projection of the model's edge lines beyond the
+plane up to the chosen depth (user instruction, 2026-11-14; they had been removed on 2026-11-13). The
+projection is 30% black at the plane and fades linearly to nothing at the view depth (a per-fragment
+fade on the line material of the drawing scene, `modelPlan("section")`). Uncut
 surfaces write depth to hide lines behind nearer geometry; their shading/colours are never
 composited into the drawing. The separate key plan retains the model's original colours.
+The view depth is part of the view (`viewDepth`, `viewDepthM`; address `vd`: metres, 0 = off, absent = 30),
+so linked comparison views share it.
 Section endpoints stay inset from the key-plan border so both handles remain reachable.
 Orthogonal snapping is limited to 8 screen pixels as well as the angle threshold, so a long
 section can still be freely rotated by an intentional drag.
 
-Projection edges use the original light 22% black appearance. Cut tree canopies keep their
+Plan edges use the original light 22% black appearance. Cut tree canopies keep their
 original translucent green fill and outline.
+
+Only what is on screen is computed: a slice (field raster, model cut, sealed voids) when its 2D drawing
+or its 3D plane is shown, a plane's texture when that plane is shown in 3D. The default 3D view (vertical
+plane only) therefore skips the plan slice and its texture at opening.
 
 Section contour assembly repairs dangling endpoints within 1 mm by checking their geometric
 distance across rounding buckets. Existing closed contours are left alone; larger openings

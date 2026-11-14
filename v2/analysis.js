@@ -13,7 +13,8 @@
 //             layer kind "geometry" (file "model.glb")
 // URL: ?PROJECT=<folder> (or ?data=<folder url>) [&an=<layer key>] [&level=<level key>]
 //   a 3D analysis keeps its view in the address: mode (3d | plan | section), sc (scenario), z (plan height),
-//   sec (ax,ay,bx,by of the section line), planes (h, v, c = cut, p = points, s = colours on the surfaces), vx (heights of the section × 1, 2, 4),
+//   sec (ax,ay,bx,by of the section line), planes (h, v, c = cut, p = points, s = colours on the surfaces),
+//   vd (view depth of the section in metres, 0 = off; absent = 30), vx (heights of the section × 1, 2, 4),
 //   cam or frame (3D camera, 2D pan / zoom)
 import { PlanViewer, legendColor } from "./plan2d.js?v=5";
 import { sectionsHtml } from "./about.js?v=4";
@@ -31,7 +32,7 @@ let viewer; // PlanViewer of the 2D analyses
 let vol = null; // VolumeView of the 3D analysis on screen (null while it loads)
 let volumeModule = null; // volumeview.js, loaded with the first 3D analysis (it brings three.js)
 const volumes = new Map(); // layer key -> { view, els, ready }
-const VIEW_KEYS = ["mode", "sc", "z", "sec", "planes", "vx", "cam", "frame", "guides"]; // address of a 3D view
+const VIEW_KEYS = ["mode", "sc", "z", "sec", "planes", "vx", "vd", "cam", "frame", "guides"]; // address of a 3D view
 const state = { an: params.get("an") || "", level: params.get("level") || "" };
 const embedded = params.get("embedded") === "1" && window.parent !== window;
 let applyingComparison = false;
@@ -231,7 +232,7 @@ function render() {
     publishView();
     if (is3d(current())) return showVolume(current());
     vol = null;
-    $("guideBtn").hidden = true;
+    $("guideBtn").hidden = $("depthBox").hidden = true;
     renderInfo();
     renderPlan();
     writeUrl();
@@ -244,6 +245,8 @@ function viewParams(v) {
     const out = { mode: v.mode, sc: v.scenario, z: v.z, sec: [...v.a, ...v.b].join(","), planes: (v.h ? "h" : "") + (v.v ? "v" : "") + (v.cut ? "c" : "") + (v.dots ? "p" : "") + (v.drape ? "s" : "") || "0" };
     if (v.planGuide === false || v.sectionGuide === false) out.guides = (v.planGuide ? "p" : "") + (v.sectionGuide ? "s" : "") || "0";
     if (v.vx !== 1) out.vx = v.vx;
+    if (!v.viewDepth) out.vd = 0; // view depth of the section: off, or its metres when not the default
+    else if (v.viewDepthM !== 30) out.vd = v.viewDepthM;
     if (v.camera) out.cam = v.camera.join(",");
     if (v.frame) out.frame = v.frame.join(",");
     return out;
@@ -270,6 +273,7 @@ function viewFromParams() {
         ...(planes != null ? { h: planes.includes("h"), v: planes.includes("v"), cut: planes.includes("c"), dots: planes.includes("p"), drape: planes.includes("s") } : {}),
         ...(params.has("guides") ? { planGuide: params.get("guides").includes("p"), sectionGuide: params.get("guides").includes("s") } : {}),
         vx: list("vx", 1)?.[0],
+        ...(list("vd", 1) ? { viewDepth: list("vd", 1)[0] > 0, ...(list("vd", 1)[0] > 0 ? { viewDepthM: list("vd", 1)[0] } : {}) } : {}),
         camera: list("cam", 6),
         frame: list("frame", 3),
     };
@@ -290,7 +294,7 @@ async function showVolume(layer) {
         if (!entry) {
             $("status").textContent = "Loading…";
             try {
-                volumeModule ||= await import("./volumeview.js?v=15");
+                volumeModule ||= await import("./volumeview.js?v=16");
             } catch (e) {
                 $("status").textContent = `Cannot load the 3D view: ${e.message}`;
                 return;
@@ -340,6 +344,10 @@ function volumeChanged() {
     const guide = s.mode === "section" ? "planGuide" : "sectionGuide";
     $("guideBtn").textContent = `${s[guide] ? "Hide" : "Show"} ${s.mode === "section" ? "plan" : "section"}`;
     $("guideBtn").setAttribute("aria-pressed", String(s[guide]));
+    $("depthBox").hidden = s.mode !== "section";
+    $("depthOn").checked = s.viewDepth;
+    $("depthM").disabled = !s.viewDepth;
+    if (document.activeElement !== $("depthM")) $("depthM").value = s.viewDepthM;
     for (const b of $("volModes").children) b.classList.toggle("on", b.dataset.mode === s.mode);
     syncElevation();
     $("volElevLabel").textContent = s.mode === "3d" ? "Horizontal plane" : "Plan elevation";
@@ -408,6 +416,18 @@ function bindVolume() {
         if (!vol) return;
         const key = vol.state.mode === "section" ? "planGuide" : "sectionGuide";
         vol.set({ [key]: !vol.state[key] });
+    });
+    // View depth of the section: the tick shows the lines beyond the plane, the number is how far.
+    $("depthOn").addEventListener("change", (e) => vol && vol.set({ viewDepth: e.target.checked }));
+    const commitDepth = () => {
+        if (!vol) return;
+        const value = $("depthM").valueAsNumber;
+        if (Number.isFinite(value) && value > 0) vol.set({ viewDepthM: value });
+        $("depthM").value = vol.state.viewDepthM; // also restores a cleared or out-of-range value
+    };
+    $("depthM").addEventListener("change", commitDepth);
+    $("depthM").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); commitDepth(); e.target.blur(); }
     });
     $("volElevValue").addEventListener("change", commitElevation);
     $("volElevValue").addEventListener("keydown", e => {

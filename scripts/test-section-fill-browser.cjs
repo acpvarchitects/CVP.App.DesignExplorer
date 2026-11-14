@@ -57,13 +57,25 @@ const assert = require('node:assert/strict');
                 return { empty, sealed };
             };
             const voids = [];
+            // "View depth" off: only what the plane cuts. On: one image of the model's edge lines beyond it.
+            const withDepth = [];
             for (const x of [248.7, 306.7]) {
-                v.set({ a: [x, 0], b: [x, 283] }, { quiet: true });
+                v.set({ a: [x, 0], b: [x, 283], viewDepth: false }, { quiet: true });
                 v.update();
                 voids.push({ x, ...holes(v.sectionSlice), projected: v.sectionScene().images.length - 1 });
+                v.set({ viewDepth: true, viewDepthM: 30 }, { quiet: true });
+                v.update();
+                const scene = v.sectionScene(), c = scene.images[1]?.canvas;
+                const alpha = c ? c.getContext('2d').getImageData(0, 0, c.width, c.height).data.filter((_, i) => i % 4 === 3) : [];
+                let lines = 0, strongest = 0;
+                for (const a of alpha) { if (a) lines++; if (a > strongest) strongest = a; }
+                withDepth.push({ x, projected: scene.images.length - 1, lines, strongest });
             }
+            // a slice exists only while its drawing or its 3D plane is on screen
+            v.set({ mode: 'plan' }, { quiet: true });
+            v.update();
             voids.push({ x: 'plan', ...holes(v.planSlice), projected: 0 });
-            return { overlap, canopyCancelled, canopyAlpha, cuts, voids };
+            return { overlap, canopyCancelled, canopyAlpha, cuts, voids, withDepth };
         });
         assert.deepEqual(result.overlap, [40, 40, 40, 255], 'opposite-winding overlapping solids never cancel');
         assert.equal(result.canopyCancelled, 0, 'shared translucent fill behavior stays unchanged');
@@ -76,7 +88,12 @@ const assert = require('node:assert/strict');
         for (const cut of result.voids) {
             assert.equal(cut.empty, 0, `no empty pixel inside the analysed box at ${cut.x}`);
             assert.ok(cut.sealed > 0, `excluded space is painted solid at ${cut.x}`);
-            assert.equal(cut.projected, 0, `the section at ${cut.x} shows no projected model`);
+            assert.equal(cut.projected, 0, `without view depth the section at ${cut.x} shows no projected model`);
+        }
+        for (const cut of result.withDepth) {
+            assert.equal(cut.projected, 1, `with view depth the section at ${cut.x} projects the model beyond the plane`);
+            assert.ok(cut.lines > 0, `the projection at ${cut.x} has edge lines`);
+            assert.ok(cut.strongest <= Math.ceil(255 * 0.3) + 2, `the projection at ${cut.x} stays light (alpha ${cut.strongest})`);
         }
         await page.screenshot({ path: 'v2/_test/section-fixed-306p7.png' });
         console.log(`PASS independent fills, original trees, ${result.cuts.length} real terrain cuts with no white interior samples`);

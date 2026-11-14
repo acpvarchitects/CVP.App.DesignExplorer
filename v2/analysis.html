@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="theme/tokens/icons.css?v=1" />
     <link rel="stylesheet" href="theme/tokens/z-index.css?v=1" />
     <link rel="stylesheet" href="theme/fonts.css?v=1" />
-    <link rel="stylesheet" href="style.css?v=117" />
+    <link rel="stylesheet" href="style.css?v=121" />
     <link rel="stylesheet" href="analysiscompare.css?v=1" />
     <!-- three.js is loaded only by a study with a 3D analysis (volumeview.js) -->
     <script type="importmap">
@@ -133,6 +133,11 @@
             <div class="an-tools">
                 <button id="zoomIn" type="button" aria-label="Zoom in">+</button>
                 <button id="zoomOut" type="button" aria-label="Zoom out">−</button>
+                <!-- 2D section of a 3D analysis: the model's edge lines beyond the plane, up to this depth -->
+                <label id="depthBox" class="an-depth" hidden title="Edge lines of the model beyond the section plane, lighter with distance, up to this depth">
+                    <input id="depthOn" type="checkbox" /> View depth
+                    <input id="depthM" type="number" min="1" max="500" step="1" aria-label="View depth in metres" /><span>m</span>
+                </label>
                 <button id="guideBtn" type="button" hidden aria-pressed="true">Hide section</button>
                 <button id="labelsBtn" type="button" aria-pressed="true">Hide labels</button>
                 <button id="resetView" type="button">Reset view</button>
@@ -146,6 +151,6 @@
 
     <div id="message" class="message" hidden></div>
 
-    <script type="module" src="analysis.js?v=34"></script>
+    <script type="module" src="analysis.js?v=35"></script>
 </body>
 </html>
