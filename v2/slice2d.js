@@ -2,7 +2,10 @@
 // in metres with Y up, pan and zoom.
 //   const v = new SliceView(container, { onHover(point|null, event), onFrame() })
 //   v.show({ extent: [x0, y0, x1, y1],            // what "fit" frames
-//            images: [{ canvas, rect: [x0, y0, x1, y1] }],
+//            images: [{ canvas, rect: [x0, y0, x1, y1], key?, sharp?(rect, w, h) -> canvas }],
+//                    // sharp: the same drawing rendered again for a part of it (rect) at w x h pixels; key names its content.
+//                    // When the view rests, the part in view is asked at the screen's own resolution, so thin
+//                    // line work stays thin at any zoom instead of being a stretched picture.
 //            fills:  [{ loops: [{ p: Float32Array [x,y,…], holes: [{ p }] }], color, stroke, width, separate }],  // independent opaque solids or shared translucent fill
 //            lines:  [{ segs: Float32Array [x1,y1,x2,y2,…], color, width, dash }],
 //            clip:   [x0, y0, x1, y1] | null,      // lines are drawn inside it only
@@ -21,6 +24,7 @@ export class SliceView {
         this.scene = null;
         this.frame = null; // [cx, cy, metres per pixel]; null until fitted
         this.moved = false;
+        this.sharp = new Map(); // image key -> { canvas, rect, mpp, sig }: its part in view at screen resolution
         this.bind();
         new ResizeObserver(() => this.draw()).observe(container);
     }
@@ -104,6 +108,45 @@ export class SliceView {
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, W, H);
         paintScene(ctx, this.scene, this);
+        // images that can be rendered sharper: once the view has rested for a moment
+        clearTimeout(this.sharpTimer);
+        if ((this.scene.images || []).some((im) => im.sharp && this.sharp.get(im.key)?.sig !== this.signature(im))) this.sharpTimer = setTimeout(() => this.refine(), 140);
+    }
+
+    signature(im) {
+        return [im.key, ...this.frame, this.container.clientWidth, this.container.clientHeight, window.devicePixelRatio || 1].join();
+    }
+
+    // The sharp rendering of an image, while it still fits: same content and same zoom (after a pan
+    // it covers the old view only, until the next one arrives).
+    sharpFor(im) {
+        const s = this.sharp.get(im.key);
+        return s && Math.abs(s.mpp - this.frame[2]) <= 1e-9 * s.mpp ? s : null;
+    }
+
+    refine() {
+        const { clientWidth: W, clientHeight: H } = this.container;
+        if (!W || !H || !this.scene || !this.frame) return;
+        const dpr = window.devicePixelRatio || 1, mpp = this.frame[2];
+        const [left, top] = this.metres(0, 0), [right, bottom] = this.metres(W, H);
+        const images = (this.scene.images || []).filter((im) => im.sharp);
+        for (const key of [...this.sharp.keys()]) if (!images.some((im) => im.key === key)) this.sharp.delete(key);
+        let changed = false;
+        for (const im of images) {
+            const sig = this.signature(im);
+            if (this.sharp.get(im.key)?.sig === sig) continue;
+            const rect = [Math.max(im.rect[0], left), Math.max(im.rect[1], bottom), Math.min(im.rect[2], right), Math.min(im.rect[3], top)];
+            if (rect[2] <= rect[0] || rect[3] <= rect[1]) continue;
+            let w = ((rect[2] - rect[0]) / mpp) * dpr, h = ((rect[3] - rect[1]) / mpp) * dpr;
+            const fit = Math.min(1, 4096 / w, 4096 / h, Math.sqrt(6e6 / (w * h))); // a very large screen: a little less than its pixels
+            w = Math.max(1, Math.round(w * fit));
+            h = Math.max(1, Math.round(h * fit));
+            const canvas = im.sharp(rect, w, h);
+            if (!canvas) continue;
+            this.sharp.set(im.key, { canvas, rect, mpp, sig });
+            changed = true;
+        }
+        if (changed) this.paint();
     }
 
     bind() {
@@ -169,7 +212,8 @@ export function paintScene(ctx, scene, view) {
     const mpp = view.frame[2];
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
-    for (const im of scene.images || []) {
+    for (const image of scene.images || []) {
+        const im = (image.sharp && view.sharpFor?.(image)) || image; // its part in view at screen resolution, when there is one
         const [x0, y0, x1, y1] = im.rect;
         const [l, t] = view.px(x0, y1);
         ctx.drawImage(im.canvas, l, t, (x1 - x0) / mpp, (y1 - y0) / mpp);

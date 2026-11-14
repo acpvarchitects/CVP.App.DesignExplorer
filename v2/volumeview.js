@@ -3,7 +3,8 @@
 //              planes, one horizontal and one vertical; optionally also as dots at every analysed
 //              point, or spread on terrain and buildings
 //   "plan"     the field at one elevation, with the model cut at that height
-//   "section"  the vertical cut along the section line, with the cut terrain and buildings
+//   "section"  the vertical cut along the section line, with the cut terrain and buildings and,
+//              within the view depth, the edge lines of the model beyond the plane (uniformly light)
 // The field on a plane is a colour map sampled from the volume (volume.js, "filled" reading): it
 // reaches the cut geometry, which is drawn over it as a solid dark grey (canopies apart, lighter).
 //
@@ -12,11 +13,12 @@
 //   z, a, b in the volume's local metres (Z up); camera in the model's own coordinates (glTF, Y up);
 //   h / v = the horizontal / vertical plane is shown in 3D; cut = the model is cut away in front of the planes;
 //   dots = every analysed point is a dot in 3D; drape = terrain and buildings take the colour of the field at their surface;
-//   vx = heights drawn 1, 2 or 4 times larger in the 2D section (a long site is a very thin strip at true scale).
+//   vx = heights drawn 1, 2 or 4 times larger in the 2D section (a long site is a very thin strip at true scale);
+//   viewDepth / viewDepthM = the 2D section shows the model's edge lines up to that many metres beyond the plane.
 import * as THREE from "three";
 import { Viewer } from "./viewer.js?v=46";
 import { loadVolume, colourLut, texturePixels } from "./volume.js?v=3";
-import { SliceView, KeyPlan, drawLoops, drawScaleBar, drawSectionLine, snapSectionEnd } from "./slice2d.js?v=8";
+import { SliceView, KeyPlan, drawLoops, drawScaleBar, drawSectionLine, snapSectionEnd } from "./slice2d.js?v=9";
 import { cutModel, insideLoops, tallLoops } from "./meshcut.js?v=5";
 
 const SOFT_LAYER = /plant|tree|veget/i; // canopies: not solid for the analysis, drawn apart from terrain and buildings
@@ -33,6 +35,8 @@ const VOID_MAX = 4e6; // and to this many pixels at most
 const TEXTURE_SCALE = 2; // a plane's texture, in pixels per pixel of the field slice: sharper cut geometry
 const DOT_SIZE = 0.4; // dot diameter, in grid steps
 const CANOPY_OPACITY = 0.28; // canopies while the colours are on the surfaces
+const PROJECTION_OPACITY = 0.22; // edge lines beyond a section: one light tone, whatever their distance
+const VIEW_DEPTH = [1, 500]; // metres
 
 // local metres (Rhino, Z up) -> the model's glTF coordinates (Y up)
 const toGl = (x, y, z, out = new THREE.Vector3()) => out.set(x, z, -y);
@@ -45,7 +49,7 @@ export class VolumeView {
         this.onHover = onHover || (() => {});
         this.onStatus = onStatus || (() => {});
         this.onNavigate = onNavigate || (() => {});
-        this.state = { mode: "3d", scenario: "", z: 0, a: [0, 0], b: [1, 1], h: false, v: true, cut: false, dots: false, drape: true, planGuide: true, sectionGuide: true, vx: 1 };
+        this.state = { mode: "3d", scenario: "", z: 0, a: [0, 0], b: [1, 1], h: false, v: true, cut: false, dots: false, drape: true, planGuide: true, sectionGuide: true, vx: 1, viewDepth: true, viewDepthM: 15 };
         this.frames = { plan: null, section: null }; // pan / zoom of each 2D drawing
         this.dirty = { plan: true, section: true };
         this.means = {};
@@ -145,7 +149,8 @@ export class VolumeView {
         for (const [k, v] of Object.entries(patch)) {
             if (k === "z" && Number.isFinite(v)) out.z = Math.min(Math.max(v, 0), lz);
             else if ((k === "a" || k === "b") && point(v)) out[k] = point(v);
-            else if (["h", "v", "cut", "dots", "drape", "planGuide", "sectionGuide"].includes(k) && v != null) out[k] = !!v;
+            else if (["h", "v", "cut", "dots", "drape", "planGuide", "sectionGuide", "viewDepth"].includes(k) && v != null) out[k] = !!v;
+            else if (k === "viewDepthM" && Number.isFinite(v)) out.viewDepthM = Math.min(Math.max(v, VIEW_DEPTH[0]), VIEW_DEPTH[1]);
             else if (k === "vx" && [1, 2, 4].includes(v)) out.vx = v;
             else if (k === "mode" || k === "scenario") out[k] = v;
         }
@@ -180,7 +185,8 @@ export class VolumeView {
         const r = (v, d = 2) => +v.toFixed(d);
         const out = {
             mode: s.mode, scenario: s.scenario, z: r(s.z), a: s.a.map((v) => r(v, 1)), b: s.b.map((v) => r(v, 1)),
-            planGuide: s.planGuide, sectionGuide: s.sectionGuide, h: s.h, v: s.v, cut: s.cut, dots: s.dots, drape: s.drape, vx: s.vx, camera: null, frame: null,
+            planGuide: s.planGuide, sectionGuide: s.sectionGuide, h: s.h, v: s.v, cut: s.cut, dots: s.dots, drape: s.drape, vx: s.vx,
+            viewDepth: s.viewDepth, viewDepthM: s.viewDepthM, camera: null, frame: null,
         };
         if (s.mode === "3d") out.camera = this.getCamera();
         else if (this.frames[s.mode]) out.frame = this.frames[s.mode].map((v, i) => r(v, i === 2 ? 4 : 1));
@@ -273,19 +279,31 @@ export class VolumeView {
         const { legend } = this.reading();
         const [lx, ly, lz] = volume.size;
         const len = Math.max(this.sectionLength(), 1);
-        if (this.dirty.plan) {
+        // Only what is on screen is computed: a slice when its drawing or its plane is shown, a
+        // plane's texture when that plane is shown in 3D. The rest waits until it is asked for.
+        const in3d = s.mode === "3d";
+        const showH = in3d && s.h, showV = in3d && s.v && this.sectionLength() > 0.5;
+        if (this.dirty.plan && (s.mode === "plan" || showH)) {
             // The model cut defines the solid boundaries; the space the analysis excludes (inside a
             // building, below the ground) is filled up to them, never left empty.
             this.planCut = null;
             this.planSlice = this.sealVoids(volume.plan(s.scenario, legend, s.z), lx, ly, this.cutPlan());
             this.dirty.plan = false;
-            setTexture(this.hPlane, this.planeTexture(this.planSlice, lx, ly, this.cutPlan()));
+            this.planTextureFor = null;
         }
-        if (this.dirty.section) {
+        if (showH && this.planTextureFor !== this.planSlice) {
+            setTexture(this.hPlane, this.planeTexture(this.planSlice, lx, ly, this.cutPlan()));
+            this.planTextureFor = this.planSlice;
+        }
+        if (this.dirty.section && (s.mode === "section" || showV)) {
             this.sectionCut = null;
             this.sectionSlice = this.sealVoids(volume.section(s.scenario, legend, s.a, s.b), len, lz, this.cutSection());
             this.dirty.section = false;
+            this.sectionTextureFor = null;
+        }
+        if (showV && this.sectionTextureFor !== this.sectionSlice) {
             setTexture(this.vPlane, this.planeTexture(this.sectionSlice, len, lz, this.cutSection()));
+            this.sectionTextureFor = this.sectionSlice;
         }
         // the 3D scene: planes, dots, colours on the surfaces
         setQuad(this.hPlane, [toGl(0, 0, s.z), toGl(lx, 0, s.z), toGl(lx, ly, s.z), toGl(0, ly, s.z)]);
@@ -310,7 +328,9 @@ export class VolumeView {
 
     // An independent, uncut top view of the model, captured before analysis shaders are added.
     // A render target leaves the interactive camera and its canvas untouched.
-    modelPlan(mode = "key") {
+    // part: { rect: [x0, y0, x1, y1] in the drawing's metres, w, h pixels } renders only that part at
+    // that size (the lines of a drawing at the screen's resolution); without it, the whole drawing.
+    modelPlan(mode = "key", part = null) {
         const [lx, ly] = this.volume.size;
         if (!this.model) return { images: [], edges: [] };
         if (!this.drawingScene) {
@@ -340,26 +360,28 @@ export class VolumeView {
         const len = section ? Math.max(this.sectionLength(), 1) : lx;
         const height = section ? lz : ly;
         const depth = box.getSize(new THREE.Vector3()).length() + 20;
-        const camera = new THREE.OrthographicCamera(-len / 2, len / 2, height / 2, -height / 2, 0.1, depth * 2);
-        let plane = null;
+        const rect = part ? part.rect : [0, 0, len, height];
+        const camera = new THREE.OrthographicCamera(rect[0] - len / 2, rect[2] - len / 2, rect[3] - height / 2, rect[1] - height / 2, 0.1, depth * 2);
+        const planes = [];
         if (section) {
-            const { a, b } = this.state;
+            // Seen from in front of the plane: only what lies behind it, up to the view depth.
+            const { a, b, viewDepthM } = this.state;
             const normal = new THREE.Vector3((b[1] - a[1]) / len, 0, (b[0] - a[0]) / len);
             const center = toGl((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, lz / 2);
             camera.position.copy(center).addScaledVector(normal, depth);
             camera.lookAt(center);
-            plane = new THREE.Plane(normal.clone().negate(), normal.dot(center));
+            planes.push(new THREE.Plane(normal.clone().negate(), normal.dot(center)), new THREE.Plane(normal.clone(), viewDepthM - normal.dot(center)));
         } else {
             camera.position.set(lx / 2, box.max.y + 10, -ly / 2);
             camera.up.set(0, 0, -1);
             camera.lookAt(lx / 2, box.min.y, -ly / 2);
-            if (mode === "plan") plane = new THREE.Plane(new THREE.Vector3(0, -1, 0), this.state.z);
+            if (mode === "plan") planes.push(new THREE.Plane(new THREE.Vector3(0, -1, 0), this.state.z));
         }
         for (const material of this.drawingMaterials) {
-            material.clippingPlanes = plane ? [plane] : null;
+            material.clippingPlanes = planes.length ? planes : null;
             material.needsUpdate = true;
         }
-        const w = 1536, h = Math.min(2048, Math.max(1, Math.round(w * height / len)));
+        const w = part ? part.w : 1536, h = part ? part.h : Math.min(2048, Math.max(1, Math.round(w * height / len)));
         const target = new THREE.WebGLRenderTarget(w, h, { samples: 4 });
         target.texture.colorSpace = THREE.SRGBColorSpace;
         const renderer = this.viewer.renderer, previous = renderer.getRenderTarget();
@@ -377,9 +399,9 @@ export class VolumeView {
             const ctx = canvas.getContext("2d"), image = ctx.createImageData(w, h);
             for (let y = 0; y < h; y++) image.data.set(pixels.subarray((h - y - 1) * w * 4, (h - y) * w * 4), y * w * 4);
             ctx.putImageData(image, 0, 0);
-            return { canvas, rect: [0, 0, len, height] };
+            return { canvas, rect };
         };
-        const lineStyles = new Map([...this.drawingMaterials].filter(material => material.isLineBasicMaterial).map(material => [material, { color: material.color.clone(), opacity: material.opacity, transparent: material.transparent, depthWrite: material.depthWrite }]));
+        const lineStyles = new Map([...this.drawingMaterials].filter(material => material.isLineBasicMaterial).map(material => [material, { color: material.color.clone(), opacity: material.opacity, transparent: material.transparent, depthWrite: material.depthWrite, blending: material.blending }]));
         const offsets = new Map([...this.drawingMaterials].map(material => [material, [material.polygonOffset, material.polygonOffsetFactor, material.polygonOffsetUnits]]));
         try {
             renderer.setClearAlpha(0);
@@ -393,9 +415,16 @@ export class VolumeView {
                     material.colorWrite = !!material.isLineBasicMaterial;
                     if (material.isLineBasicMaterial) {
                         material.color.set(0x000000);
-                        material.opacity = 0.22;
+                        material.opacity = section ? PROJECTION_OPACITY : 0.22;
                         material.transparent = true;
                         material.depthWrite = false;
+                        if (section) {
+                            // The projection keeps the darkest line of each pixel instead of adding them up:
+                            // many edges behind one another (a facade seen edge-on) stay as light as one.
+                            material.blending = THREE.CustomBlending;
+                            material.blendEquation = material.blendEquationAlpha = THREE.MaxEquation;
+                            material.blendSrc = material.blendDst = material.blendSrcAlpha = material.blendDstAlpha = THREE.OneFactor;
+                        }
                     }
                     if (!material.isLineBasicMaterial) {
                         material.polygonOffset = true;
@@ -415,6 +444,7 @@ export class VolumeView {
                     material.opacity = style.opacity;
                     material.transparent = style.transparent;
                     material.depthWrite = style.depthWrite;
+                    material.blending = style.blending;
                 }
                 [material.polygonOffset, material.polygonOffsetFactor, material.polygonOffsetUnits] = offsets.get(material);
             }
@@ -582,7 +612,12 @@ export class VolumeView {
             pick: (point, view) => this.pickGuide(point, view),
             extent: [0, 0, lx, ly],
             pad: [this.padTop(), 40, 56, 40],
-            images: [{ canvas: this.planSlice.canvas, rect: [0, 0, lx, ly] }, ...this.planDrawing.edges],
+            // the model's edges: a coarse picture of the whole plan, replaced by the part in view at screen resolution
+            images: [{ canvas: this.planSlice.canvas, rect: [0, 0, lx, ly] }, ...this.planDrawing.edges.map((edges) => ({
+                ...edges,
+                key: `plan ${this.state.z}`,
+                sharp: (rect, w, h) => this.modelPlan("plan", { rect, w, h }).edges[0]?.canvas,
+            }))],
             fills: [{ loops: cut.main.loops, ...SOLID }, { loops: cut.soft.loops, ...CANOPY }],
             lines: [{ segs: cut.soft.open, ...SOFT_LINE }, { segs: cut.main.open, ...OPEN_LINE }],
             decorate: (ctx, view) => {
@@ -605,13 +640,30 @@ export class VolumeView {
         const cut = this.cutSection();
         const world = this.volume.worldZ;
         const k = this.state.vx;
-        // Only what the plane cuts: the model beyond it is not projected onto the section.
+        // "View depth": the edge lines of the model beyond the plane, hidden where a surface covers
+        // them, drawn over the field and under the cut geometry. Without it, only what the plane cuts.
+        let projection = [];
+        if (this.state.viewDepth && this.model) {
+            const key = [...this.state.a, ...this.state.b, this.state.viewDepthM].join();
+            if (this.sectionDrawingKey !== key) {
+                this.sectionDrawing = this.modelPlan("section");
+                this.sectionDrawingKey = key;
+            }
+            // a coarse picture of the whole section, replaced by the part in view at screen resolution
+            // (heights are drawn k times taller than they are)
+            projection = this.sectionDrawing.edges.map(({ canvas }) => ({
+                canvas,
+                rect: [0, 0, len, lz * k],
+                key: `section ${key} ${k}`,
+                sharp: (rect, w, h) => this.modelPlan("section", { rect: [rect[0], rect[1] / k, rect[2], rect[3] / k], w, h }).edges[0]?.canvas,
+            }));
+        }
         const tall = (segs) => (k === 1 ? segs : segs.map((v, i) => (i & 1 ? v * k : v)));
         return {
             pick: (point, view) => this.pickGuide(point, view),
             extent: [0, 0, len, lz * k],
             pad: [this.padTop(), 110, 70, 70],
-            images: [{ canvas: this.sectionSlice.canvas, rect: [0, 0, len, lz * k] }],
+            images: [{ canvas: this.sectionSlice.canvas, rect: [0, 0, len, lz * k] }, ...projection],
             fills: [{ loops: tallLoops(cut.main.loops, k), ...SOLID }, { loops: tallLoops(cut.soft.loops, k), ...CANOPY }],
             lines: [{ segs: tall(cut.soft.open), ...SOFT_LINE }, { segs: tall(cut.main.open), ...OPEN_LINE }],
             clip: [0, -3 * k, len, (lz + 12) * k],
