@@ -488,70 +488,39 @@ export class VolumeView {
     // by one grid step instead, stopped by the cut geometry: the solid ends on the faces of the
     // model wherever it has any, and on the mask only where it has none.
     // The slice covers [0, w] x [0, h] metres, row 0 at the top. `solid` >= 2 marks those pixels.
-    // part: { rect: [x0, y0, x1, y1] metres (y up), w, h pixels } gives that part alone, as a canvas of
-    // that size: the same result at the screen's resolution, for a view zoomed far past VOID_PX.
-    sealVoids(slice, w, h, cut, part = null) {
-        const grid = Math.max(this.volume.sx, this.volume.sy, this.volume.sz);
-        let rect = [0, 0, w, h], W, H, mx = 0, my = 0;
-        if (part) {
-            // worked out one grid step wider on every side: the excluded space just outside grows into the part
-            const px = (part.rect[2] - part.rect[0]) / part.w, py = (part.rect[3] - part.rect[1]) / part.h;
-            mx = Math.ceil(grid / px) + 2;
-            my = Math.ceil(grid / py) + 2;
-            rect = [part.rect[0] - mx * px, part.rect[1] - my * py, part.rect[2] + mx * px, part.rect[3] + my * py];
-            W = part.w + 2 * mx;
-            H = part.h + 2 * my;
-        } else {
-            const fit = n => Math.max(1, Math.round(n / VOID_PX));
-            let kx = fit(w / slice.w), ky = fit(h / slice.h);
-            while (slice.w * kx * slice.h * ky > VOID_MAX && (kx > 1 || ky > 1)) kx >= ky ? kx-- : ky--;
-            W = slice.w * kx;
-            H = slice.h * ky;
-        }
+    sealVoids(slice, w, h, cut) {
+        const fit = n => Math.max(1, Math.round(n / VOID_PX));
+        let kx = fit(w / slice.w), ky = fit(h / slice.h);
+        while (slice.w * kx * slice.h * ky > VOID_MAX && (kx > 1 || ky > 1)) kx >= ky ? kx-- : ky--;
+        const W = slice.w * kx, H = slice.h * ky;
         const scratch = (this.voidScratch ||= document.createElement("canvas"));
         scratch.width = W;
         scratch.height = H;
         const ctx = scratch.getContext("2d", { willReadFrequently: true });
-        const sx = W / (rect[2] - rect[0]), sy = H / (rect[3] - rect[1]);
-        const ox = -rect[0] * sx, oy = rect[3] * sy; // a point (x, y) is the pixel (ox + x * sx, oy - y * sy)
-        drawLoops(ctx, { loops: cut.main.loops, color: "#000", stroke: "#000", width: 1, separate: true }, sx, ox, -sy, oy);
+        const sx = W / w, sy = H / h;
+        drawLoops(ctx, { loops: cut.main.loops, color: "#000", stroke: "#000", width: 1, separate: true }, sx, 0, -sy, H);
         const open = cut.main.open;
         ctx.beginPath();
         for (let i = 0; i + 3 < open.length; i += 4) {
-            ctx.moveTo(ox + open[i] * sx, oy - open[i + 1] * sy);
-            ctx.lineTo(ox + open[i + 2] * sx, oy - open[i + 3] * sy);
+            ctx.moveTo(open[i] * sx, H - open[i + 1] * sy);
+            ctx.lineTo(open[i + 2] * sx, H - open[i + 3] * sy);
         }
         ctx.stroke();
         const image = ctx.getImageData(0, 0, W, H), px = image.data;
-        // the cell of the slice under each pixel column and row (-1: outside the slice)
-        const cols = new Int32Array(W), rows = new Int32Array(H);
-        for (let x = 0; x < W; x++) {
-            const c = Math.floor(((rect[0] + (x + 0.5) / sx) / w) * slice.w);
-            cols[x] = c >= 0 && c < slice.w ? c : -1;
-        }
-        for (let y = 0; y < H; y++) {
-            const r = Math.floor(((h - (rect[3] - (y + 0.5) / sy)) / h) * slice.h);
-            rows[y] = r >= 0 && r < slice.h ? r * slice.w : -1;
-        }
-        // 0 = open air, 1 = cut geometry, 2 = excluded space, 3 = cut geometry bounding it,
-        // 4 = cut geometry away from the open air
+        // 0 = open air, 1 = cut geometry, 2 = excluded space, 3 = cut geometry bounding it
         const solid = new Uint8Array(W * H);
-        for (let y = 0, i = 0; y < H; y++) {
-            const row = rows[y];
-            for (let x = 0; x < W; x++, i++) {
-                if (px[i * 4 + 3]) solid[i] = 1;
-                else if (row >= 0 && cols[x] >= 0 && slice.excluded[row + cols[x]]) solid[i] = 2;
-            }
-        }
-        // it grows from its rim only
         let front = [];
         for (let y = 0, i = 0; y < H; y++) {
+            const row = ((y / ky) | 0) * slice.w;
             for (let x = 0; x < W; x++, i++) {
-                if (solid[i] !== 2) continue;
-                if ((x > 0 && solid[i - 1] !== 2) || (x < W - 1 && solid[i + 1] !== 2) || (y > 0 && solid[i - W] !== 2) || (y < H - 1 && solid[i + W] !== 2)) front.push(i);
+                if (px[i * 4 + 3]) solid[i] = 1;
+                else if (slice.excluded[row + ((x / kx) | 0)]) {
+                    solid[i] = 2;
+                    front.push(i);
+                }
             }
         }
-        const steps = Math.ceil(grid / Math.min(1 / sx, 1 / sy)) + 1;
+        const steps = Math.ceil(Math.max(this.volume.sx, this.volume.sy, this.volume.sz) / Math.min(w / W, h / H)) + 1;
         for (let step = 0; step < steps && front.length; step++) {
             const next = [];
             const reach = (j) => {
@@ -576,42 +545,63 @@ export class VolumeView {
             }
             front = next;
         }
-        // The cut geometry is painted here too, except its rim on the open air (drawn over this, with a
-        // smooth edge). Two solids about a pixel apart, or a hole that thin, are only half covered by
-        // their own edges: without this the page under them shows as a light line at some zooms.
-        for (let y = 0, i = 0; y < H; y++) {
-            for (let x = 0; x < W; x++, i++) {
-                if (solid[i] !== 1) continue;
-                const l = x > 0, r = x < W - 1, u = y > 0, d = y < H - 1;
-                if ((l && !solid[i - 1]) || (r && !solid[i + 1]) || (u && !solid[i - W]) || (d && !solid[i + W])) continue;
-                if ((l && u && !solid[i - W - 1]) || (r && u && !solid[i - W + 1]) || (l && d && !solid[i + W - 1]) || (r && d && !solid[i + W + 1])) continue;
-                solid[i] = 4;
-            }
-        }
         for (let i = 0, o = 0; i < solid.length; i++, o += 4) {
             px[o] = px[o + 1] = px[o + 2] = SOLID_GREY;
             px[o + 3] = solid[i] >= 2 ? 255 : 0;
         }
         ctx.putImageData(image, 0, 0);
         const canvas = document.createElement("canvas");
-        const out = canvas.getContext("2d");
-        if (part) {
-            canvas.width = part.w;
-            canvas.height = part.h;
-            out.imageSmoothingEnabled = true;
-            out.imageSmoothingQuality = "high";
-            // the field of that part (it is smooth: enlarging it loses nothing), then the excluded space
-            out.drawImage(slice.canvas, (part.rect[0] / w) * slice.w, ((h - part.rect[3]) / h) * slice.h, ((part.rect[2] - part.rect[0]) / w) * slice.w, ((part.rect[3] - part.rect[1]) / h) * slice.h, 0, 0, part.w, part.h);
-            out.drawImage(scratch, mx, my, part.w, part.h, 0, 0, part.w, part.h);
-            return canvas;
-        }
         canvas.width = W;
         canvas.height = H;
+        const out = canvas.getContext("2d");
         out.imageSmoothingEnabled = true;
         out.imageSmoothingQuality = "high";
         out.drawImage(slice.canvas, 0, 0, W, H);
         out.drawImage(scratch, 0, 0);
-        return { w: slice.w, h: slice.h, canvas, solid, sw: W, sh: H, raw: slice };
+        return { w: slice.w, h: slice.h, canvas, solid, sw: W, sh: H };
+    }
+
+    // A part of a sealed slice at the screen's resolution: the same picture (the field and the excluded
+    // space are smooth, enlarging them loses nothing and decides nothing anew), plus the inside of the
+    // cut geometry painted solid under the vector fills. Two solids a pixel or two apart, or a hole that
+    // thin, are only half covered by their own antialiased edges: without this the page under them
+    // shows as a light line at some zooms. Only pixels the geometry covers, with geometry all around,
+    // are painted: nothing is ever added outside the cut geometry.
+    // part: { rect: [x0, y0, x1, y1] metres (y up), w, h pixels }; the slice covers [0, w] x [0, h] metres.
+    sharpSlice(slice, w, h, cut, part) {
+        const W = part.w, H = part.h, rect = part.rect;
+        const scratch = (this.voidScratch ||= document.createElement("canvas"));
+        scratch.width = W;
+        scratch.height = H;
+        const ctx = scratch.getContext("2d", { willReadFrequently: true });
+        const sx = W / (rect[2] - rect[0]), sy = H / (rect[3] - rect[1]);
+        const ox = -rect[0] * sx, oy = rect[3] * sy; // a point (x, y) is the pixel (ox + x * sx, oy - y * sy)
+        drawLoops(ctx, { loops: cut.main.loops, color: "#000", stroke: "#000", width: 1, separate: true }, sx, ox, -sy, oy);
+        const image = ctx.getImageData(0, 0, W, H), px = image.data;
+        const covered = new Uint8Array(W * H);
+        for (let i = 0; i < covered.length; i++) covered[i] = px[i * 4 + 3] ? 1 : 0;
+        for (let y = 0, i = 0; y < H; y++) {
+            for (let x = 0; x < W; x++, i++) {
+                const l = x > 0, r = x < W - 1, u = y > 0, d = y < H - 1;
+                const inside = covered[i] &&
+                    (!l || covered[i - 1]) && (!r || covered[i + 1]) && (!u || covered[i - W]) && (!d || covered[i + W]) &&
+                    (!l || !u || covered[i - W - 1]) && (!r || !u || covered[i - W + 1]) && (!l || !d || covered[i + W - 1]) && (!r || !d || covered[i + W + 1]);
+                const o = i * 4;
+                px[o] = px[o + 1] = px[o + 2] = SOLID_GREY;
+                px[o + 3] = inside ? 255 : 0;
+            }
+        }
+        ctx.putImageData(image, 0, 0);
+        const canvas = document.createElement("canvas");
+        canvas.width = W;
+        canvas.height = H;
+        const out = canvas.getContext("2d");
+        out.imageSmoothingEnabled = true;
+        out.imageSmoothingQuality = "high";
+        const kx = slice.canvas.width / w, ky = slice.canvas.height / h;
+        out.drawImage(slice.canvas, rect[0] * kx, (h - rect[3]) * ky, (rect[2] - rect[0]) * kx, (rect[3] - rect[1]) * ky, 0, 0, W, H);
+        out.drawImage(scratch, 0, 0);
+        return canvas;
     }
 
     // A plane of the 3D scene: the field slice with the cut geometry drawn over it, as texture
@@ -668,13 +658,13 @@ export class VolumeView {
             extent: [0, 0, lx, ly],
             pad: [this.padTop(), 40, 56, 40],
             // the model's edges: a coarse picture of the whole plan, replaced by the part in view at screen resolution
-            // the field with the excluded space painted solid: a picture of the whole plan, replaced by the
-            // part in view at screen resolution (the rim of the solid stays sharp at any zoom)
+            // the field with the excluded space painted solid: one picture of the whole plan; for the part
+            // in view, the inside of the cut geometry is added under the vector fills (sharpSlice)
             images: [{
                 canvas: this.planSlice.canvas,
                 rect: [0, 0, lx, ly],
                 key: `plan field ${this.planSlice.id}`,
-                sharp: (rect, w, h) => this.sealVoids(this.planSlice.raw, lx, ly, this.cutPlan(), { rect, w, h }),
+                sharp: (rect, w, h) => this.sharpSlice(this.planSlice, lx, ly, this.cutPlan(), { rect, w, h }),
             }, ...this.planDrawing.edges.map((edges) => ({
                 ...edges,
                 key: `plan ${this.state.z}`,
@@ -729,7 +719,7 @@ export class VolumeView {
                 canvas: this.sectionSlice.canvas,
                 rect: [0, 0, len, lz * k],
                 key: `section field ${this.sectionSlice.id} ${k}`,
-                sharp: (rect, w, h) => this.sealVoids(this.sectionSlice.raw, len, lz, this.cutSection(), { rect: [rect[0], rect[1] / k, rect[2], rect[3] / k], w, h }),
+                sharp: (rect, w, h) => this.sharpSlice(this.sectionSlice, len, lz, this.cutSection(), { rect: [rect[0], rect[1] / k, rect[2], rect[3] / k], w, h }),
             }, ...projection],
             fills: [{ loops: tallLoops(cut.main.loops, k), ...SOLID }, { loops: tallLoops(cut.soft.loops, k), ...CANOPY }],
             lines: [{ segs: tall(cut.soft.open), ...SOFT_LINE }, { segs: tall(cut.main.open), ...OPEN_LINE }],
