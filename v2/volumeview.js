@@ -288,6 +288,7 @@ export class VolumeView {
             // building, below the ground) is filled up to them, never left empty.
             this.planCut = null;
             this.planSlice = this.sealVoids(volume.plan(s.scenario, legend, s.z), lx, ly, this.cutPlan());
+            this.planSlice.id = this.sliceId = (this.sliceId || 0) + 1;
             this.dirty.plan = false;
             this.planTextureFor = null;
         }
@@ -298,6 +299,7 @@ export class VolumeView {
         if (this.dirty.section && (s.mode === "section" || showV)) {
             this.sectionCut = null;
             this.sectionSlice = this.sealVoids(volume.section(s.scenario, legend, s.a, s.b), len, lz, this.cutSection());
+            this.sectionSlice.id = this.sliceId = (this.sliceId || 0) + 1;
             this.dirty.section = false;
             this.sectionTextureFor = null;
         }
@@ -486,39 +488,69 @@ export class VolumeView {
     // by one grid step instead, stopped by the cut geometry: the solid ends on the faces of the
     // model wherever it has any, and on the mask only where it has none.
     // The slice covers [0, w] x [0, h] metres, row 0 at the top. `solid` >= 2 marks those pixels.
-    sealVoids(slice, w, h, cut) {
-        const fit = n => Math.max(1, Math.round(n / VOID_PX));
-        let kx = fit(w / slice.w), ky = fit(h / slice.h);
-        while (slice.w * kx * slice.h * ky > VOID_MAX && (kx > 1 || ky > 1)) kx >= ky ? kx-- : ky--;
-        const W = slice.w * kx, H = slice.h * ky;
+    // part: { rect: [x0, y0, x1, y1] metres (y up), w, h pixels } gives that part alone, as a canvas of
+    // that size: the same result at the screen's resolution, for a view zoomed far past VOID_PX.
+    sealVoids(slice, w, h, cut, part = null) {
+        const grid = Math.max(this.volume.sx, this.volume.sy, this.volume.sz);
+        let rect = [0, 0, w, h], W, H, mx = 0, my = 0;
+        if (part) {
+            // worked out one grid step wider on every side: the excluded space just outside grows into the part
+            const px = (part.rect[2] - part.rect[0]) / part.w, py = (part.rect[3] - part.rect[1]) / part.h;
+            mx = Math.ceil(grid / px) + 2;
+            my = Math.ceil(grid / py) + 2;
+            rect = [part.rect[0] - mx * px, part.rect[1] - my * py, part.rect[2] + mx * px, part.rect[3] + my * py];
+            W = part.w + 2 * mx;
+            H = part.h + 2 * my;
+        } else {
+            const fit = n => Math.max(1, Math.round(n / VOID_PX));
+            let kx = fit(w / slice.w), ky = fit(h / slice.h);
+            while (slice.w * kx * slice.h * ky > VOID_MAX && (kx > 1 || ky > 1)) kx >= ky ? kx-- : ky--;
+            W = slice.w * kx;
+            H = slice.h * ky;
+        }
         const scratch = (this.voidScratch ||= document.createElement("canvas"));
         scratch.width = W;
         scratch.height = H;
         const ctx = scratch.getContext("2d", { willReadFrequently: true });
-        const sx = W / w, sy = H / h;
-        drawLoops(ctx, { loops: cut.main.loops, color: "#000", stroke: "#000", width: 1, separate: true }, sx, 0, -sy, H);
+        const sx = W / (rect[2] - rect[0]), sy = H / (rect[3] - rect[1]);
+        const ox = -rect[0] * sx, oy = rect[3] * sy; // a point (x, y) is the pixel (ox + x * sx, oy - y * sy)
+        drawLoops(ctx, { loops: cut.main.loops, color: "#000", stroke: "#000", width: 1, separate: true }, sx, ox, -sy, oy);
         const open = cut.main.open;
         ctx.beginPath();
         for (let i = 0; i + 3 < open.length; i += 4) {
-            ctx.moveTo(open[i] * sx, H - open[i + 1] * sy);
-            ctx.lineTo(open[i + 2] * sx, H - open[i + 3] * sy);
+            ctx.moveTo(ox + open[i] * sx, oy - open[i + 1] * sy);
+            ctx.lineTo(ox + open[i + 2] * sx, oy - open[i + 3] * sy);
         }
         ctx.stroke();
         const image = ctx.getImageData(0, 0, W, H), px = image.data;
+        // the cell of the slice under each pixel column and row (-1: outside the slice)
+        const cols = new Int32Array(W), rows = new Int32Array(H);
+        for (let x = 0; x < W; x++) {
+            const c = Math.floor(((rect[0] + (x + 0.5) / sx) / w) * slice.w);
+            cols[x] = c >= 0 && c < slice.w ? c : -1;
+        }
+        for (let y = 0; y < H; y++) {
+            const r = Math.floor(((h - (rect[3] - (y + 0.5) / sy)) / h) * slice.h);
+            rows[y] = r >= 0 && r < slice.h ? r * slice.w : -1;
+        }
         // 0 = open air, 1 = cut geometry, 2 = excluded space, 3 = cut geometry bounding it
         const solid = new Uint8Array(W * H);
-        let front = [];
         for (let y = 0, i = 0; y < H; y++) {
-            const row = ((y / ky) | 0) * slice.w;
+            const row = rows[y];
             for (let x = 0; x < W; x++, i++) {
                 if (px[i * 4 + 3]) solid[i] = 1;
-                else if (slice.excluded[row + ((x / kx) | 0)]) {
-                    solid[i] = 2;
-                    front.push(i);
-                }
+                else if (row >= 0 && cols[x] >= 0 && slice.excluded[row + cols[x]]) solid[i] = 2;
             }
         }
-        const steps = Math.ceil(Math.max(this.volume.sx, this.volume.sy, this.volume.sz) / Math.min(w / W, h / H)) + 1;
+        // it grows from its rim only
+        let front = [];
+        for (let y = 0, i = 0; y < H; y++) {
+            for (let x = 0; x < W; x++, i++) {
+                if (solid[i] !== 2) continue;
+                if ((x > 0 && solid[i - 1] !== 2) || (x < W - 1 && solid[i + 1] !== 2) || (y > 0 && solid[i - W] !== 2) || (y < H - 1 && solid[i + W] !== 2)) front.push(i);
+            }
+        }
+        const steps = Math.ceil(grid / Math.min(1 / sx, 1 / sy)) + 1;
         for (let step = 0; step < steps && front.length; step++) {
             const next = [];
             const reach = (j) => {
@@ -549,14 +581,24 @@ export class VolumeView {
         }
         ctx.putImageData(image, 0, 0);
         const canvas = document.createElement("canvas");
+        const out = canvas.getContext("2d");
+        if (part) {
+            canvas.width = part.w;
+            canvas.height = part.h;
+            out.imageSmoothingEnabled = true;
+            out.imageSmoothingQuality = "high";
+            // the field of that part (it is smooth: enlarging it loses nothing), then the excluded space
+            out.drawImage(slice.canvas, (part.rect[0] / w) * slice.w, ((h - part.rect[3]) / h) * slice.h, ((part.rect[2] - part.rect[0]) / w) * slice.w, ((part.rect[3] - part.rect[1]) / h) * slice.h, 0, 0, part.w, part.h);
+            out.drawImage(scratch, mx, my, part.w, part.h, 0, 0, part.w, part.h);
+            return canvas;
+        }
         canvas.width = W;
         canvas.height = H;
-        const out = canvas.getContext("2d");
         out.imageSmoothingEnabled = true;
         out.imageSmoothingQuality = "high";
         out.drawImage(slice.canvas, 0, 0, W, H);
         out.drawImage(scratch, 0, 0);
-        return { w: slice.w, h: slice.h, canvas, solid, sw: W, sh: H };
+        return { w: slice.w, h: slice.h, canvas, solid, sw: W, sh: H, raw: slice };
     }
 
     // A plane of the 3D scene: the field slice with the cut geometry drawn over it, as texture
@@ -613,7 +655,14 @@ export class VolumeView {
             extent: [0, 0, lx, ly],
             pad: [this.padTop(), 40, 56, 40],
             // the model's edges: a coarse picture of the whole plan, replaced by the part in view at screen resolution
-            images: [{ canvas: this.planSlice.canvas, rect: [0, 0, lx, ly] }, ...this.planDrawing.edges.map((edges) => ({
+            // the field with the excluded space painted solid: a picture of the whole plan, replaced by the
+            // part in view at screen resolution (the rim of the solid stays sharp at any zoom)
+            images: [{
+                canvas: this.planSlice.canvas,
+                rect: [0, 0, lx, ly],
+                key: `plan field ${this.planSlice.id}`,
+                sharp: (rect, w, h) => this.sealVoids(this.planSlice.raw, lx, ly, this.cutPlan(), { rect, w, h }),
+            }, ...this.planDrawing.edges.map((edges) => ({
                 ...edges,
                 key: `plan ${this.state.z}`,
                 sharp: (rect, w, h) => this.modelPlan("plan", { rect, w, h }).edges[0]?.canvas,
@@ -663,7 +712,12 @@ export class VolumeView {
             pick: (point, view) => this.pickGuide(point, view),
             extent: [0, 0, len, lz * k],
             pad: [this.padTop(), 110, 70, 70],
-            images: [{ canvas: this.sectionSlice.canvas, rect: [0, 0, len, lz * k] }, ...projection],
+            images: [{
+                canvas: this.sectionSlice.canvas,
+                rect: [0, 0, len, lz * k],
+                key: `section field ${this.sectionSlice.id} ${k}`,
+                sharp: (rect, w, h) => this.sealVoids(this.sectionSlice.raw, len, lz, this.cutSection(), { rect: [rect[0], rect[1] / k, rect[2], rect[3] / k], w, h }),
+            }, ...projection],
             fills: [{ loops: tallLoops(cut.main.loops, k), ...SOLID }, { loops: tallLoops(cut.soft.loops, k), ...CANOPY }],
             lines: [{ segs: tall(cut.soft.open), ...SOFT_LINE }, { segs: tall(cut.main.open), ...OPEN_LINE }],
             clip: [0, -3 * k, len, (lz + 12) * k],
