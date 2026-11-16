@@ -32,6 +32,7 @@ const SOFT_LINE = { color: "rgba(30, 90, 40, 0.85)", width: 0.8 };
 const FRAME_COLOR = 0x222222;
 const VOID_PX = 0.1; // the excluded space of a slice is resolved to this many metres per pixel, at its finest
 const VOID_MAX = 4e6; // and to this many pixels at most
+const SEAL_GAP = 0.5; // metres: the excluded space does not grow through a gap between cut solids narrower than this
 const TEXTURE_SCALE = 2; // a plane's texture, in pixels per pixel of the field slice: sharper cut geometry
 const DOT_SIZE = 0.4; // dot diameter, in grid steps
 const CANOPY_OPACITY = 0.28; // canopies while the colours are on the surfaces
@@ -485,6 +486,9 @@ export class VolumeView {
     // would show a stepped hole with a rim of colour inside its walls. The excluded pixels grow
     // by one grid step instead, stopped by the cut geometry: the solid ends on the faces of the
     // model wherever it has any, and on the mask only where it has none.
+    // It grows only where the free space is at least SEAL_GAP wide. Through a narrower gap (a house a few
+    // centimetres above the ground, two solids that do not quite touch) it would leak out of the building
+    // and spread in the open air, as a dark block at its foot.
     // The slice covers [0, w] x [0, h] metres, row 0 at the top. `solid` >= 2 marks those pixels.
     sealVoids(slice, w, h, cut) {
         const fit = n => Math.max(1, Math.round(n / VOID_PX));
@@ -505,24 +509,35 @@ export class VolumeView {
         }
         ctx.stroke();
         const image = ctx.getImageData(0, 0, W, H), px = image.data;
-        // 0 = open air, 1 = cut geometry, 2 = excluded space, 3 = cut geometry bounding it
+        // 0 = open air, 1 = cut geometry, 2 = excluded space, 3 = cut geometry in or bounding it
         const solid = new Uint8Array(W * H);
         let front = [];
         for (let y = 0, i = 0; y < H; y++) {
             const row = ((y / ky) | 0) * slice.w;
             for (let x = 0; x < W; x++, i++) {
-                if (px[i * 4 + 3]) solid[i] = 1;
-                else if (slice.excluded[row + ((x / kx) | 0)]) {
+                const excluded = slice.excluded[row + ((x / kx) | 0)];
+                // the edge of a solid covers its pixel only in part: painted too, or a gap thinner than a pixel stays empty
+                if (px[i * 4 + 3]) solid[i] = excluded ? 3 : 1;
+                else if (excluded) {
                     solid[i] = 2;
                     front.push(i);
                 }
             }
         }
         const steps = Math.ceil(Math.max(this.volume.sx, this.volume.sy, this.volume.sz) / Math.min(w / W, h / H)) + 1;
+        const wide = widePassages(solid, W, H, Math.max(1, Math.round(SEAL_GAP / (w / W) / 2)), Math.max(1, Math.round(SEAL_GAP / (h / H) / 2)));
+        // excluded space inside a narrow gap stays where it is: it only covers the edge of the geometry beside it
+        for (const i of front) {
+            if (wide[i]) continue;
+            const x = i % W;
+            for (const j of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, i - W, i + W]) if (j >= 0 && j < solid.length && solid[j] === 1) solid[j] = 3;
+        }
+        front = front.filter((i) => wide[i]);
         for (let step = 0; step < steps && front.length; step++) {
             const next = [];
             const reach = (j) => {
                 if (solid[j] === 0) {
+                    if (!wide[j]) return; // a narrow gap: not entered
                     solid[j] = 2;
                     next.push(j);
                 } else if (solid[j] === 1) solid[j] = 3; // painted, not crossed
@@ -552,6 +567,8 @@ export class VolumeView {
         canvas.width = W;
         canvas.height = H;
         const out = canvas.getContext("2d");
+        out.imageSmoothingEnabled = false;
+        out.drawImage(slice.canvas, 0, 0, W, H); // opaque up to the edge of the analysed space: smoothing alone fades it out
         out.imageSmoothingEnabled = true;
         out.imageSmoothingQuality = "high";
         out.drawImage(slice.canvas, 0, 0, W, H);
@@ -1081,6 +1098,31 @@ function setTexture(mesh, { pixels, w, h }) {
     texture.needsUpdate = true;
     mesh.material.map = texture;
     mesh.material.needsUpdate = true;
+}
+
+// Where the space free of cut geometry (solid 0 or 2) is wide: 1 for every pixel lying in some box of
+// (2 rx + 1) x (2 ry + 1) pixels without geometry. A gap narrower than the box is 0 all along.
+function widePassages(solid, W, H, rx, ry) {
+    // all = every pixel of the window passes the test; otherwise any. Outside the picture counts as free.
+    const pass = (src, test, all, horizontal) => {
+        const out = new Uint8Array(W * H);
+        const n = horizontal ? W : H, m = horizontal ? H : W, r = horizontal ? rx : ry, step = horizontal ? 1 : W;
+        for (let line = 0; line < m; line++) {
+            const start = horizontal ? line * W : line;
+            let count = 0; // pixels of the window failing (all) or passing (any) the test
+            for (let k = 0; k <= Math.min(r, n - 1); k++) if (test(src[start + k * step]) !== all) count++;
+            for (let k = 0; k < n; k++) {
+                out[start + k * step] = all ? (count === 0 ? 1 : 0) : count > 0 ? 1 : 0;
+                const enter = k + r + 1, leave = k - r;
+                if (enter < n && test(src[start + enter * step]) !== all) count++;
+                if (leave >= 0 && test(src[start + leave * step]) !== all) count--;
+            }
+        }
+        return out;
+    };
+    const free = (v) => v !== 1 && v !== 3, set = (v) => v === 1;
+    const core = pass(pass(solid, free, true, true), set, true, false); // boxes without geometry: their centres
+    return pass(pass(core, set, false, true), set, false, false); // every pixel of those boxes
 }
 
 // A round dot for the points (they are squares otherwise).
