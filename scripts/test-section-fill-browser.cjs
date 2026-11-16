@@ -71,11 +71,21 @@ const assert = require('node:assert/strict');
                 for (const a of alpha) { if (a) lines++; if (a > strongest) strongest = a; }
                 withDepth.push({ x, projected: scene.images.length - 1, lines, strongest });
             }
+            // the excluded space never leaves a building through the slit under it: no dark block at its foot
+            v.set({ a: [328, 0], b: [328, 283], viewDepth: false }, { quiet: true });
+            v.update();
+            const foot = (() => {
+                const s = v.sectionSlice, len = v.sectionLength(), lz = v.volume.size[2];
+                let n = 0;
+                for (let y = Math.floor((lz - 26) * s.sh / lz); y < Math.ceil((lz - 22.2) * s.sh / lz); y++)
+                    for (let x = Math.floor(108 * s.sw / len); x < Math.ceil(140 * s.sw / len); x++) if (s.solid[x + y * s.sw] === 2) n++;
+                return n;
+            })();
             // a slice exists only while its drawing or its 3D plane is on screen
             v.set({ mode: 'plan' }, { quiet: true });
             v.update();
             voids.push({ x: 'plan', ...holes(v.planSlice), projected: 0 });
-            return { overlap, canopyCancelled, canopyAlpha, cuts, voids, withDepth };
+            return { overlap, canopyCancelled, canopyAlpha, cuts, voids, withDepth, foot };
         });
         assert.deepEqual(result.overlap, [40, 40, 40, 255], 'opposite-winding overlapping solids never cancel');
         assert.equal(result.canopyCancelled, 0, 'shared translucent fill behavior stays unchanged');
@@ -90,6 +100,7 @@ const assert = require('node:assert/strict');
             assert.ok(cut.sealed > 0, `excluded space is painted solid at ${cut.x}`);
             assert.equal(cut.projected, 0, `without view depth the section at ${cut.x} shows no projected model`);
         }
+        assert.equal(result.foot, 0, 'no sealed pixel in the open air beside the houses at x=328');
         for (const cut of result.withDepth) {
             assert.equal(cut.projected, 1, `with view depth the section at ${cut.x} projects the model beyond the plane`);
             assert.ok(cut.lines > 0, `the projection at ${cut.x} has edge lines`);

@@ -216,6 +216,9 @@ union without outlines; a surface that is not a closed solid stays a line). The 
 under an analysed point (a room, the ground beyond the terrain mesh) is the same dark grey, never a hole:
 its pixels grow by one grid step and stop at the cut geometry (`sealVoids` in `volumeview.js`), so the
 solid ends on the faces of the model wherever it has any and on the coarse mask only where it has none.
+It grows only where the space free of cut geometry is at least half a metre wide (`SEAL_GAP`): through a
+narrower gap (a house modelled a few centimetres above the ground) it would leave the building and show as
+a dark block at its foot, one grid step wide.
 The dots use the strict values
 of the nodes. Hovering reads the value at that point. The whole view is one
 serialisable object (`VolumeView.view()`: mode, scenario, plan height, section line, planes, cut, points,
